@@ -49,3 +49,11 @@ export interface ResetTokenValidationResponse {
   valid: boolean;
   studentNumberMasked: string;
 }
+
+export interface InitialSetupRequest {
+  phoneNumber: string;
+  email: string;
+  githubId: string;
+  newPassword: string;
+  newPasswordConfirm: string;
+}
