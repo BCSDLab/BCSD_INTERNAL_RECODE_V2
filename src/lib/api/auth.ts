@@ -1,5 +1,11 @@
 import { apiFetch, reissueAccessToken } from './client';
-import type { LoginRequest, LoginResponse, MemberDetail } from './types';
+import type {
+  LoginRequest,
+  LoginResponse,
+  MemberDetail,
+  ResetTokenValidationResponse,
+  SimpleMessageResponse,
+} from './types';
 
 export function login(body: LoginRequest) {
   return apiFetch<LoginResponse>('/v1/auth/login', {
@@ -18,4 +24,25 @@ export function logout() {
 
 export function getMe(accessToken: string) {
   return apiFetch<MemberDetail>('/v1/members/me', { accessToken });
+}
+
+export function requestPasswordReset(email: string) {
+  return apiFetch<SimpleMessageResponse>('/v1/auth/password/reset-requests', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  });
+}
+
+export function validateResetToken(token: string) {
+  return apiFetch<ResetTokenValidationResponse>('/v1/auth/password/reset-requests/validate', {
+    method: 'POST',
+    body: JSON.stringify({ token }),
+  });
+}
+
+export function confirmPasswordReset(token: string, newPassword: string, newPasswordConfirm: string) {
+  return apiFetch<void>('/v1/auth/password/reset', {
+    method: 'POST',
+    body: JSON.stringify({ token, newPassword, newPasswordConfirm }),
+  });
 }

@@ -40,3 +40,12 @@ export interface TokenResponse {
   tokenType: string;
   expiresIn: number;
 }
+
+export interface SimpleMessageResponse {
+  message: string;
+}
+
+export interface ResetTokenValidationResponse {
+  valid: boolean;
+  studentNumberMasked: string;
+}
