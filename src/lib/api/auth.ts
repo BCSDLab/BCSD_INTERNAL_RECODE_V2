@@ -1,5 +1,6 @@
 import { apiFetch, reissueAccessToken } from './client';
 import type {
+  InitialSetupRequest,
   LoginRequest,
   LoginResponse,
   MemberDetail,
@@ -44,5 +45,17 @@ export function confirmPasswordReset(token: string, newPassword: string, newPass
   return apiFetch<void>('/v1/auth/password/reset', {
     method: 'POST',
     body: JSON.stringify({ token, newPassword, newPasswordConfirm }),
+  });
+}
+
+export function getInitialSetupInfo(accessToken: string) {
+  return apiFetch<MemberDetail>('/v1/members/me/initial-setup', { accessToken });
+}
+
+export function completeInitialSetup(accessToken: string, body: InitialSetupRequest) {
+  return apiFetch<LoginResponse>('/v1/members/me/initial-setup', {
+    method: 'POST',
+    accessToken,
+    body: JSON.stringify(body),
   });
 }
