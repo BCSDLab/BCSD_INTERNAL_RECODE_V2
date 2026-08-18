@@ -7,6 +7,8 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+ARG API_ORIGIN
+ENV API_ORIGIN=$API_ORIGIN
 RUN npm run build
 
 FROM node:20-alpine AS runner
