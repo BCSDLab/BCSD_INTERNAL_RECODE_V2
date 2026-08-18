@@ -36,6 +36,8 @@ jobs:
           push: true
           platforms: linux/arm64
           tags: ghcr.io/bcsdlab/bcsd-internal-frontend:latest
+          build-args: |
+            API_ORIGIN=${{ secrets.API_ORIGIN }}
 
       - name: Deploy to server
         uses: appleboy/ssh-action@v1.0.3
