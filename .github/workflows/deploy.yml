@@ -54,5 +54,6 @@ jobs:
               --restart unless-stopped \
               --network bcsdlab-internal_default \
               -p 127.0.0.1:3000:3000 \
+              -e API_ORIGIN='${{ secrets.API_ORIGIN }}' \
               --memory=256m \
               ghcr.io/bcsdlab/bcsd-internal-frontend:latest
