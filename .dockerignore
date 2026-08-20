@@ -1,0 +1,12 @@
+# 호스트 node_modules가 deps 스테이지의 것을 덮어쓰면 안 된다. pnpm은 플랫폼별
+# 네이티브 바이너리(oxlint 등)를 담으므로 macOS에서 만든 트리를 alpine 이미지에
+# 넣으면 빌드가 깨진다.
+node_modules
+.next
+.git
+.github
+Dockerfile
+.dockerignore
+npm-debug.log*
+.pnpm-debug.log*
+.env*.local

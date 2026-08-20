@@ -5,13 +5,17 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 First, run the development server:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+pnpm install
 pnpm dev
-# or
-bun dev
+```
+
+Package manager is pinned to pnpm via the `packageManager` field — `npm install` / `yarn` will
+produce a lockfile this repo does not track. Other scripts:
+
+```bash
+pnpm lint        # oxlint
+pnpm typecheck   # tsc (TypeScript 7 native)
+pnpm format      # prettier
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
