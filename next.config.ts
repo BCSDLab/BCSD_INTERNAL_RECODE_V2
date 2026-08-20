@@ -3,7 +3,7 @@ import type { NextConfig } from 'next';
 const API_ORIGIN = process.env.API_ORIGIN ?? 'http://localhost:8080';
 
 const nextConfig: NextConfig = {
-  output: "standalone",
+  output: 'standalone',
   async rewrites() {
     return [
       {
