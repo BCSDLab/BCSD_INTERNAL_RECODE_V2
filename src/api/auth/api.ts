@@ -1,4 +1,4 @@
-import { apiFetch, reissueAccessToken } from '@/api/client';
+import { apiClient, reissueAccessToken } from '@/api/client';
 import type {
   InitialSetupRequest,
   LoginRequest,
@@ -9,10 +9,7 @@ import type {
 } from './types';
 
 export function login(body: LoginRequest) {
-  return apiFetch<LoginResponse>('/v1/auth/login', {
-    method: 'POST',
-    body: JSON.stringify(body),
-  });
+  return apiClient.post<LoginResponse>('/v1/auth/login', body);
 }
 
 export function reissue() {
@@ -20,42 +17,29 @@ export function reissue() {
 }
 
 export function logout() {
-  return apiFetch<void>('/v1/auth/logout', { method: 'POST', skipAuthRetry: true });
+  return apiClient.post<void>('/v1/auth/logout', undefined, { skipAuthRetry: true });
 }
 
 export function getMe(accessToken: string) {
-  return apiFetch<MemberDetail>('/v1/members/me', { accessToken });
+  return apiClient.get<MemberDetail>('/v1/members/me', { accessToken });
 }
 
 export function requestPasswordReset(email: string) {
-  return apiFetch<SimpleMessageResponse>('/v1/auth/password/reset-requests', {
-    method: 'POST',
-    body: JSON.stringify({ email }),
-  });
+  return apiClient.post<SimpleMessageResponse>('/v1/auth/password/reset-requests', { email });
 }
 
 export function validateResetToken(token: string) {
-  return apiFetch<ResetTokenValidationResponse>('/v1/auth/password/reset-requests/validate', {
-    method: 'POST',
-    body: JSON.stringify({ token }),
-  });
+  return apiClient.post<ResetTokenValidationResponse>('/v1/auth/password/reset-requests/validate', { token });
 }
 
 export function confirmPasswordReset(token: string, newPassword: string, newPasswordConfirm: string) {
-  return apiFetch<void>('/v1/auth/password/reset', {
-    method: 'POST',
-    body: JSON.stringify({ token, newPassword, newPasswordConfirm }),
-  });
+  return apiClient.post<void>('/v1/auth/password/reset', { token, newPassword, newPasswordConfirm });
 }
 
 export function getInitialSetupInfo(accessToken: string) {
-  return apiFetch<MemberDetail>('/v1/members/me/initial-setup', { accessToken });
+  return apiClient.get<MemberDetail>('/v1/members/me/initial-setup', { accessToken });
 }
 
 export function completeInitialSetup(accessToken: string, body: InitialSetupRequest) {
-  return apiFetch<LoginResponse>('/v1/members/me/initial-setup', {
-    method: 'POST',
-    accessToken,
-    body: JSON.stringify(body),
-  });
+  return apiClient.post<LoginResponse>('/v1/members/me/initial-setup', body, { accessToken });
 }

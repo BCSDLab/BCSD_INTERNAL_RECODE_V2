@@ -1,4 +1,4 @@
-import { apiFetch } from '@/api/client';
+import { apiClient } from '@/api/client';
 import type {
   StudyPointResponse,
   TechStackResponse,
@@ -8,85 +8,61 @@ import type {
 } from './types';
 
 export function listTracks() {
-  return apiFetch<TrackMasterResponse[]>('/v1/admin/tracks');
+  return apiClient.get<TrackMasterResponse[]>('/v1/admin/tracks');
 }
 
 export function listTrackPages() {
-  return apiFetch<TrackPageSummaryResponse[]>('/v1/admin/track-pages');
+  return apiClient.get<TrackPageSummaryResponse[]>('/v1/admin/track-pages');
 }
 
 export function getTrackPage(trackPageId: number) {
-  return apiFetch<TrackPageDetailResponse>(`/v1/admin/track-pages/${trackPageId}`);
+  return apiClient.get<TrackPageDetailResponse>(`/v1/admin/track-pages/${trackPageId}`);
 }
 
 export function createTrackPage(body: { trackId: number; displayName: string; tagline: string }) {
-  return apiFetch<TrackPageDetailResponse>('/v1/admin/track-pages', {
-    method: 'POST',
-    body: JSON.stringify(body),
-  });
+  return apiClient.post<TrackPageDetailResponse>('/v1/admin/track-pages', body);
 }
 
 export function updateTrackPageHeader(trackPageId: number, body: { displayName: string; tagline: string }) {
-  return apiFetch<TrackPageDetailResponse>(`/v1/admin/track-pages/${trackPageId}`, {
-    method: 'PUT',
-    body: JSON.stringify(body),
-  });
+  return apiClient.put<TrackPageDetailResponse>(`/v1/admin/track-pages/${trackPageId}`, body);
 }
 
 export function deleteTrackPage(trackPageId: number) {
-  return apiFetch<void>(`/v1/admin/track-pages/${trackPageId}`, { method: 'DELETE' });
+  return apiClient.delete<void>(`/v1/admin/track-pages/${trackPageId}`);
 }
 
 export function publishTrackPage(trackPageId: number, isPublished: boolean) {
-  return apiFetch<void>(`/v1/admin/track-pages/${trackPageId}/publish`, {
-    method: 'PATCH',
-    body: JSON.stringify({ isPublished }),
-  });
+  return apiClient.patch<void>(`/v1/admin/track-pages/${trackPageId}/publish`, { isPublished });
 }
 
 export function reorderTrackPages(ids: number[]) {
-  return apiFetch<void>('/v1/admin/track-pages/order', { method: 'PATCH', body: JSON.stringify({ ids }) });
+  return apiClient.patch<void>('/v1/admin/track-pages/order', { ids });
 }
 
 export function putStudyPoints(trackPageId: number, studyPoints: StudyPointResponse[]) {
-  return apiFetch<StudyPointResponse[]>(`/v1/admin/track-pages/${trackPageId}/study-points`, {
-    method: 'PUT',
-    body: JSON.stringify({ studyPoints }),
-  });
+  return apiClient.put<StudyPointResponse[]>(`/v1/admin/track-pages/${trackPageId}/study-points`, { studyPoints });
 }
 
 export function putTechStacks(trackPageId: number, techStackIds: number[]) {
-  return apiFetch<TechStackResponse[]>(`/v1/admin/track-pages/${trackPageId}/tech-stacks`, {
-    method: 'PUT',
-    body: JSON.stringify({ techStackIds }),
-  });
+  return apiClient.put<TechStackResponse[]>(`/v1/admin/track-pages/${trackPageId}/tech-stacks`, { techStackIds });
 }
 
 export function reorderTrackPageMembers(trackPageId: number, ids: number[]) {
-  return apiFetch<void>(`/v1/admin/track-pages/${trackPageId}/members/order`, {
-    method: 'PATCH',
-    body: JSON.stringify({ ids }),
-  });
+  return apiClient.patch<void>(`/v1/admin/track-pages/${trackPageId}/members/order`, { ids });
 }
 
 export function setTrackPageMemberVisibility(trackPageId: number, memberId: number, isVisible: boolean) {
-  return apiFetch<void>(`/v1/admin/track-pages/${trackPageId}/members/${memberId}/visibility`, {
-    method: 'PATCH',
-    body: JSON.stringify({ isVisible }),
-  });
+  return apiClient.patch<void>(`/v1/admin/track-pages/${trackPageId}/members/${memberId}/visibility`, { isVisible });
 }
 
 export function detachTrackPageMember(trackPageId: number, memberId: number) {
-  return apiFetch<void>(`/v1/admin/track-pages/${trackPageId}/members/${memberId}`, { method: 'DELETE' });
+  return apiClient.delete<void>(`/v1/admin/track-pages/${trackPageId}/members/${memberId}`);
 }
 
 export function listTechStacks() {
-  return apiFetch<TechStackResponse[]>('/v1/admin/tech-stacks');
+  return apiClient.get<TechStackResponse[]>('/v1/admin/tech-stacks');
 }
 
 export function createTechStack(body: { name: string; iconUrl: string }) {
-  return apiFetch<TechStackResponse>('/v1/admin/tech-stacks', {
-    method: 'POST',
-    body: JSON.stringify(body),
-  });
+  return apiClient.post<TechStackResponse>('/v1/admin/tech-stacks', body);
 }

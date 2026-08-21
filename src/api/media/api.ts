@@ -1,4 +1,4 @@
-import { apiFetch } from '@/api/client';
+import { apiClient } from '@/api/client';
 import type { ImageCompleteResponse, ImagePurpose, PresignedUrlResponse } from './types';
 
 export function getPresignedUrl(body: {
@@ -7,12 +7,9 @@ export function getPresignedUrl(body: {
   byteSize: number;
   purpose: ImagePurpose;
 }) {
-  return apiFetch<PresignedUrlResponse>('/v1/admin/images/presigned-url', {
-    method: 'POST',
-    body: JSON.stringify(body),
-  });
+  return apiClient.post<PresignedUrlResponse>('/v1/admin/images/presigned-url', body);
 }
 
 export function completeImage(imageId: number) {
-  return apiFetch<ImageCompleteResponse>(`/v1/admin/images/${imageId}/complete`, { method: 'POST' });
+  return apiClient.post<ImageCompleteResponse>(`/v1/admin/images/${imageId}/complete`);
 }
