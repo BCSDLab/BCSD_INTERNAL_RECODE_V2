@@ -3,8 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
-import { listTrackPages } from '@/api/track/api';
-import { trackKeys } from '@/api/track/keys';
+import { trackQueries } from '@/api/track/queries';
 import { PageHeader } from '@/components/ui/page-header';
 import { TrackChipBar } from './components/TrackChipBar';
 
@@ -20,10 +19,7 @@ import { TrackChipBar } from './components/TrackChipBar';
 export default function TracksPage() {
   const router = useRouter();
 
-  const { data: trackPages } = useQuery({
-    queryKey: trackKeys.trackPages(),
-    queryFn: listTrackPages,
-  });
+  const { data: trackPages } = useQuery(trackQueries.trackPages());
 
   const firstTrackPageId = trackPages?.[0]?.id;
 

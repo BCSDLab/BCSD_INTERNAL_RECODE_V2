@@ -6,7 +6,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { reorderActivities } from '@/api/activity/api';
-import { activityKeys } from '@/api/activity/keys';
+import { activityKeys } from '@/api/activity/queries';
 import type { ActivitySummaryResponse } from '@/api/activity/types';
 import { Button } from '@/components/ui/button';
 import { Chip } from '@/components/ui/chip';

@@ -14,7 +14,7 @@ import {
   updateTopicDetails,
   updateTopicTitle,
 } from '@/api/curriculum/api';
-import { curriculumKeys } from '@/api/curriculum/keys';
+import { curriculumKeys } from '@/api/curriculum/queries';
 import type { CurriculumTopicNode, CurriculumWeekNode } from '@/api/curriculum/types';
 import { ApiError } from '@/api/client';
 import { Button } from '@/components/ui/button';

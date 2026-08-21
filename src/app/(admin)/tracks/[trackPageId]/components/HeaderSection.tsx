@@ -4,7 +4,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { deleteTrackPage, publishTrackPage } from '@/api/track/api';
-import { trackKeys } from '@/api/track/keys';
+import { trackKeys } from '@/api/track/queries';
 import type { TrackPageDetailResponse } from '@/api/track/types';
 import type { HeaderFormValues } from '@/app/(admin)/tracks/header-form';
 import { Button } from '@/components/ui/button';

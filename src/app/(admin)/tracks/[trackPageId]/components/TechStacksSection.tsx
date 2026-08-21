@@ -5,8 +5,8 @@ import { SortableContext, arrayMove, horizontalListSortingStrategy, useSortable 
 import { CSS } from '@dnd-kit/utilities';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { createTechStack, listTechStacks, putTechStacks } from '@/api/track/api';
-import { trackKeys } from '@/api/track/keys';
+import { createTechStack, putTechStacks } from '@/api/track/api';
+import { trackKeys, trackQueries } from '@/api/track/queries';
 import type { TechStackResponse, TrackPageDetailResponse } from '@/api/track/types';
 import { ApiError } from '@/api/client';
 import { Button } from '@/components/ui/button';
@@ -122,10 +122,7 @@ function TechStackPickerModal({
   onConfirm: (ids: number[]) => void;
 }) {
   const queryClient = useQueryClient();
-  const { data: master } = useQuery({
-    queryKey: trackKeys.techStacks(),
-    queryFn: listTechStacks,
-  });
+  const { data: master } = useQuery(trackQueries.techStacks());
   const [selected, setSelected] = useState<Set<number>>(new Set(selectedIds));
   const [query, setQuery] = useState('');
   const [newName, setNewName] = useState('');

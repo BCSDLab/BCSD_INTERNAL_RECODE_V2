@@ -2,11 +2,9 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import { getCurriculumTree, listCurriculums } from '@/api/curriculum/api';
-import { curriculumKeys } from '@/api/curriculum/keys';
+import { curriculumQueries } from '@/api/curriculum/queries';
 import type { CurriculumSummaryResponse } from '@/api/curriculum/types';
-import { listTrackPages } from '@/api/track/api';
-import { trackKeys } from '@/api/track/keys';
+import { trackQueries } from '@/api/track/queries';
 import type { TrackPageSummaryResponse } from '@/api/track/types';
 import { PageHeader } from '@/components/ui/page-header';
 import { CurriculumRail } from './components/CurriculumRail';
@@ -24,22 +22,11 @@ export default function CurriculumsPage() {
   const [curriculumId, setCurriculumId] = useState<number | ''>('');
   const [selectedWeekId, setSelectedWeekId] = useState<number | null>(null);
 
-  const { data: trackPages } = useQuery({
-    queryKey: trackKeys.trackPages(),
-    queryFn: listTrackPages,
-  });
+  const { data: trackPages } = useQuery(trackQueries.trackPages());
 
-  const { data: curriculums } = useQuery({
-    queryKey: curriculumKeys.list(trackPageId),
-    queryFn: () => listCurriculums(trackPageId as number),
-    enabled: trackPageId !== '',
-  });
+  const { data: curriculums } = useQuery({ ...curriculumQueries.list(trackPageId), enabled: trackPageId !== '' });
 
-  const { data: tree } = useQuery({
-    queryKey: curriculumKeys.tree(curriculumId),
-    queryFn: () => getCurriculumTree(curriculumId as number),
-    enabled: curriculumId !== '',
-  });
+  const { data: tree } = useQuery({ ...curriculumQueries.tree(curriculumId), enabled: curriculumId !== '' });
 
   // 주차를 아직 안 골랐으면 첫 주차를 자동 선택한다(시안도 한 주차가 늘 열려 있다).
   if (tree && tree.weeks.length > 0 && !tree.weeks.some((week) => week.id === selectedWeekId)) {

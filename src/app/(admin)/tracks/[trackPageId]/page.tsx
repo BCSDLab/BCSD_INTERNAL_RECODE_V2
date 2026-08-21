@@ -3,8 +3,8 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useParams } from 'next/navigation';
 import { useState } from 'react';
-import { getTrackPage, updateTrackPageHeader } from '@/api/track/api';
-import { trackKeys } from '@/api/track/keys';
+import { updateTrackPageHeader } from '@/api/track/api';
+import { trackQueries } from '@/api/track/queries';
 import { ApiError } from '@/api/client';
 import { TrackChipBar } from '@/app/(admin)/tracks/components/TrackChipBar';
 import type { HeaderFormValues } from '@/app/(admin)/tracks/header-form';
@@ -27,10 +27,7 @@ export default function TrackPageEditPage() {
   const params = useParams<{ trackPageId: string }>();
   const trackPageId = Number(params.trackPageId);
 
-  const { data: detail, isLoading } = useQuery({
-    queryKey: trackKeys.trackPage(trackPageId),
-    queryFn: () => getTrackPage(trackPageId),
-  });
+  const { data: detail, isLoading } = useQuery(trackQueries.trackPage(trackPageId));
 
   const [form, setForm] = useState<HeaderFormValues | null>(null);
   const [initializedId, setInitializedId] = useState<number | null>(null);
