@@ -6,7 +6,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { detachTrackPageMember, reorderTrackPageMembers, setTrackPageMemberVisibility } from '@/api/track/api';
-import { trackKeys } from '@/api/track/keys';
+import { trackKeys } from '@/api/track/queries';
 import type { TrackPageDetailResponse, TrackPageMemberResponse } from '@/api/track/types';
 import { ApiError } from '@/api/client';
 import { Badge, Chip } from '@/components/ui/chip';

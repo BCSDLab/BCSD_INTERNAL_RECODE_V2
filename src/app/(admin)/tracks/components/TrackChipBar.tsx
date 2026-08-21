@@ -6,8 +6,8 @@ import { CSS } from '@dnd-kit/utilities';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { createTrackPage, listTrackPages, listTracks, reorderTrackPages } from '@/api/track/api';
-import { trackKeys } from '@/api/track/keys';
+import { createTrackPage, reorderTrackPages } from '@/api/track/api';
+import { trackKeys, trackQueries } from '@/api/track/queries';
 import type { TrackPageSummaryResponse } from '@/api/track/types';
 import { ApiError } from '@/api/client';
 import { Button } from '@/components/ui/button';
@@ -27,10 +27,7 @@ export function TrackChipBar({ selectedId }: { selectedId: number | null }) {
   const router = useRouter();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
 
-  const { data: trackPages } = useQuery({
-    queryKey: trackKeys.trackPages(),
-    queryFn: listTrackPages,
-  });
+  const { data: trackPages } = useQuery(trackQueries.trackPages());
 
   const reorderMutation = useMutation({
     mutationFn: reorderTrackPages,
@@ -95,10 +92,7 @@ function TrackChip({ item, isSelected }: { item: TrackPageSummaryResponse; isSel
 }
 
 function CreateTrackPageModal({ onClose, onCreated }: { onClose: () => void; onCreated: (id: number) => void }) {
-  const { data: tracks } = useQuery({
-    queryKey: trackKeys.tracks(),
-    queryFn: listTracks,
-  });
+  const { data: tracks } = useQuery(trackQueries.tracks());
   const [trackId, setTrackId] = useState<number | ''>('');
   const [displayName, setDisplayName] = useState('');
   const [tagline, setTagline] = useState('');

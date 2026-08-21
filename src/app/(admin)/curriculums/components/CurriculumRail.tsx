@@ -6,7 +6,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { addWeek, createCurriculum, deleteCurriculum, publishCurriculum, reorderWeeks } from '@/api/curriculum/api';
-import { curriculumKeys } from '@/api/curriculum/keys';
+import { curriculumKeys } from '@/api/curriculum/queries';
 import type { CurriculumSummaryResponse, CurriculumTreeResponse, CurriculumWeekNode } from '@/api/curriculum/types';
 import type { TrackPageSummaryResponse } from '@/api/track/types';
 import { ApiError } from '@/api/client';

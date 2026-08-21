@@ -4,11 +4,9 @@ import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { getActivitiesTotal } from '@/api/activity/api';
-import { activityKeys } from '@/api/activity/keys';
+import { activityQueries } from '@/api/activity/queries';
 import { logout } from '@/api/auth/api';
-import { listTrackPages } from '@/api/track/api';
-import { trackKeys } from '@/api/track/keys';
+import { trackQueries } from '@/api/track/queries';
 import { useAuthGuard } from '@/hooks/useAuthGuard';
 import { setSession } from '@/lib/auth/session-store';
 import { MEMBER_TYPE_LABELS, TRACK_LABELS } from '@/lib/member-labels';
@@ -27,19 +25,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const isAuthenticated = status === 'ready' && !!session;
 
-  const { data: trackPages } = useQuery({
-    queryKey: trackKeys.trackPages(),
-    queryFn: listTrackPages,
-    enabled: isAuthenticated,
-  });
+  const { data: trackPages } = useQuery({ ...trackQueries.trackPages(), enabled: isAuthenticated });
 
   // 활동 총 건수는 size=1로 첫 페이지만 받아 totalElements만 읽는다.
   // 커리큘럼은 시안에 "18주"가 있지만 전체 주차를 세는 저렴한 엔드포인트가 없어 비워 둔다.
-  const { data: activityPage } = useQuery({
-    queryKey: activityKeys.total(),
-    queryFn: getActivitiesTotal,
-    enabled: isAuthenticated,
-  });
+  const { data: activityPage } = useQuery({ ...activityQueries.total(), enabled: isAuthenticated });
 
   if (!isAuthenticated) {
     // 세션 부트스트랩 중이거나 로그인으로 리다이렉트되는 동안 빈 화면을 보인다.

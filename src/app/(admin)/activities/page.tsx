@@ -2,8 +2,8 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { listActivities, listActivityCategories, updateActivityCategoryHeader } from '@/api/activity/api';
-import { activityKeys } from '@/api/activity/keys';
+import { updateActivityCategoryHeader } from '@/api/activity/api';
+import { activityKeys, activityQueries } from '@/api/activity/queries';
 import type { ActivityCategoryResponse } from '@/api/activity/types';
 import { ApiError } from '@/api/client';
 import { Field, INPUT_CLASS } from '@/components/ui/field';
@@ -36,10 +36,7 @@ export default function ActivitiesPage() {
   const [categoryId, setCategoryId] = useState<number | null>(null);
   const [editing, setEditing] = useState<{ id: number | null; year?: number } | null>(null);
 
-  const { data: categories } = useQuery({
-    queryKey: activityKeys.categories(),
-    queryFn: listActivityCategories,
-  });
+  const { data: categories } = useQuery(activityQueries.categories());
 
   if (categories && categories.length > 0 && !categories.some((category) => category.id === categoryId)) {
     setCategoryId(categories[0].id);
@@ -47,11 +44,7 @@ export default function ActivitiesPage() {
 
   const category = (categories ?? EMPTY_CATEGORIES).find((item) => item.id === categoryId) ?? null;
 
-  const { data: activityPage } = useQuery({
-    queryKey: activityKeys.list(categoryId),
-    queryFn: () => listActivities(categoryId as number),
-    enabled: categoryId !== null,
-  });
+  const { data: activityPage } = useQuery({ ...activityQueries.list(categoryId), enabled: categoryId !== null });
 
   const [form, setForm] = useState<HeaderFormValues | null>(null);
   const [initializedId, setInitializedId] = useState<number | null>(null);

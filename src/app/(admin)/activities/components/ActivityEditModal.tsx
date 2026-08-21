@@ -5,15 +5,8 @@ import { SortableContext, arrayMove, rectSortingStrategy, useSortable } from '@d
 import { CSS } from '@dnd-kit/utilities';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import {
-  createActivity,
-  deleteActivity,
-  getActivity,
-  publishActivity,
-  putActivityImages,
-  updateActivity,
-} from '@/api/activity/api';
-import { activityKeys } from '@/api/activity/keys';
+import { createActivity, deleteActivity, publishActivity, putActivityImages, updateActivity } from '@/api/activity/api';
+import { activityKeys, activityQueries } from '@/api/activity/queries';
 import type { ActivityDetailResponse } from '@/api/activity/types';
 import { ApiError } from '@/api/client';
 import { Button } from '@/components/ui/button';
@@ -77,11 +70,7 @@ export function ActivityEditModal({
   const queryClient = useQueryClient();
   const isNew = activityId === null;
 
-  const { data: detail, isLoading } = useQuery({
-    queryKey: activityKeys.detail(activityId),
-    queryFn: () => getActivity(activityId as number),
-    enabled: !isNew,
-  });
+  const { data: detail, isLoading } = useQuery({ ...activityQueries.detail(activityId), enabled: !isNew });
 
   const [form, setForm] = useState<FormValues>(() => toForm(null, defaultYear));
   const [initialized, setInitialized] = useState<number | null | 'new'>(isNew ? 'new' : null);
