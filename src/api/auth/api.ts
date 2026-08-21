@@ -1,4 +1,4 @@
-import { apiFetch, reissueAccessToken } from './client';
+import { apiFetch, reissueAccessToken } from '@/api/client';
 import type {
   InitialSetupRequest,
   LoginRequest,

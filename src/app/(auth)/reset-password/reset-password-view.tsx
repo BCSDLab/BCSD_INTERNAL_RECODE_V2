@@ -7,8 +7,8 @@ import { AuthCard } from '@/components/auth/AuthCard';
 import { LogoBadge } from '@/components/auth/LogoBadge';
 import { PrimaryButton } from '@/components/auth/PrimaryButton';
 import { TextField } from '@/components/auth/TextField';
-import { confirmPasswordReset, requestPasswordReset, validateResetToken } from '@/lib/api/auth';
-import { ApiError } from '@/lib/api/client';
+import { confirmPasswordReset, requestPasswordReset, validateResetToken } from '@/api/auth/api';
+import { ApiError } from '@/api/client';
 
 export function ResetPasswordView() {
   const searchParams = useSearchParams();

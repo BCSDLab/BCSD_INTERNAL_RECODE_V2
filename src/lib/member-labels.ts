@@ -1,4 +1,4 @@
-import type { MemberType, Track } from '@/lib/api/types';
+import type { MemberType, Track } from '@/api/auth/types';
 
 export const TRACK_LABELS: Record<Track, string> = {
   FRONTEND: 'FrontEnd',

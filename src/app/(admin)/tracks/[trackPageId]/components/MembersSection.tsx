@@ -5,12 +5,14 @@ import { SortableContext, arrayMove, rectSortingStrategy, useSortable } from '@d
 import { CSS } from '@dnd-kit/utilities';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
+import { detachTrackPageMember, reorderTrackPageMembers, setTrackPageMemberVisibility } from '@/api/track/api';
+import { trackKeys } from '@/api/track/keys';
+import type { TrackPageDetailResponse, TrackPageMemberResponse } from '@/api/track/types';
+import { ApiError } from '@/api/client';
 import { Badge, Chip } from '@/components/ui/chip';
 import { DragHandle } from '@/components/ui/field';
 import { Modal } from '@/components/ui/modal';
 import { Eyebrow } from '@/components/ui/section-card';
-import { ApiError, apiFetch } from '@/lib/api/client';
-import type { TrackPageDetailResponse, TrackPageMemberResponse } from '@/types/api';
 
 /**
  * 시안의 "함께 할 멤버들" 섹션. h2가 아니라 11px eyebrow 라벨이고, 오른쪽에 "N명 노출".
@@ -25,33 +27,25 @@ export function MembersSection({ trackPageId, detail }: { trackPageId: number; d
 
   function invalidate() {
     setError(null);
-    queryClient.invalidateQueries({ queryKey: ['track-page', trackPageId] });
+    queryClient.invalidateQueries({ queryKey: trackKeys.trackPage(trackPageId) });
   }
   function handleError(e: unknown) {
     setError(e instanceof ApiError ? e.message : '요청에 실패했습니다.');
   }
 
   const reorderMutation = useMutation({
-    mutationFn: (ids: number[]) =>
-      apiFetch<void>(`/v1/admin/track-pages/${trackPageId}/members/order`, {
-        method: 'PATCH',
-        body: JSON.stringify({ ids }),
-      }),
+    mutationFn: (ids: number[]) => reorderTrackPageMembers(trackPageId, ids),
     onSuccess: invalidate,
     onError: handleError,
   });
   const visibilityMutation = useMutation({
     mutationFn: ({ memberId, isVisible }: { memberId: number; isVisible: boolean }) =>
-      apiFetch<void>(`/v1/admin/track-pages/${trackPageId}/members/${memberId}/visibility`, {
-        method: 'PATCH',
-        body: JSON.stringify({ isVisible }),
-      }),
+      setTrackPageMemberVisibility(trackPageId, memberId, isVisible),
     onSuccess: invalidate,
     onError: handleError,
   });
   const detachMutation = useMutation({
-    mutationFn: (memberId: number) =>
-      apiFetch<void>(`/v1/admin/track-pages/${trackPageId}/members/${memberId}`, { method: 'DELETE' }),
+    mutationFn: (memberId: number) => detachTrackPageMember(trackPageId, memberId),
     onSuccess: invalidate,
     onError: handleError,
   });

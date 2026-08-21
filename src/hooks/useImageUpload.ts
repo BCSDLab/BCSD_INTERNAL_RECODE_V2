@@ -1,8 +1,9 @@
 'use client';
 
 import { useCallback, useState } from 'react';
-import { ApiError, apiFetch } from '@/lib/api/client';
-import type { ImageCompleteResponse, ImagePurpose, PresignedUrlResponse } from '@/types/media';
+import { completeImage, getPresignedUrl } from '@/api/media/api';
+import type { ImagePurpose } from '@/api/media/types';
+import { ApiError } from '@/api/client';
 
 const ALLOWED_EXTENSIONS = ['png', 'jpg', 'jpeg', 'webp', 'svg'];
 const MAX_BYTE_SIZE = 5 * 1024 * 1024;
@@ -41,14 +42,11 @@ export function useImageUpload(purpose: ImagePurpose) {
 
       setIsUploading(true);
       try {
-        const presigned = await apiFetch<PresignedUrlResponse>('/v1/admin/images/presigned-url', {
-          method: 'POST',
-          body: JSON.stringify({
-            fileName: file.name,
-            contentType: file.type,
-            byteSize: file.size,
-            purpose,
-          }),
+        const presigned = await getPresignedUrl({
+          fileName: file.name,
+          contentType: file.type,
+          byteSize: file.size,
+          purpose,
         });
 
         const putResponse = await fetch(presigned.uploadUrl, {
@@ -60,9 +58,7 @@ export function useImageUpload(purpose: ImagePurpose) {
           throw new Error('이미지 업로드에 실패했습니다.');
         }
 
-        const completed = await apiFetch<ImageCompleteResponse>(`/v1/admin/images/${presigned.imageId}/complete`, {
-          method: 'POST',
-        });
+        const completed = await completeImage(presigned.imageId);
         return completed.url;
       } catch (uploadError) {
         const message =
