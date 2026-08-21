@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { getMe, reissue } from '@/lib/api/auth';
+import { getMe, reissue } from '@/api/auth/api';
 import { setSession } from '@/lib/auth/session-store';
 
 export function SessionBootstrap() {

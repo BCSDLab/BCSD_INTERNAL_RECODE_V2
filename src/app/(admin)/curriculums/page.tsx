@@ -2,9 +2,13 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
+import { getCurriculumTree, listCurriculums } from '@/api/curriculum/api';
+import { curriculumKeys } from '@/api/curriculum/keys';
+import type { CurriculumSummaryResponse } from '@/api/curriculum/types';
+import { listTrackPages } from '@/api/track/api';
+import { trackKeys } from '@/api/track/keys';
+import type { TrackPageSummaryResponse } from '@/api/track/types';
 import { PageHeader } from '@/components/ui/page-header';
-import { apiFetch } from '@/lib/api/client';
-import type { CurriculumSummaryResponse, CurriculumTreeResponse, TrackPageSummaryResponse } from '@/types/api';
 import { CurriculumRail } from './components/CurriculumRail';
 import { TopicColumn } from './components/TopicColumn';
 
@@ -21,19 +25,19 @@ export default function CurriculumsPage() {
   const [selectedWeekId, setSelectedWeekId] = useState<number | null>(null);
 
   const { data: trackPages } = useQuery({
-    queryKey: ['track-pages'],
-    queryFn: () => apiFetch<TrackPageSummaryResponse[]>('/v1/admin/track-pages'),
+    queryKey: trackKeys.trackPages(),
+    queryFn: listTrackPages,
   });
 
   const { data: curriculums } = useQuery({
-    queryKey: ['curriculums', trackPageId],
-    queryFn: () => apiFetch<CurriculumSummaryResponse[]>(`/v1/admin/track-pages/${trackPageId}/curriculums`),
+    queryKey: curriculumKeys.list(trackPageId),
+    queryFn: () => listCurriculums(trackPageId as number),
     enabled: trackPageId !== '',
   });
 
   const { data: tree } = useQuery({
-    queryKey: ['curriculum-tree', curriculumId],
-    queryFn: () => apiFetch<CurriculumTreeResponse>(`/v1/admin/curriculums/${curriculumId}`),
+    queryKey: curriculumKeys.tree(curriculumId),
+    queryFn: () => getCurriculumTree(curriculumId as number),
     enabled: curriculumId !== '',
   });
 

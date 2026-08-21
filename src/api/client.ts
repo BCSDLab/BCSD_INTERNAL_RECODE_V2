@@ -1,4 +1,4 @@
-import type { TokenResponse } from '@/lib/api/types';
+import type { TokenResponse } from '@/api/auth/types';
 import { getSession, setSession } from '@/lib/auth/session-store';
 
 export class ApiError extends Error {

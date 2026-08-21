@@ -5,17 +5,15 @@ import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } 
 import { CSS } from '@dnd-kit/utilities';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
+import { addWeek, createCurriculum, deleteCurriculum, publishCurriculum, reorderWeeks } from '@/api/curriculum/api';
+import { curriculumKeys } from '@/api/curriculum/keys';
+import type { CurriculumSummaryResponse, CurriculumTreeResponse, CurriculumWeekNode } from '@/api/curriculum/types';
+import type { TrackPageSummaryResponse } from '@/api/track/types';
+import { ApiError } from '@/api/client';
 import { Button } from '@/components/ui/button';
 import { DragHandle, Field, INPUT_CLASS } from '@/components/ui/field';
 import { ConfirmModal, Modal } from '@/components/ui/modal';
 import { Eyebrow } from '@/components/ui/section-card';
-import { ApiError, apiFetch } from '@/lib/api/client';
-import type {
-  CurriculumSummaryResponse,
-  CurriculumTreeResponse,
-  CurriculumWeekNode,
-  TrackPageSummaryResponse,
-} from '@/types/api';
 import { formatWeekLabel, parseWeekLabel } from './week-label';
 
 /**
@@ -57,28 +55,20 @@ export function CurriculumRail({
 
   function invalidateTree() {
     setError(null);
-    queryClient.invalidateQueries({ queryKey: ['curriculum-tree', curriculumId] });
+    queryClient.invalidateQueries({ queryKey: curriculumKeys.tree(curriculumId) });
   }
   function invalidateSets() {
-    queryClient.invalidateQueries({ queryKey: ['curriculums', trackPageId] });
+    queryClient.invalidateQueries({ queryKey: curriculumKeys.list(trackPageId) });
   }
 
   const reorderMutation = useMutation({
-    mutationFn: (ids: number[]) =>
-      apiFetch<void>(`/v1/admin/curriculums/${curriculumId}/weeks/order`, {
-        method: 'PATCH',
-        body: JSON.stringify({ ids }),
-      }),
+    mutationFn: (ids: number[]) => reorderWeeks(curriculumId as number, ids),
     onSuccess: invalidateTree,
     onError: (e) => setError(e instanceof ApiError ? e.message : '순서 변경에 실패했습니다.'),
   });
 
   const publishMutation = useMutation({
-    mutationFn: (isPublished: boolean) =>
-      apiFetch<void>(`/v1/admin/curriculums/${curriculumId}/publish`, {
-        method: 'PATCH',
-        body: JSON.stringify({ isPublished }),
-      }),
+    mutationFn: (isPublished: boolean) => publishCurriculum(curriculumId as number, isPublished),
     onSuccess: () => {
       invalidateSets();
       invalidateTree();
@@ -87,7 +77,7 @@ export function CurriculumRail({
   });
 
   const deleteSetMutation = useMutation({
-    mutationFn: () => apiFetch<void>(`/v1/admin/curriculums/${curriculumId}`, { method: 'DELETE' }),
+    mutationFn: () => deleteCurriculum(curriculumId as number),
     onSuccess: () => {
       setIsDeleteSetOpen(false);
       onSelectCurriculum('');
@@ -279,11 +269,7 @@ function AddWeekModal({
   const [error, setError] = useState<string | null>(null);
 
   const mutation = useMutation({
-    mutationFn: (range: { weekFrom: number; weekTo: number | null }) =>
-      apiFetch<{ id: number }>(`/v1/admin/curriculums/${curriculumId}/weeks`, {
-        method: 'POST',
-        body: JSON.stringify(range),
-      }),
+    mutationFn: (range: { weekFrom: number; weekTo: number | null }) => addWeek(curriculumId, range),
     onSuccess: (created) => onCreated(created.id),
     onError: (e) => setError(e instanceof ApiError ? e.message : '생성에 실패했습니다.'),
   });
@@ -346,12 +332,9 @@ function AddSetModal({
 
   const mutation = useMutation({
     mutationFn: () =>
-      apiFetch<CurriculumSummaryResponse>(`/v1/admin/track-pages/${trackPageId}/curriculums`, {
-        method: 'POST',
-        body: JSON.stringify({
-          name: name.trim() || null,
-          sourceCurriculumId: sourceId === '' ? null : sourceId,
-        }),
+      createCurriculum(trackPageId, {
+        name: name.trim() || null,
+        sourceCurriculumId: sourceId === '' ? null : sourceId,
       }),
     onSuccess: (created) => onCreated(created.id),
     onError: (e) => setError(e instanceof ApiError ? e.message : '생성에 실패했습니다.'),

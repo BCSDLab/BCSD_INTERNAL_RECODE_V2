@@ -5,13 +5,22 @@ import { SortableContext, arrayMove, rectSortingStrategy, useSortable } from '@d
 import { CSS } from '@dnd-kit/utilities';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
+import {
+  createActivity,
+  deleteActivity,
+  getActivity,
+  publishActivity,
+  putActivityImages,
+  updateActivity,
+} from '@/api/activity/api';
+import { activityKeys } from '@/api/activity/keys';
+import type { ActivityDetailResponse } from '@/api/activity/types';
+import { ApiError } from '@/api/client';
 import { Button } from '@/components/ui/button';
 import { Field, INPUT_CLASS_COMPACT } from '@/components/ui/field';
 import { ConfirmModal, Modal } from '@/components/ui/modal';
 import { Eyebrow } from '@/components/ui/section-card';
 import { useImageUpload } from '@/hooks/useImageUpload';
-import { ApiError, apiFetch } from '@/lib/api/client';
-import type { ActivityDetailResponse } from '@/types/api';
 import { RichTextEditor } from './RichTextEditor';
 
 interface FormValues {
@@ -69,8 +78,8 @@ export function ActivityEditModal({
   const isNew = activityId === null;
 
   const { data: detail, isLoading } = useQuery({
-    queryKey: ['activity-detail', activityId],
-    queryFn: () => apiFetch<ActivityDetailResponse>(`/v1/admin/activities/${activityId}`),
+    queryKey: activityKeys.detail(activityId),
+    queryFn: () => getActivity(activityId as number),
     enabled: !isNew,
   });
 
@@ -86,25 +95,21 @@ export function ActivityEditModal({
   const { upload, isUploading } = useImageUpload('ACTIVITY');
 
   function invalidate() {
-    queryClient.invalidateQueries({ queryKey: ['activities', categoryId] });
-    queryClient.invalidateQueries({ queryKey: ['activity-total'] });
+    queryClient.invalidateQueries({ queryKey: activityKeys.list(categoryId) });
+    queryClient.invalidateQueries({ queryKey: activityKeys.total() });
     if (!isNew) {
-      queryClient.invalidateQueries({ queryKey: ['activity-detail', activityId] });
+      queryClient.invalidateQueries({ queryKey: activityKeys.detail(activityId) });
     }
   }
 
   const publishMutation = useMutation({
-    mutationFn: (isPublished: boolean) =>
-      apiFetch<void>(`/v1/admin/activities/${activityId}/publish`, {
-        method: 'PATCH',
-        body: JSON.stringify({ isPublished }),
-      }),
+    mutationFn: (isPublished: boolean) => publishActivity(activityId as number, isPublished),
     onSuccess: invalidate,
     onError: (e) => setError(e instanceof ApiError ? e.message : '공개 설정에 실패했습니다.'),
   });
 
   const deleteMutation = useMutation({
-    mutationFn: () => apiFetch<void>(`/v1/admin/activities/${activityId}`, { method: 'DELETE' }),
+    mutationFn: () => deleteActivity(activityId as number),
     onSuccess: () => {
       invalidate();
       onClose();
@@ -127,23 +132,8 @@ export function ActivityEditModal({
         content: form.content,
         externalUrl: form.externalUrl || null,
       };
-      const id = isNew
-        ? (
-            await apiFetch<ActivityDetailResponse>('/v1/admin/activities', {
-              method: 'POST',
-              body: JSON.stringify(body),
-            })
-          ).id
-        : (
-            await apiFetch<ActivityDetailResponse>(`/v1/admin/activities/${activityId}`, {
-              method: 'PUT',
-              body: JSON.stringify(body),
-            })
-          ).id;
-      await apiFetch(`/v1/admin/activities/${id}/images`, {
-        method: 'PUT',
-        body: JSON.stringify({ imageUrls: form.images }),
-      });
+      const id = isNew ? (await createActivity(body)).id : (await updateActivity(activityId as number, body)).id;
+      await putActivityImages(id, form.images);
     },
     onSuccess: () => {
       invalidate();

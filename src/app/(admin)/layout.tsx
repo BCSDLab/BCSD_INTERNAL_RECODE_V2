@@ -4,19 +4,14 @@ import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { getActivitiesTotal } from '@/api/activity/api';
+import { activityKeys } from '@/api/activity/keys';
+import { logout } from '@/api/auth/api';
+import { listTrackPages } from '@/api/track/api';
+import { trackKeys } from '@/api/track/keys';
 import { useAuthGuard } from '@/hooks/useAuthGuard';
-import { logout } from '@/lib/api/auth';
-import { apiFetch } from '@/lib/api/client';
 import { setSession } from '@/lib/auth/session-store';
 import { MEMBER_TYPE_LABELS, TRACK_LABELS } from '@/lib/member-labels';
-
-interface CountableList {
-  length: number;
-}
-
-interface PagedResponse {
-  totalElements: number;
-}
 
 const NAV_ITEMS = [
   { href: '/tracks', label: '트랙 페이지' },
@@ -33,16 +28,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const isAuthenticated = status === 'ready' && !!session;
 
   const { data: trackPages } = useQuery({
-    queryKey: ['track-pages'],
-    queryFn: () => apiFetch<CountableList>('/v1/admin/track-pages'),
+    queryKey: trackKeys.trackPages(),
+    queryFn: listTrackPages,
     enabled: isAuthenticated,
   });
 
   // 활동 총 건수는 size=1로 첫 페이지만 받아 totalElements만 읽는다.
   // 커리큘럼은 시안에 "18주"가 있지만 전체 주차를 세는 저렴한 엔드포인트가 없어 비워 둔다.
   const { data: activityPage } = useQuery({
-    queryKey: ['activity-total'],
-    queryFn: () => apiFetch<PagedResponse>('/v1/admin/activities?size=1'),
+    queryKey: activityKeys.total(),
+    queryFn: getActivitiesTotal,
     enabled: isAuthenticated,
   });
 

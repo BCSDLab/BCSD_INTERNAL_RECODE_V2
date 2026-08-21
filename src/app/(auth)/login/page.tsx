@@ -7,8 +7,8 @@ import { AuthCard } from '@/components/auth/AuthCard';
 import { LogoBadge } from '@/components/auth/LogoBadge';
 import { PrimaryButton } from '@/components/auth/PrimaryButton';
 import { TextField } from '@/components/auth/TextField';
-import { login } from '@/lib/api/auth';
-import { ApiError } from '@/lib/api/client';
+import { login } from '@/api/auth/api';
+import { ApiError } from '@/api/client';
 import { setPendingSetup } from '@/lib/auth/pending-session';
 import { setSession } from '@/lib/auth/session-store';
 

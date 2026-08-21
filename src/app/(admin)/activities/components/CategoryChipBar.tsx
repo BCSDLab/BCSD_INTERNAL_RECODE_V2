@@ -5,13 +5,15 @@ import { SortableContext, horizontalListSortingStrategy, useSortable } from '@dn
 import { CSS } from '@dnd-kit/utilities';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
+import { createActivityCategory, deleteActivityCategory, reorderActivityCategories } from '@/api/activity/api';
+import { activityKeys } from '@/api/activity/keys';
+import type { ActivityCategoryResponse } from '@/api/activity/types';
+import { ApiError } from '@/api/client';
 import { Button } from '@/components/ui/button';
 import { ChipCount, DashedChip } from '@/components/ui/chip';
 import { Field, INPUT_CLASS } from '@/components/ui/field';
 import { ConfirmModal, Modal } from '@/components/ui/modal';
 import { useSortableList } from '@/hooks/useSortableList';
-import { ApiError, apiFetch } from '@/lib/api/client';
-import type { ActivityCategoryResponse } from '@/types/api';
 
 const EMPTY: ActivityCategoryResponse[] = [];
 
@@ -36,17 +38,16 @@ export function CategoryChipBar({
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const reorderMutation = useMutation({
-    mutationFn: (ids: number[]) =>
-      apiFetch<void>('/v1/admin/activity-categories/order', { method: 'PATCH', body: JSON.stringify({ ids }) }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['activity-categories'] }),
+    mutationFn: reorderActivityCategories,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: activityKeys.categories() }),
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: number) => apiFetch<void>(`/v1/admin/activity-categories/${id}`, { method: 'DELETE' }),
+    mutationFn: deleteActivityCategory,
     onSuccess: () => {
       setDeleteTarget(null);
       setDeleteError(null);
-      queryClient.invalidateQueries({ queryKey: ['activity-categories'] });
+      queryClient.invalidateQueries({ queryKey: activityKeys.categories() });
     },
     onError: (e) => setDeleteError(e instanceof ApiError ? e.message : '삭제에 실패했습니다.'),
   });
@@ -95,7 +96,7 @@ export function CategoryChipBar({
           onClose={() => setIsAddOpen(false)}
           onCreated={(id) => {
             setIsAddOpen(false);
-            queryClient.invalidateQueries({ queryKey: ['activity-categories'] });
+            queryClient.invalidateQueries({ queryKey: activityKeys.categories() });
             onSelect(id);
           }}
         />
@@ -156,11 +157,7 @@ function AddCategoryModal({ onClose, onCreated }: { onClose: () => void; onCreat
   const [error, setError] = useState<string | null>(null);
 
   const mutation = useMutation({
-    mutationFn: () =>
-      apiFetch<ActivityCategoryResponse>('/v1/admin/activity-categories', {
-        method: 'POST',
-        body: JSON.stringify({ slug, name }),
-      }),
+    mutationFn: () => createActivityCategory({ slug, name }),
     onSuccess: (created) => onCreated(created.id),
     onError: (e) => setError(e instanceof ApiError ? e.message : '생성에 실패했습니다.'),
   });
