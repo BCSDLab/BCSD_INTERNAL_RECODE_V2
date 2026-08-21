@@ -15,7 +15,7 @@ produce a lockfile this repo does not track. Other scripts:
 ```bash
 pnpm lint        # oxlint
 pnpm typecheck   # tsc (TypeScript 7 native)
-pnpm format      # prettier
+pnpm format      # oxfmt
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
