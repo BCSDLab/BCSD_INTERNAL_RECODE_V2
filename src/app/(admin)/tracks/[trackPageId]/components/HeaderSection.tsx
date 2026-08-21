@@ -3,13 +3,14 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { deleteTrackPage, publishTrackPage } from '@/api/track/api';
+import { trackKeys } from '@/api/track/queries';
+import type { TrackPageDetailResponse } from '@/api/track/types';
 import type { HeaderFormValues } from '@/app/(admin)/tracks/header-form';
 import { Button } from '@/components/ui/button';
 import { Field, INPUT_CLASS } from '@/components/ui/field';
 import { ConfirmModal } from '@/components/ui/modal';
 import { SectionCard } from '@/components/ui/section-card';
-import { apiFetch } from '@/lib/api/client';
-import type { TrackPageDetailResponse } from '@/types/api';
 
 /**
  * 시안의 HEADER 섹션: 트랙명(+ 주소 자동 생성 안내) · 한 줄 소개 · 오른쪽 "트랙 삭제".
@@ -35,21 +36,17 @@ export function HeaderSection({
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 
   const publishMutation = useMutation({
-    mutationFn: (isPublished: boolean) =>
-      apiFetch<void>(`/v1/admin/track-pages/${trackPageId}/publish`, {
-        method: 'PATCH',
-        body: JSON.stringify({ isPublished }),
-      }),
+    mutationFn: (isPublished: boolean) => publishTrackPage(trackPageId, isPublished),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['track-page', trackPageId] });
-      queryClient.invalidateQueries({ queryKey: ['track-pages'] });
+      queryClient.invalidateQueries({ queryKey: trackKeys.trackPage(trackPageId) });
+      queryClient.invalidateQueries({ queryKey: trackKeys.trackPages() });
     },
   });
 
   const deleteMutation = useMutation({
-    mutationFn: () => apiFetch<void>(`/v1/admin/track-pages/${trackPageId}`, { method: 'DELETE' }),
+    mutationFn: () => deleteTrackPage(trackPageId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['track-pages'] });
+      queryClient.invalidateQueries({ queryKey: trackKeys.trackPages() });
       router.replace('/tracks');
     },
   });

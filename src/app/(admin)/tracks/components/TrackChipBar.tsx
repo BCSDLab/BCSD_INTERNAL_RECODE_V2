@@ -6,13 +6,15 @@ import { CSS } from '@dnd-kit/utilities';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { createTrackPage, reorderTrackPages } from '@/api/track/api';
+import { trackKeys, trackQueries } from '@/api/track/queries';
+import type { TrackPageSummaryResponse } from '@/api/track/types';
+import { ApiError } from '@/api/client';
 import { Button } from '@/components/ui/button';
 import { ChipCount, DashedChip } from '@/components/ui/chip';
 import { Field, INPUT_CLASS } from '@/components/ui/field';
 import { Modal } from '@/components/ui/modal';
 import { useSortableList } from '@/hooks/useSortableList';
-import { ApiError, apiFetch } from '@/lib/api/client';
-import type { TrackMasterResponse, TrackPageDetailResponse, TrackPageSummaryResponse } from '@/types/api';
 
 // useSortableList는 매 렌더마다 참조가 바뀌지 않는 배열을 기대한다 — `data ?? []`처럼
 // 매번 새 배열 리터럴을 만들면 로딩 중(data === undefined) 매 렌더가 "서버 데이터가
@@ -25,15 +27,11 @@ export function TrackChipBar({ selectedId }: { selectedId: number | null }) {
   const router = useRouter();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
 
-  const { data: trackPages } = useQuery({
-    queryKey: ['track-pages'],
-    queryFn: () => apiFetch<TrackPageSummaryResponse[]>('/v1/admin/track-pages'),
-  });
+  const { data: trackPages } = useQuery(trackQueries.trackPages());
 
   const reorderMutation = useMutation({
-    mutationFn: (ids: number[]) =>
-      apiFetch<void>('/v1/admin/track-pages/order', { method: 'PATCH', body: JSON.stringify({ ids }) }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['track-pages'] }),
+    mutationFn: reorderTrackPages,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: trackKeys.trackPages() }),
   });
 
   const { items, sensors, handleDragEnd } = useSortableList(trackPages ?? EMPTY, (ids) =>
@@ -61,7 +59,7 @@ export function TrackChipBar({ selectedId }: { selectedId: number | null }) {
           onClose={() => setIsCreateOpen(false)}
           onCreated={(id) => {
             setIsCreateOpen(false);
-            queryClient.invalidateQueries({ queryKey: ['track-pages'] });
+            queryClient.invalidateQueries({ queryKey: trackKeys.trackPages() });
             router.push(`/tracks/${id}`);
           }}
         />
@@ -94,10 +92,7 @@ function TrackChip({ item, isSelected }: { item: TrackPageSummaryResponse; isSel
 }
 
 function CreateTrackPageModal({ onClose, onCreated }: { onClose: () => void; onCreated: (id: number) => void }) {
-  const { data: tracks } = useQuery({
-    queryKey: ['tracks'],
-    queryFn: () => apiFetch<TrackMasterResponse[]>('/v1/admin/tracks'),
-  });
+  const { data: tracks } = useQuery(trackQueries.tracks());
   const [trackId, setTrackId] = useState<number | ''>('');
   const [displayName, setDisplayName] = useState('');
   const [tagline, setTagline] = useState('');
@@ -106,11 +101,7 @@ function CreateTrackPageModal({ onClose, onCreated }: { onClose: () => void; onC
   const availableTracks = (tracks ?? []).filter((track) => !track.hasTrackPage);
 
   const mutation = useMutation({
-    mutationFn: () =>
-      apiFetch<TrackPageDetailResponse>('/v1/admin/track-pages', {
-        method: 'POST',
-        body: JSON.stringify({ trackId, displayName, tagline }),
-      }),
+    mutationFn: () => createTrackPage({ trackId: trackId as number, displayName, tagline }),
     onSuccess: (created) => onCreated(created.id),
     onError: (mutationError) =>
       setError(mutationError instanceof ApiError ? mutationError.message : '생성에 실패했습니다.'),

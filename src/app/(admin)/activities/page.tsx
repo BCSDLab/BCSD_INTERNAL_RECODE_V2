@@ -2,13 +2,15 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
+import { updateActivityCategoryHeader } from '@/api/activity/api';
+import { activityKeys, activityQueries } from '@/api/activity/queries';
+import type { ActivityCategoryResponse } from '@/api/activity/types';
+import { ApiError } from '@/api/client';
 import { Field, INPUT_CLASS } from '@/components/ui/field';
 import { PageHeader } from '@/components/ui/page-header';
 import { Eyebrow, PolicyCard } from '@/components/ui/section-card';
 import { useDebouncedSave } from '@/hooks/useDebouncedSave';
 import { useImageUpload } from '@/hooks/useImageUpload';
-import { ApiError, apiFetch } from '@/lib/api/client';
-import type { ActivityCategoryResponse, ActivitySummaryResponse, PageResponse } from '@/types/api';
 import { ActivityEditModal } from './components/ActivityEditModal';
 import { ActivityTimeline } from './components/ActivityTimeline';
 import { CategoryChipBar } from './components/CategoryChipBar';
@@ -34,10 +36,7 @@ export default function ActivitiesPage() {
   const [categoryId, setCategoryId] = useState<number | null>(null);
   const [editing, setEditing] = useState<{ id: number | null; year?: number } | null>(null);
 
-  const { data: categories } = useQuery({
-    queryKey: ['activity-categories'],
-    queryFn: () => apiFetch<ActivityCategoryResponse[]>('/v1/admin/activity-categories'),
-  });
+  const { data: categories } = useQuery(activityQueries.categories());
 
   if (categories && categories.length > 0 && !categories.some((category) => category.id === categoryId)) {
     setCategoryId(categories[0].id);
@@ -45,12 +44,7 @@ export default function ActivitiesPage() {
 
   const category = (categories ?? EMPTY_CATEGORIES).find((item) => item.id === categoryId) ?? null;
 
-  const { data: activityPage } = useQuery({
-    queryKey: ['activities', categoryId],
-    queryFn: () =>
-      apiFetch<PageResponse<ActivitySummaryResponse>>(`/v1/admin/activities?categoryId=${categoryId}&size=200`),
-    enabled: categoryId !== null,
-  });
+  const { data: activityPage } = useQuery({ ...activityQueries.list(categoryId), enabled: categoryId !== null });
 
   const [form, setForm] = useState<HeaderFormValues | null>(null);
   const [initializedId, setInitializedId] = useState<number | null>(null);
@@ -66,17 +60,14 @@ export default function ActivitiesPage() {
   const [headerError, setHeaderError] = useState<string | null>(null);
   const headerMutation = useMutation({
     mutationFn: (values: HeaderFormValues) =>
-      apiFetch(`/v1/admin/activity-categories/${categoryId}`, {
-        method: 'PUT',
-        body: JSON.stringify({
-          name: values.name,
-          headline: headlineToStored(values.headline),
-          heroImageUrl: values.heroImageUrl,
-        }),
+      updateActivityCategoryHeader(categoryId as number, {
+        name: values.name,
+        headline: headlineToStored(values.headline),
+        heroImageUrl: values.heroImageUrl,
       }),
     onSuccess: () => {
       setHeaderError(null);
-      queryClient.invalidateQueries({ queryKey: ['activity-categories'] });
+      queryClient.invalidateQueries({ queryKey: activityKeys.categories() });
     },
     onError: (e) => setHeaderError(e instanceof ApiError ? e.message : '저장에 실패했습니다.'),
   });

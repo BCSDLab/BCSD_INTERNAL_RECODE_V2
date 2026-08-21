@@ -2,9 +2,11 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
+import { curriculumQueries } from '@/api/curriculum/queries';
+import type { CurriculumSummaryResponse } from '@/api/curriculum/types';
+import { trackQueries } from '@/api/track/queries';
+import type { TrackPageSummaryResponse } from '@/api/track/types';
 import { PageHeader } from '@/components/ui/page-header';
-import { apiFetch } from '@/lib/api/client';
-import type { CurriculumSummaryResponse, CurriculumTreeResponse, TrackPageSummaryResponse } from '@/types/api';
 import { CurriculumRail } from './components/CurriculumRail';
 import { TopicColumn } from './components/TopicColumn';
 
@@ -20,22 +22,11 @@ export default function CurriculumsPage() {
   const [curriculumId, setCurriculumId] = useState<number | ''>('');
   const [selectedWeekId, setSelectedWeekId] = useState<number | null>(null);
 
-  const { data: trackPages } = useQuery({
-    queryKey: ['track-pages'],
-    queryFn: () => apiFetch<TrackPageSummaryResponse[]>('/v1/admin/track-pages'),
-  });
+  const { data: trackPages } = useQuery(trackQueries.trackPages());
 
-  const { data: curriculums } = useQuery({
-    queryKey: ['curriculums', trackPageId],
-    queryFn: () => apiFetch<CurriculumSummaryResponse[]>(`/v1/admin/track-pages/${trackPageId}/curriculums`),
-    enabled: trackPageId !== '',
-  });
+  const { data: curriculums } = useQuery({ ...curriculumQueries.list(trackPageId), enabled: trackPageId !== '' });
 
-  const { data: tree } = useQuery({
-    queryKey: ['curriculum-tree', curriculumId],
-    queryFn: () => apiFetch<CurriculumTreeResponse>(`/v1/admin/curriculums/${curriculumId}`),
-    enabled: curriculumId !== '',
-  });
+  const { data: tree } = useQuery({ ...curriculumQueries.tree(curriculumId), enabled: curriculumId !== '' });
 
   // 주차를 아직 안 골랐으면 첫 주차를 자동 선택한다(시안도 한 주차가 늘 열려 있다).
   if (tree && tree.weeks.length > 0 && !tree.weeks.some((week) => week.id === selectedWeekId)) {

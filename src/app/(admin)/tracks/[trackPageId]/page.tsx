@@ -3,12 +3,13 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useParams } from 'next/navigation';
 import { useState } from 'react';
+import { updateTrackPageHeader } from '@/api/track/api';
+import { trackQueries } from '@/api/track/queries';
+import { ApiError } from '@/api/client';
 import { TrackChipBar } from '@/app/(admin)/tracks/components/TrackChipBar';
 import type { HeaderFormValues } from '@/app/(admin)/tracks/header-form';
 import { PageHeader } from '@/components/ui/page-header';
 import { useDebouncedSave } from '@/hooks/useDebouncedSave';
-import { ApiError, apiFetch } from '@/lib/api/client';
-import type { TrackPageDetailResponse } from '@/types/api';
 import { HeaderSection } from './components/HeaderSection';
 import { MembersSection } from './components/MembersSection';
 import { StudyPointsSection } from './components/StudyPointsSection';
@@ -26,10 +27,7 @@ export default function TrackPageEditPage() {
   const params = useParams<{ trackPageId: string }>();
   const trackPageId = Number(params.trackPageId);
 
-  const { data: detail, isLoading } = useQuery({
-    queryKey: ['track-page', trackPageId],
-    queryFn: () => apiFetch<TrackPageDetailResponse>(`/v1/admin/track-pages/${trackPageId}`),
-  });
+  const { data: detail, isLoading } = useQuery(trackQueries.trackPage(trackPageId));
 
   const [form, setForm] = useState<HeaderFormValues | null>(null);
   const [initializedId, setInitializedId] = useState<number | null>(null);
@@ -43,11 +41,7 @@ export default function TrackPageEditPage() {
 
   const [headerError, setHeaderError] = useState<string | null>(null);
   const headerMutation = useMutation({
-    mutationFn: (values: HeaderFormValues) =>
-      apiFetch<TrackPageDetailResponse>(`/v1/admin/track-pages/${trackPageId}`, {
-        method: 'PUT',
-        body: JSON.stringify(values),
-      }),
+    mutationFn: (values: HeaderFormValues) => updateTrackPageHeader(trackPageId, values),
     onError: (e) => setHeaderError(e instanceof ApiError ? e.message : '저장에 실패했습니다.'),
     onSuccess: () => setHeaderError(null),
   });

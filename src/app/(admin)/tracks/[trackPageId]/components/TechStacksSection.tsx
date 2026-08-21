@@ -5,12 +5,14 @@ import { SortableContext, arrayMove, horizontalListSortingStrategy, useSortable 
 import { CSS } from '@dnd-kit/utilities';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
+import { createTechStack, putTechStacks } from '@/api/track/api';
+import { trackKeys, trackQueries } from '@/api/track/queries';
+import type { TechStackResponse, TrackPageDetailResponse } from '@/api/track/types';
+import { ApiError } from '@/api/client';
 import { Button } from '@/components/ui/button';
 import { Field, INPUT_CLASS } from '@/components/ui/field';
 import { Modal } from '@/components/ui/modal';
 import { SectionCard } from '@/components/ui/section-card';
-import { ApiError, apiFetch } from '@/lib/api/client';
-import type { TechStackResponse, TrackPageDetailResponse } from '@/types/api';
 
 /**
  * 시안의 TECH STACK 섹션. 스택은 panel2 배경의 알약(16px 아이콘 + 이름 + ✕)이고,
@@ -23,14 +25,10 @@ export function TechStacksSection({ trackPageId, detail }: { trackPageId: number
   const [error, setError] = useState<string | null>(null);
 
   const replaceMutation = useMutation({
-    mutationFn: (techStackIds: number[]) =>
-      apiFetch<TechStackResponse[]>(`/v1/admin/track-pages/${trackPageId}/tech-stacks`, {
-        method: 'PUT',
-        body: JSON.stringify({ techStackIds }),
-      }),
+    mutationFn: (techStackIds: number[]) => putTechStacks(trackPageId, techStackIds),
     onSuccess: () => {
       setError(null);
-      queryClient.invalidateQueries({ queryKey: ['track-page', trackPageId] });
+      queryClient.invalidateQueries({ queryKey: trackKeys.trackPage(trackPageId) });
     },
     onError: (e) => setError(e instanceof ApiError ? e.message : '저장에 실패했습니다.'),
   });
@@ -124,10 +122,7 @@ function TechStackPickerModal({
   onConfirm: (ids: number[]) => void;
 }) {
   const queryClient = useQueryClient();
-  const { data: master } = useQuery({
-    queryKey: ['tech-stacks'],
-    queryFn: () => apiFetch<TechStackResponse[]>('/v1/admin/tech-stacks'),
-  });
+  const { data: master } = useQuery(trackQueries.techStacks());
   const [selected, setSelected] = useState<Set<number>>(new Set(selectedIds));
   const [query, setQuery] = useState('');
   const [newName, setNewName] = useState('');
@@ -135,13 +130,9 @@ function TechStackPickerModal({
   const [createError, setCreateError] = useState<string | null>(null);
 
   const createMutation = useMutation({
-    mutationFn: () =>
-      apiFetch<TechStackResponse>('/v1/admin/tech-stacks', {
-        method: 'POST',
-        body: JSON.stringify({ name: newName, iconUrl: newIconUrl }),
-      }),
+    mutationFn: () => createTechStack({ name: newName, iconUrl: newIconUrl }),
     onSuccess: (created) => {
-      queryClient.invalidateQueries({ queryKey: ['tech-stacks'] });
+      queryClient.invalidateQueries({ queryKey: trackKeys.techStacks() });
       setSelected((prev) => new Set(prev).add(created.id));
       setNewName('');
       setNewIconUrl('');

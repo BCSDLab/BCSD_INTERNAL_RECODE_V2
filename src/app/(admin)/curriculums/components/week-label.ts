@@ -1,4 +1,4 @@
-import type { CurriculumWeekNode } from '@/types/api';
+import type { CurriculumWeekNode } from '@/api/curriculum/types';
 
 /**
  * 시안은 주차를 "4주차" / "14~17주차" 한 줄 라벨로 보여주고, 입력도 한 칸에서

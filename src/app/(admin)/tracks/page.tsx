@@ -3,9 +3,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
+import { trackQueries } from '@/api/track/queries';
 import { PageHeader } from '@/components/ui/page-header';
-import { apiFetch } from '@/lib/api/client';
-import type { TrackPageSummaryResponse } from '@/types/api';
 import { TrackChipBar } from './components/TrackChipBar';
 
 /**
@@ -20,10 +19,7 @@ import { TrackChipBar } from './components/TrackChipBar';
 export default function TracksPage() {
   const router = useRouter();
 
-  const { data: trackPages } = useQuery({
-    queryKey: ['track-pages'],
-    queryFn: () => apiFetch<TrackPageSummaryResponse[]>('/v1/admin/track-pages'),
-  });
+  const { data: trackPages } = useQuery(trackQueries.trackPages());
 
   const firstTrackPageId = trackPages?.[0]?.id;
 

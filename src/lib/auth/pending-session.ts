@@ -1,4 +1,4 @@
-import type { MemberSummary } from '@/lib/api/types';
+import type { MemberSummary } from '@/api/auth/types';
 
 export interface PendingSetupSession {
   accessToken: string;

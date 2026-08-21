@@ -5,13 +5,14 @@ import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } 
 import { CSS } from '@dnd-kit/utilities';
 import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
+import { putStudyPoints } from '@/api/track/api';
+import type { StudyPointResponse, TrackPageDetailResponse } from '@/api/track/types';
+import { ApiError } from '@/api/client';
 import { Button } from '@/components/ui/button';
 import { DragHandle } from '@/components/ui/field';
 import { SectionCard } from '@/components/ui/section-card';
 import { useDebouncedSave } from '@/hooks/useDebouncedSave';
 import { useImageUpload } from '@/hooks/useImageUpload';
-import { ApiError, apiFetch } from '@/lib/api/client';
-import type { StudyPointResponse, TrackPageDetailResponse } from '@/types/api';
 
 const MAX_STUDY_POINTS = 4;
 
@@ -35,12 +36,10 @@ export function StudyPointsSection({ trackPageId, detail }: { trackPageId: numbe
 
   const mutation = useMutation({
     mutationFn: (next: Draft[]) =>
-      apiFetch<StudyPointResponse[]>(`/v1/admin/track-pages/${trackPageId}/study-points`, {
-        method: 'PUT',
-        body: JSON.stringify({
-          studyPoints: next.map(({ title, description, iconImageUrl }) => ({ title, description, iconImageUrl })),
-        }),
-      }),
+      putStudyPoints(
+        trackPageId,
+        next.map(({ title, description, iconImageUrl }) => ({ title, description, iconImageUrl })),
+      ),
     onError: (e) => setError(e instanceof ApiError ? e.message : '저장에 실패했습니다.'),
     onSuccess: () => setError(null),
   });

@@ -5,13 +5,23 @@ import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } 
 import { CSS } from '@dnd-kit/utilities';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
+import {
+  createTopic,
+  deleteTopic,
+  deleteWeek,
+  renameWeek,
+  reorderTopics,
+  updateTopicDetails,
+  updateTopicTitle,
+} from '@/api/curriculum/api';
+import { curriculumKeys } from '@/api/curriculum/queries';
+import type { CurriculumTopicNode, CurriculumWeekNode } from '@/api/curriculum/types';
+import { ApiError } from '@/api/client';
 import { Button } from '@/components/ui/button';
 import { DragHandle } from '@/components/ui/field';
 import { ConfirmModal } from '@/components/ui/modal';
 import { PolicyCard } from '@/components/ui/section-card';
 import { useDebouncedSave } from '@/hooks/useDebouncedSave';
-import { ApiError, apiFetch } from '@/lib/api/client';
-import type { CurriculumTopicNode, CurriculumWeekNode } from '@/types/api';
 import { formatWeekLabel, parseWeekLabel } from './week-label';
 
 /**
@@ -42,15 +52,14 @@ export function TopicColumn({
 
   function invalidate() {
     setError(null);
-    queryClient.invalidateQueries({ queryKey: ['curriculum-tree', curriculumId] });
+    queryClient.invalidateQueries({ queryKey: curriculumKeys.tree(curriculumId) });
   }
   function handleError(e: unknown) {
     setError(e instanceof ApiError ? e.message : '요청에 실패했습니다.');
   }
 
   const renameWeekMutation = useMutation({
-    mutationFn: (range: { weekFrom: number; weekTo: number | null }) =>
-      apiFetch(`/v1/admin/weeks/${week?.id}`, { method: 'PUT', body: JSON.stringify(range) }),
+    mutationFn: (range: { weekFrom: number; weekTo: number | null }) => renameWeek(week!.id, range),
     onSuccess: invalidate,
     onError: handleError,
   });
@@ -64,7 +73,7 @@ export function TopicColumn({
   });
 
   const deleteWeekMutation = useMutation({
-    mutationFn: () => apiFetch<void>(`/v1/admin/weeks/${week?.id}`, { method: 'DELETE' }),
+    mutationFn: () => deleteWeek(week!.id),
     onSuccess: () => {
       setIsDeleteWeekOpen(false);
       invalidate();
@@ -74,14 +83,13 @@ export function TopicColumn({
   });
 
   const createTopicMutation = useMutation({
-    mutationFn: () =>
-      apiFetch(`/v1/admin/weeks/${week?.id}/topics`, { method: 'POST', body: JSON.stringify({ title: '새 토픽' }) }),
+    mutationFn: () => createTopic(week!.id),
     onSuccess: invalidate,
     onError: handleError,
   });
 
   const deleteTopicMutation = useMutation({
-    mutationFn: (topicId: number) => apiFetch<void>(`/v1/admin/topics/${topicId}`, { method: 'DELETE' }),
+    mutationFn: (topicId: number) => deleteTopic(topicId),
     onSuccess: () => {
       setDeleteTarget(null);
       invalidate();
@@ -90,8 +98,7 @@ export function TopicColumn({
   });
 
   const reorderMutation = useMutation({
-    mutationFn: (ids: number[]) =>
-      apiFetch<void>(`/v1/admin/weeks/${week?.id}/topics/order`, { method: 'PATCH', body: JSON.stringify({ ids }) }),
+    mutationFn: (ids: number[]) => reorderTopics(week!.id, ids),
     onSuccess: invalidate,
     onError: handleError,
   });
@@ -240,15 +247,13 @@ function TopicCard({
   const [draft, setDraft] = useState('');
 
   const titleMutation = useMutation({
-    mutationFn: (next: string) =>
-      apiFetch(`/v1/admin/topics/${topic.id}`, { method: 'PUT', body: JSON.stringify({ title: next }) }),
+    mutationFn: (next: string) => updateTopicTitle(topic.id, next),
     onSuccess: onSaved,
   });
   const { save: saveTitle } = useDebouncedSave<string>((next) => titleMutation.mutate(next));
 
   const detailsMutation = useMutation({
-    mutationFn: (contents: string[]) =>
-      apiFetch(`/v1/admin/topics/${topic.id}/details`, { method: 'PUT', body: JSON.stringify({ contents }) }),
+    mutationFn: (contents: string[]) => updateTopicDetails(topic.id, contents),
     onSuccess: onSaved,
   });
 

@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { logout } from '@/lib/api/auth';
+import { logout } from '@/api/auth/api';
 import { setSession } from '@/lib/auth/session-store';
 import { useSession } from '@/lib/auth/use-session';
 

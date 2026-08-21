@@ -5,11 +5,12 @@ import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } 
 import { CSS } from '@dnd-kit/utilities';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
+import { reorderActivities } from '@/api/activity/api';
+import { activityKeys } from '@/api/activity/queries';
+import type { ActivitySummaryResponse } from '@/api/activity/types';
 import { Button } from '@/components/ui/button';
 import { Chip } from '@/components/ui/chip';
 import { DragHandle } from '@/components/ui/field';
-import { apiFetch } from '@/lib/api/client';
-import type { ActivitySummaryResponse } from '@/types/api';
 
 /**
  * 시안의 활동 목록: 연도 필터 알약 줄 + "+ 활동 추가"(primary 채우기), 그 아래
@@ -136,12 +137,8 @@ function MonthGroup({
   // 시안대로 같은 달 안에서만 순서를 바꾼다 — 달마다 DndContext를 따로 둬서
   // 다른 달로는 드래그가 넘어가지 않게 한다(백엔드도 달 단위로 재부여한다).
   const reorderMutation = useMutation({
-    mutationFn: (ids: number[]) =>
-      apiFetch<void>(`/v1/admin/activities/order?categoryId=${categoryId}&year=${year}&month=${month}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ ids }),
-      }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['activities', categoryId] }),
+    mutationFn: (ids: number[]) => reorderActivities(categoryId, year, month, ids),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: activityKeys.list(categoryId) }),
   });
 
   function handleDragEnd(event: DragEndEvent) {
