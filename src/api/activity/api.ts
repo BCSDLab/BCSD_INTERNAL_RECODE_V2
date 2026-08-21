@@ -1,4 +1,4 @@
-import { apiFetch } from '@/api/client';
+import { apiClient } from '@/api/client';
 import type { ActivityCategoryResponse, ActivityDetailResponse, ActivitySummaryResponse, PageResponse } from './types';
 
 interface ActivityCategoryHeaderInput {
@@ -18,75 +18,57 @@ interface ActivityInput {
 }
 
 export function listActivityCategories() {
-  return apiFetch<ActivityCategoryResponse[]>('/v1/admin/activity-categories');
+  return apiClient.get<ActivityCategoryResponse[]>('/v1/admin/activity-categories');
 }
 
 export function createActivityCategory(body: { slug: string; name: string }) {
-  return apiFetch<ActivityCategoryResponse>('/v1/admin/activity-categories', {
-    method: 'POST',
-    body: JSON.stringify(body),
-  });
+  return apiClient.post<ActivityCategoryResponse>('/v1/admin/activity-categories', body);
 }
 
 export function updateActivityCategoryHeader(categoryId: number, body: ActivityCategoryHeaderInput) {
-  return apiFetch<void>(`/v1/admin/activity-categories/${categoryId}`, {
-    method: 'PUT',
-    body: JSON.stringify(body),
-  });
+  return apiClient.put<void>(`/v1/admin/activity-categories/${categoryId}`, body);
 }
 
 export function deleteActivityCategory(categoryId: number) {
-  return apiFetch<void>(`/v1/admin/activity-categories/${categoryId}`, { method: 'DELETE' });
+  return apiClient.delete<void>(`/v1/admin/activity-categories/${categoryId}`);
 }
 
 export function reorderActivityCategories(ids: number[]) {
-  return apiFetch<void>('/v1/admin/activity-categories/order', { method: 'PATCH', body: JSON.stringify({ ids }) });
+  return apiClient.patch<void>('/v1/admin/activity-categories/order', { ids });
 }
 
 export function listActivities(categoryId: number, size = 200) {
-  return apiFetch<PageResponse<ActivitySummaryResponse>>(`/v1/admin/activities?categoryId=${categoryId}&size=${size}`);
+  return apiClient.get<PageResponse<ActivitySummaryResponse>>('/v1/admin/activities', { params: { categoryId, size } });
 }
 
 export function getActivitiesTotal() {
-  return apiFetch<PageResponse<ActivitySummaryResponse>>('/v1/admin/activities?size=1');
+  return apiClient.get<PageResponse<ActivitySummaryResponse>>('/v1/admin/activities', { params: { size: 1 } });
 }
 
 export function getActivity(activityId: number) {
-  return apiFetch<ActivityDetailResponse>(`/v1/admin/activities/${activityId}`);
+  return apiClient.get<ActivityDetailResponse>(`/v1/admin/activities/${activityId}`);
 }
 
 export function createActivity(body: ActivityInput) {
-  return apiFetch<ActivityDetailResponse>('/v1/admin/activities', { method: 'POST', body: JSON.stringify(body) });
+  return apiClient.post<ActivityDetailResponse>('/v1/admin/activities', body);
 }
 
 export function updateActivity(activityId: number, body: ActivityInput) {
-  return apiFetch<ActivityDetailResponse>(`/v1/admin/activities/${activityId}`, {
-    method: 'PUT',
-    body: JSON.stringify(body),
-  });
+  return apiClient.put<ActivityDetailResponse>(`/v1/admin/activities/${activityId}`, body);
 }
 
 export function deleteActivity(activityId: number) {
-  return apiFetch<void>(`/v1/admin/activities/${activityId}`, { method: 'DELETE' });
+  return apiClient.delete<void>(`/v1/admin/activities/${activityId}`);
 }
 
 export function publishActivity(activityId: number, isPublished: boolean) {
-  return apiFetch<void>(`/v1/admin/activities/${activityId}/publish`, {
-    method: 'PATCH',
-    body: JSON.stringify({ isPublished }),
-  });
+  return apiClient.patch<void>(`/v1/admin/activities/${activityId}/publish`, { isPublished });
 }
 
 export function reorderActivities(categoryId: number, year: number, month: number, ids: number[]) {
-  return apiFetch<void>(`/v1/admin/activities/order?categoryId=${categoryId}&year=${year}&month=${month}`, {
-    method: 'PATCH',
-    body: JSON.stringify({ ids }),
-  });
+  return apiClient.patch<void>('/v1/admin/activities/order', { ids }, { params: { categoryId, year, month } });
 }
 
 export function putActivityImages(activityId: number, imageUrls: string[]) {
-  return apiFetch<void>(`/v1/admin/activities/${activityId}/images`, {
-    method: 'PUT',
-    body: JSON.stringify({ imageUrls }),
-  });
+  return apiClient.put<void>(`/v1/admin/activities/${activityId}/images`, { imageUrls });
 }
