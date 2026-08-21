@@ -32,7 +32,7 @@ export default function LoginPage() {
         return;
       }
       setSession({ accessToken: response.accessToken, member: response.member });
-      router.push('/');
+      router.push('/tracks');
     } catch (err) {
       setError(err instanceof ApiError ? err.message : '로그인에 실패했습니다.');
     } finally {
