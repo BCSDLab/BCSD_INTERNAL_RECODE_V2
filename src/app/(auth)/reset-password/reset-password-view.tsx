@@ -95,7 +95,9 @@ function ResetRequest() {
 }
 
 type TokenState =
-  { status: 'checking' } | { status: 'invalid'; message: string } | { status: 'valid'; studentNumberMasked: string };
+  | { status: 'checking' }
+  | { status: 'invalid'; message: string }
+  | { status: 'valid'; studentNumberMasked: string };
 
 function ResetConfirm({ token }: { token: string }) {
   const [tokenState, setTokenState] = useState<TokenState>({ status: 'checking' });
