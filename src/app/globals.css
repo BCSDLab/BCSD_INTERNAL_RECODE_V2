@@ -1,20 +1,163 @@
 @import 'tailwindcss';
 
+/*
+ * 인증 화면(로그인·초기설정·비밀번호 재설정)이 쓰는 토큰. 기존 값을 그대로 둔다 —
+ * (auth)/layout.tsx가 #0b0d1a 그라디언트를 인라인으로 깔고 있어 여기 값과 맞아야 한다.
+ */
 :root {
   --background: #0b0d1a;
   --foreground: #ffffff;
   --accent: #c360f3;
 }
 
+/*
+ * 관리 화면(홈페이지 콘텐츠 CMS) 디자인 토큰. 시안(BCSD Internal.dc.html)의 CSS 변수를
+ * 그대로 옮긴 것이므로 값을 임의로 바꾸지 않는다 — 이 파일이 시안과 어긋나면 화면 전체가
+ * 어긋난다.
+ *
+ * 3단계 구조가 중요하다:
+ *   면    : bg < sidebar/panel < panel2 < sunken
+ *   선    : line(10%) < line2(18%) < dash(20%, 점선용)
+ *   글자  : text > muted(60%) > faint(40%)
+ *   보라  : primary(채우기) / primary-text(글자) / primary-line(테두리)
+ *           / primary-soft(10% 배경, 뱃지·선택 상태) / primary-sunken(6% 배경, 펼친 카드)
+ *   on-primary는 primary로 채운 버튼 위의 글자색이다(라이트에서 흰색).
+ */
+:root {
+  --bg: #f6f5f9;
+  --sidebar: #ffffff;
+  --panel: #ffffff;
+  --panel2: #f4f2f8;
+  --sunken: #efedf5;
+
+  --line: rgba(20, 14, 32, 0.1);
+  --line2: rgba(20, 14, 32, 0.18);
+  --dash: rgba(20, 14, 32, 0.2);
+
+  --text: #16121f;
+  --muted: rgba(22, 18, 31, 0.6);
+  --faint: rgba(22, 18, 31, 0.4);
+
+  --primary: #c360f3;
+  --primary-text: #8e2ac8;
+  --primary-line: rgba(195, 96, 243, 0.5);
+  --primary-soft: rgba(195, 96, 243, 0.1);
+  --primary-sunken: rgba(195, 96, 243, 0.06);
+  --on-primary: #ffffff;
+
+  --danger: #d6455b;
+  --danger-line: rgba(214, 69, 91, 0.35);
+  --danger-soft: rgba(214, 69, 91, 0.05);
+}
+
+/* 시안은 body[data-theme]에 걸지만, 우리는 FOUC를 막기 위해 <head> 부트 스크립트가
+   하이드레이션 전에 <html>에 속성을 심는다(lib/theme.ts). 값은 시안과 동일하다. */
+:root[data-theme='dark'] {
+  --bg: #0b0a10;
+  --sidebar: #101018;
+  --panel: #15141d;
+  --panel2: #1b1a25;
+  --sunken: #0e0d14;
+
+  --line: rgba(255, 255, 255, 0.08);
+  --line2: rgba(255, 255, 255, 0.16);
+  --dash: rgba(255, 255, 255, 0.2);
+
+  --text: #ecebf2;
+  --muted: rgba(236, 235, 242, 0.58);
+  --faint: rgba(236, 235, 242, 0.38);
+
+  --primary: #d365fd;
+  --primary-text: #e1a6ff;
+  --primary-line: rgba(211, 101, 253, 0.5);
+  --primary-soft: rgba(211, 101, 253, 0.12);
+  --primary-sunken: rgba(211, 101, 253, 0.06);
+  --on-primary: #120a18;
+
+  --danger: #ff8a8a;
+  --danger-line: rgba(255, 138, 138, 0.35);
+  --danger-soft: rgba(255, 138, 138, 0.05);
+}
+
+/*
+ * 시안은 줄높이를 따로 지정하지 않는다 — 브라우저 기본값 normal(≈1.2)을 쓰고, 여러 줄
+ * 문단에만 명시적으로 1.6~1.85를 준다. 그런데 Tailwind는 preflight로 전역 line-height:1.5를
+ * 걸고 text-xs/text-sm 같은 크기 유틸리티에도 각자 줄높이를 끼워 넣는다. 그대로 두면
+ * 13px 글자가 20px 줄높이를 갖게 되어(시안은 16px) 모든 행이 4px씩 높아지고 화면 전체가
+ * 시안보다 헐렁해진다. 그래서 크기 유틸리티의 줄높이를 normal로 되돌린다.
+ * 여러 줄 문단은 leading-[1.8]처럼 시안이 지정한 값을 그때그때 붙인다.
+ */
+@theme {
+  --text-xs--line-height: normal;
+  --text-sm--line-height: normal;
+  --text-base--line-height: normal;
+  --text-lg--line-height: normal;
+  --text-xl--line-height: normal;
+  --text-2xl--line-height: normal;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+
+  --color-bg: var(--bg);
+  --color-sidebar: var(--sidebar);
+  --color-panel: var(--panel);
+  --color-panel2: var(--panel2);
+  --color-sunken: var(--sunken);
+
+  --color-line: var(--line);
+  --color-line2: var(--line2);
+  --color-dash: var(--dash);
+
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+
+  --color-primary: var(--primary);
+  --color-primary-text: var(--primary-text);
+  --color-primary-line: var(--primary-line);
+  --color-primary-soft: var(--primary-soft);
+  --color-primary-sunken: var(--primary-sunken);
+  --color-on-primary: var(--on-primary);
+
+  --color-danger: var(--danger);
+  --color-danger-line: var(--danger-line);
+  --color-danger-soft: var(--danger-soft);
+
+  --font-sans: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* preflight의 line-height:1.5를 시안 기준(normal)으로 되돌린다. 위 @theme 블록 참고. */
+html {
+  line-height: normal;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
+  line-height: normal;
   -webkit-font-smoothing: antialiased;
+}
+
+input,
+textarea {
+  font-family: inherit;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--line2);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
 }
