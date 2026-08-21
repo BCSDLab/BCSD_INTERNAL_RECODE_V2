@@ -1,0 +1,15 @@
+{
+  // prettier + prettier-plugin-tailwindcss를 대체한다. 아래 값은 기존 .prettierrc.json을
+  // `oxfmt --migrate prettier`로 옮긴 것이라 임의로 바꾸지 않는다.
+  "printWidth": 120,
+  "singleQuote": true,
+  "semi": true,
+  "trailingComma": "all",
+  "arrowParens": "always",
+  // prettier-plugin-tailwindcss에 대응한다. 시안과 수치로 맞춰 둔 클래스 순서를
+  // 유지해야 하므로 끄지 않는다.
+  "sortTailwindcss": {},
+  // package.json 키 순서는 건드리지 않는다(prettier도 하지 않았다).
+  "sortPackageJson": false,
+  "ignorePatterns": [".next/**", "out/**", "build/**", "pnpm-lock.yaml"]
+}
