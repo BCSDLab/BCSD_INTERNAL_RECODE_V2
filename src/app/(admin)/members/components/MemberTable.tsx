@@ -1,5 +1,6 @@
 'use client';
 
+import type { Track } from '@/api/auth/types';
 import type { MemberDirectoryItem, MemberSortKey, SortDirection } from '@/api/member/types';
 import { Badge } from '@/components/ui/chip';
 import { formatPhoneNumber } from '@/lib/format-phone';
@@ -9,6 +10,7 @@ import {
   MEMBER_TYPE_LABELS,
   TRACK_LABELS,
 } from '@/lib/member-labels';
+import { TRACK_COLOR_KEY } from './track-colors';
 
 const HEAD_CLASS = 'text-faint px-2.5 py-2.5 text-left text-[11px] font-semibold tracking-[.08em] whitespace-nowrap';
 const CELL_CLASS = 'px-2.5 py-2.5 text-[13px] whitespace-nowrap';
@@ -175,7 +177,7 @@ function MemberTableRow({
       </td>
       <td className={`${CELL_CLASS} font-medium tabular-nums`}>{member.generation}</td>
       <td className={CELL_CLASS}>
-        <TintedBadge>{TRACK_LABELS[member.track]}</TintedBadge>
+        <TrackChip track={member.track} />
       </td>
       <td className={CELL_CLASS}>
         <Badge>{MEMBER_TYPE_LABELS[member.memberType]}</Badge>
@@ -270,12 +272,26 @@ function TintedBadge({ children }: { children: React.ReactNode }) {
   );
 }
 
+/** 트랙별 색 배지 — 시안 스크린샷에서 뽑은 색을 globals.css의 --track-{key}-* 변수로 둔다. */
+function TrackChip({ track }: { track: Track }) {
+  const key = TRACK_COLOR_KEY[track];
+  return (
+    <span
+      className="inline-flex flex-none items-center rounded-full px-2.5 py-1 text-[11px] font-medium whitespace-nowrap"
+      style={{ backgroundColor: `var(--track-${key}-bg)`, color: `var(--track-${key}-text)` }}
+    >
+      {TRACK_LABELS[track]}
+    </span>
+  );
+}
+
+/** 학적 상태·권한처럼 클릭해서 바꾸는 값의 알약형 트리거 — 시안처럼 테두리 없이 채운다. */
 function CellButton({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="border-line text-muted hover:border-primary-line hover:text-primary-text cursor-pointer rounded-full border px-2.5 py-1 text-[11px] whitespace-nowrap transition-colors"
+      className="bg-panel2 text-text hover:bg-sunken cursor-pointer rounded-full px-2.5 py-1 text-[11px] font-medium whitespace-nowrap transition-colors"
     >
       {children}
     </button>

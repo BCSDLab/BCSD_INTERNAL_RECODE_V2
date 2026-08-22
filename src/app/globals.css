@@ -48,6 +48,31 @@
   --danger: #d6455b;
   --danger-line: rgba(214, 69, 91, 0.35);
   --danger-soft: rgba(214, 69, 91, 0.05);
+
+  /* 인명부 트랙 뱃지 색. 시안 스크린샷(game/frontend/backend/ios/android/pm/design/data/security)에서
+     그대로 뽑았다 — devops·ps는 시안에 없어 남은 팔레트에서 자연스러운 색으로 배정했다. */
+  --track-frontend-bg: #f3e8fd;
+  --track-frontend-text: #9333ea;
+  --track-backend-bg: #dcfce7;
+  --track-backend-text: #16a34a;
+  --track-android-bg: #ecfccb;
+  --track-android-text: #65a30d;
+  --track-ios-bg: #e0e7ff;
+  --track-ios-text: #4f46e5;
+  --track-pm-bg: #ffedd5;
+  --track-pm-text: #ea580c;
+  --track-data-bg: #ccfbf1;
+  --track-data-text: #0d9488;
+  --track-design-bg: #fce7f3;
+  --track-design-text: #db2777;
+  --track-devops-bg: #e0f2fe;
+  --track-devops-text: #0284c7;
+  --track-ps-bg: #fef3c7;
+  --track-ps-text: #b45309;
+  --track-game-bg: #ffe4e6;
+  --track-game-text: #e11d48;
+  --track-security-bg: #ede9fe;
+  --track-security-text: #7c3aed;
 }
 
 /* 시안은 body[data-theme]에 걸지만, 우리는 FOUC를 막기 위해 <head> 부트 스크립트가
@@ -77,6 +102,31 @@
   --danger: #ff8a8a;
   --danger-line: rgba(255, 138, 138, 0.35);
   --danger-soft: rgba(255, 138, 138, 0.05);
+
+  /* 라이트 값과 같은 색상환을 쓰되, 어두운 배경에서 읽히도록 배경은 투명도 있는 채우기로,
+     글자는 더 밝은 톤으로 바꾼다(--primary-soft/--primary-text 다크 조정과 같은 방식). */
+  --track-frontend-bg: rgba(168, 85, 247, 0.16);
+  --track-frontend-text: #d8b4fe;
+  --track-backend-bg: rgba(74, 222, 128, 0.16);
+  --track-backend-text: #86efac;
+  --track-android-bg: rgba(163, 230, 53, 0.16);
+  --track-android-text: #bef264;
+  --track-ios-bg: rgba(129, 140, 248, 0.16);
+  --track-ios-text: #a5b4fc;
+  --track-pm-bg: rgba(251, 146, 60, 0.16);
+  --track-pm-text: #fdba74;
+  --track-data-bg: rgba(45, 212, 191, 0.16);
+  --track-data-text: #5eead4;
+  --track-design-bg: rgba(244, 114, 182, 0.16);
+  --track-design-text: #f9a8d4;
+  --track-devops-bg: rgba(56, 189, 248, 0.16);
+  --track-devops-text: #7dd3fc;
+  --track-ps-bg: rgba(251, 191, 36, 0.16);
+  --track-ps-text: #fcd34d;
+  --track-game-bg: rgba(251, 113, 133, 0.16);
+  --track-game-text: #fda4af;
+  --track-security-bg: rgba(167, 139, 250, 0.16);
+  --track-security-text: #c4b5fd;
 }
 
 /*
