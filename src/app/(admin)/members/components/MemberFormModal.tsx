@@ -15,6 +15,7 @@ import {
   ACADEMIC_STATUS_OPTIONS,
   DEFAULT_DEPARTMENT,
   DEFAULT_UNIVERSITY,
+  DEPARTMENT_OPTIONS,
   MEMBER_TYPE_OPTIONS,
   POSITION_OPTIONS,
   TRACK_OPTIONS,
@@ -279,13 +280,25 @@ export function MemberFormModal({
           />
         </FormField>
 
-        <FormField label="학부(학과) *" error={errors.department} hint="가입 신청 때 적은 학과를 그대로 입력하세요">
-          <input
+        <FormField label="학부(학과) *" error={errors.department}>
+          <select
             value={form.department}
             onChange={(e) => update({ department: e.target.value })}
-            placeholder="컴퓨터공학부"
             className={INPUT_CLASS_COMPACT}
-          />
+          >
+            {/*
+              목록에 없는 값(빈 문자열 포함 — 이 필드가 생기기 전 만들어진 회원은 전부 빈 값이다)이면
+              네이티브 select는 이 자리를 채우는 옵션 없이 그냥 첫 번째 옵션을 보여준다. 그러면 실제로는
+              비어 있는데 "기계공학부"가 선택된 것처럼 보여, 확인 안 하고 저장을 누르면 그 값이 그대로
+              저장되는 사고가 났다. 빈 값 전용 옵션을 맨 앞에 둬서 그 경우에만 여기가 선택되게 한다.
+            */}
+            {!DEPARTMENT_OPTIONS.includes(form.department) && <option value="">— 선택 안 함 —</option>}
+            {DEPARTMENT_OPTIONS.map((department) => (
+              <option key={department} value={department}>
+                {department}
+              </option>
+            ))}
+          </select>
         </FormField>
 
         <FormField label="이메일(Google) *" error={errors.email}>
