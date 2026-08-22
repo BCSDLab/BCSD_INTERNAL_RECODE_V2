@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { activityQueries } from '@/api/activity/queries';
 import { logout } from '@/api/auth/api';
+import { memberQueries } from '@/api/member/queries';
 import { trackQueries } from '@/api/track/queries';
 import { useAuthGuard } from '@/hooks/useAuthGuard';
 import { setSession } from '@/lib/auth/session-store';
@@ -15,6 +16,7 @@ const NAV_ITEMS = [
   { href: '/tracks', label: '트랙 페이지' },
   { href: '/curriculums', label: '커리큘럼' },
   { href: '/activities', label: '활동' },
+  { href: '/members', label: '인명부' },
 ] as const;
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -31,6 +33,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   // 커리큘럼은 시안에 "18주"가 있지만 전체 주차를 세는 저렴한 엔드포인트가 없어 비워 둔다.
   const { data: activityPage } = useQuery({ ...activityQueries.total(), enabled: isAuthenticated });
 
+  // 인명부 총원. counts는 필터와 무관한 전체 집계라 1건만 받아도 총원이 정확하다.
+  // 관리자와 일반이 읽는 경로가 다르므로 role로 갈라 준다(일반도 목록 조회는 허용된다).
+  const { data: memberPage } = useQuery({
+    ...memberQueries.total(session?.member.role === 'ADMIN'),
+    enabled: isAuthenticated,
+  });
+
   if (!isAuthenticated) {
     // 세션 부트스트랩 중이거나 로그인으로 리다이렉트되는 동안 빈 화면을 보인다.
     return null;
@@ -40,6 +49,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     '/tracks': trackPages?.length,
     '/curriculums': undefined,
     '/activities': activityPage?.totalElements,
+    '/members': memberPage?.counts.total,
   };
 
   async function handleLogout() {

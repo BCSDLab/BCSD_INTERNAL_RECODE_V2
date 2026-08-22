@@ -1,8 +1,22 @@
-export type Track = 'FRONTEND' | 'BACKEND' | 'ANDROID' | 'IOS' | 'PM' | 'DATA' | 'DESIGN' | 'DEVOPS' | 'PS' | 'GAME';
+export type Track =
+  | 'FRONTEND'
+  | 'BACKEND'
+  | 'ANDROID'
+  | 'IOS'
+  | 'PM'
+  | 'DATA'
+  | 'DESIGN'
+  | 'DEVOPS'
+  | 'PS'
+  | 'GAME'
+  | 'SECURITY';
 
 export type MemberType = 'MENTOR' | 'REGULAR' | 'BEGINNER';
 
 export type MemberStatus = 'PENDING_SETUP' | 'ACTIVE' | 'LOCKED' | 'WITHDRAWN';
+
+/** 인명부 관리 권한. 구분(MemberType)과는 별개로 부여된다. */
+export type MemberRole = 'ADMIN' | 'MEMBER';
 
 export interface MemberSummary {
   id: number;
@@ -12,6 +26,7 @@ export interface MemberSummary {
   generation: string;
   memberType: MemberType;
   university: string;
+  role: MemberRole;
 }
 
 export interface MemberDetail extends MemberSummary {
