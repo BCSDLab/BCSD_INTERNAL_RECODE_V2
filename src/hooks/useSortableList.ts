@@ -24,8 +24,10 @@ export function useSortableList<T extends SortableItem>(serverItems: T[], reorde
     setItems(serverItems);
   }
 
+  // activationConstraint 없이는 pointerdown 즉시 드래그 후보로 캡처되어, 같은 엘리먼트의
+  // onClick(칩 선택 등)이 아예 발화하지 않는다 — 실제로 움직여야만 드래그로 본다.
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
