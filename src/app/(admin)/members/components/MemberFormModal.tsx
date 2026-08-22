@@ -15,7 +15,6 @@ import {
   ACADEMIC_STATUS_OPTIONS,
   DEFAULT_DEPARTMENT,
   DEFAULT_UNIVERSITY,
-  DEPARTMENT_OPTIONS,
   MEMBER_TYPE_OPTIONS,
   POSITION_OPTIONS,
   TRACK_OPTIONS,
@@ -280,18 +279,13 @@ export function MemberFormModal({
           />
         </FormField>
 
-        <FormField label="학부(학과) *" error={errors.department}>
-          <select
+        <FormField label="학부(학과) *" error={errors.department} hint="가입 신청 때 적은 학과를 그대로 입력하세요">
+          <input
             value={form.department}
             onChange={(e) => update({ department: e.target.value })}
+            placeholder="컴퓨터공학부"
             className={INPUT_CLASS_COMPACT}
-          >
-            {DEPARTMENT_OPTIONS.map((department) => (
-              <option key={department} value={department}>
-                {department}
-              </option>
-            ))}
-          </select>
+          />
         </FormField>
 
         <FormField label="이메일(Google) *" error={errors.email}>

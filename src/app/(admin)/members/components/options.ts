@@ -26,19 +26,6 @@ export const ACADEMIC_STATUS_OPTIONS: AcademicStatus[] = [
   'GRADUATED',
 ];
 
-export const DEPARTMENT_OPTIONS = [
-  '기계공학부',
-  '메카트로닉스공학부',
-  '전기·전자·통신공학부',
-  '컴퓨터공학부',
-  '디자인공학과',
-  '건축공학과',
-  '에너지신소재화학공학부',
-  '경영학부',
-  '고용서비스정책학과',
-  '미래융합학부',
-];
-
 const POSITION_TRACKS = ['Frontend', 'Backend', 'Game', 'DA', 'PM', 'Design', 'IOS', 'Android', 'Security'];
 
 /** 역할(position)은 자유 입력이 아니라 정해진 보직 목록에서 고른다. 미지정은 null이다. */
