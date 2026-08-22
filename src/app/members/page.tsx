@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   AVATAR_COLORS,
   ENROLLS,
@@ -10,7 +10,6 @@ import {
   REQUIRED_FIELDS,
   TABLE_COLUMNS,
   TRACKS,
-  createSeedMembers,
 } from '@/components/members/constants';
 import { MembersHeader } from '@/components/members/MembersHeader';
 import { MembersPagination } from '@/components/members/MembersPagination';
@@ -25,16 +24,52 @@ import { PhotoModal } from '@/components/members/modals/PhotoModal';
 import { StatusModal } from '@/components/members/modals/StatusModal';
 import { Toast } from '@/components/members/Toast';
 import type { EnrollStatus, Filters, Member, Permission, ViewMode } from '@/components/members/types';
+import { ApiError } from '@/lib/api/client';
+import { permToRole, toCreateRequest, toProfileUpdateRequest, toUiMember } from '@/lib/api/member-adapter';
+import {
+  createMember,
+  getMemberDirectory,
+  updateAcademicStatus,
+  updateActive,
+  updateMemberProfile,
+  updateRole,
+  updateWithdrawal,
+  uploadMemberPhoto,
+} from '@/lib/api/members';
+import type { AcademicStatus, MemberDirectoryCounts, MemberType, Track } from '@/lib/api/types';
+import { getSession } from '@/lib/auth/session-store';
+import { ACADEMIC_STATUS_BY_LABEL } from '@/lib/member-labels';
 
 const PAGE_SIZE = 8;
 const EMPTY_FILTERS: Filters = { active: [], enroll: [], track: [], grade: [] };
+const NEW_MEMBER_ID = -1;
+
+function decodeRole(token: string): 'ADMIN' | 'MEMBER' | null {
+  try {
+    const payload = token.split('.')[1];
+    const json = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
+    return json.role === 'ADMIN' ? 'ADMIN' : 'MEMBER';
+  } catch {
+    return null;
+  }
+}
 
 export default function MembersPage() {
-  const [members, setMembers] = useState<Member[]>(() => createSeedMembers());
+  const session = getSession();
+  const isRealAdmin = session ? decodeRole(session.accessToken) === 'ADMIN' : false;
+  const meId = session?.member.id ?? -1;
+
+  const [members, setMembers] = useState<Member[]>([]);
+  const [counts, setCounts] = useState<MemberDirectoryCounts | null>(null);
+  const [totalElements, setTotalElements] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
   const [query, setQuery] = useState('');
   const [sortAsc, setSortAsc] = useState(true);
   const [page, setPage] = useState(1);
-  const [view, setView] = useState<ViewMode>('관리자');
+  const [view, setView] = useState<ViewMode>(isRealAdmin ? '관리자' : '일반');
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
 
   const [statusId, setStatusId] = useState<number | null>(null);
@@ -46,7 +81,7 @@ export default function MembersPage() {
   const [form, setForm] = useState<Member | null>(null);
   const [formError, setFormError] = useState('');
   const [toast, setToast] = useState<string | null>(null);
-  const [undoSnapshot, setUndoSnapshot] = useState<Member[] | null>(null);
+  const [undoTargetId, setUndoTargetId] = useState<number | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(
@@ -57,20 +92,64 @@ export default function MembersPage() {
   );
 
   const isAdmin = view === '관리자';
-  const meId = isAdmin ? 1 : 5;
 
-  function flash(message: string, snapshot?: Member[]) {
+  function flash(message: string, undoId?: number) {
     setToast(message);
-    setUndoSnapshot(snapshot ?? null);
+    setUndoTargetId(undoId ?? null);
     if (toastTimer.current) clearTimeout(toastTimer.current);
     toastTimer.current = setTimeout(() => {
       setToast(null);
-      setUndoSnapshot(null);
+      setUndoTargetId(null);
     }, 4000);
   }
 
-  function countMembers(predicate: (member: Member) => boolean) {
-    return members.filter(predicate).length;
+  const fetchDirectory = useCallback(async () => {
+    setLoading(true);
+    setLoadError(null);
+    try {
+      const activeParam = filters.active.length === 1 ? filters.active[0] === '활동' : undefined;
+      const academicStatusParam =
+        filters.enroll.length > 0
+          ? (filters.enroll.map((v) => ACADEMIC_STATUS_BY_LABEL[v]).filter(Boolean) as AcademicStatus[])
+          : undefined;
+      const trackParam =
+        filters.track.length > 0 ? (filters.track.map((v) => v.toUpperCase()) as Track[]) : undefined;
+      const memberTypeParam =
+        filters.grade.length > 0 ? (filters.grade.map((v) => v.toUpperCase()) as MemberType[]) : undefined;
+
+      const response = await getMemberDirectory(
+        {
+          keyword: query.trim() || undefined,
+          active: activeParam,
+          academicStatus: academicStatusParam,
+          track: trackParam,
+          memberType: memberTypeParam,
+          page: page - 1,
+          size: PAGE_SIZE,
+          sort: `generation,${sortAsc ? 'asc' : 'desc'}`,
+        },
+        isAdmin,
+      );
+
+      setMembers(response.members.map(toUiMember));
+      setCounts(response.counts);
+      setTotalElements(response.page.totalElements);
+      setTotalPages(Math.max(1, response.page.totalPages));
+    } catch (err) {
+      setLoadError(err instanceof ApiError ? err.message : '인명부를 불러오지 못했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  }, [query, filters, sortAsc, page, isAdmin]);
+
+  useEffect(() => {
+    Promise.resolve().then(() => {
+      fetchDirectory();
+    });
+  }, [fetchDirectory]);
+
+  function countAt(record: Record<string, number> | undefined, key: string): number {
+    return record?.[key] ?? 0;
   }
 
   function toggleFilter(group: keyof Filters, value: string) {
@@ -88,23 +167,6 @@ export default function MembersPage() {
     setPage(1);
   }
 
-  const filteredMembers = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    const list = members.filter((m) => {
-      if (q && !(m.name + m.sid + m.email + m.github).toLowerCase().includes(q)) return false;
-      if (filters.active.length && !filters.active.includes(m.active ? '활동' : '비활동')) return false;
-      if (filters.enroll.length && !filters.enroll.includes(m.enroll)) return false;
-      if (filters.track.length && !filters.track.includes(m.track)) return false;
-      if (filters.grade.length && !filters.grade.includes(m.grade)) return false;
-      return true;
-    });
-    return [...list].sort((a, b) => (sortAsc ? a.gen.localeCompare(b.gen) : b.gen.localeCompare(a.gen)));
-  }, [members, query, filters, sortAsc]);
-
-  const pageCount = Math.max(1, Math.ceil(filteredMembers.length / PAGE_SIZE));
-  const currentPage = Math.min(page, pageCount);
-  const pageMembers = filteredMembers.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
-
   const hasFilters = Object.values(filters).some((a) => a.length > 0);
   const filterCount = Object.values(filters).reduce((n, a) => n + a.length, 0);
 
@@ -113,7 +175,7 @@ export default function MembersPage() {
       label: '활동 여부',
       items: (['활동', '비활동'] as const).map((v) => ({
         label: v,
-        count: countMembers((m) => (m.active ? '활동' : '비활동') === v),
+        count: v === '활동' ? (counts?.active ?? 0) : (counts?.inactive ?? 0),
         active: filters.active.includes(v),
         onClick: () => toggleFilter('active', v),
       })),
@@ -122,7 +184,7 @@ export default function MembersPage() {
       label: '학적 상태',
       items: ENROLLS.map((v) => ({
         label: v,
-        count: countMembers((m) => m.enroll === v),
+        count: countAt(counts?.byAcademicStatus, ACADEMIC_STATUS_BY_LABEL[v] ?? ''),
         active: filters.enroll.includes(v),
         onClick: () => toggleFilter('enroll', v),
       })),
@@ -131,7 +193,7 @@ export default function MembersPage() {
       label: 'TRACK',
       items: TRACKS.map((v) => ({
         label: v,
-        count: countMembers((m) => m.track === v),
+        count: countAt(counts?.byTrack, v.toUpperCase()),
         active: filters.track.includes(v),
         onClick: () => toggleFilter('track', v),
       })),
@@ -140,7 +202,7 @@ export default function MembersPage() {
       label: '구분',
       items: GRADES.map((v) => ({
         label: v,
-        count: countMembers((m) => m.grade === v),
+        count: countAt(counts?.byMemberType, v.toUpperCase()),
         active: filters.grade.includes(v),
         onClick: () => toggleFilter('grade', v),
       })),
@@ -149,7 +211,7 @@ export default function MembersPage() {
 
   function openAdd() {
     setForm({
-      id: Date.now(),
+      id: NEW_MEMBER_ID,
       gen: '',
       track: 'frontend',
       grade: 'beginner',
@@ -170,53 +232,93 @@ export default function MembersPage() {
     setFormError('');
   }
 
-  function saveForm() {
+  async function saveForm() {
     if (!form) return;
     if (REQUIRED_FIELDS.some((k) => !form[k])) {
       setFormError('필수');
       return;
     }
-    if (members.some((m) => m.sid === form.sid && m.id !== form.id)) {
-      setFormError('이미 등록된 학번입니다');
-      return;
+    const isEdit = form.id !== NEW_MEMBER_ID;
+    try {
+      if (isEdit) {
+        await updateMemberProfile(form.id, toProfileUpdateRequest(form));
+      } else {
+        const created = await createMember(toCreateRequest(form));
+        await updateMemberProfile(created.id, toProfileUpdateRequest(form));
+      }
+      setForm(null);
+      setFormError('');
+      flash(`${form.name} 저장됨`);
+      fetchDirectory();
+    } catch (err) {
+      setFormError(err instanceof ApiError ? err.message : '저장에 실패했습니다.');
     }
-    setMembers((prev) => {
-      const exists = prev.some((m) => m.id === form.id);
-      return exists ? prev.map((m) => (m.id === form.id ? form : m)) : [...prev, form];
-    });
-    setForm(null);
-    flash(`${form.name} 저장됨`);
   }
 
-  function applyStatus() {
+  async function applyStatus() {
     if (statusId == null || !statusPick) return;
     const target = members.find((m) => m.id === statusId);
-    setMembers((prev) => prev.map((m) => (m.id === statusId ? { ...m, enroll: statusPick } : m)));
-    setStatusId(null);
-    if (target) flash(`${target.name} 학적 상태 → ${statusPick}`);
+    try {
+      await updateAcademicStatus(statusId, ACADEMIC_STATUS_BY_LABEL[statusPick]);
+      setStatusId(null);
+      if (target) flash(`${target.name} 학적 상태 → ${statusPick}`);
+      fetchDirectory();
+    } catch (err) {
+      flash(err instanceof ApiError ? err.message : '학적 상태 변경에 실패했습니다.');
+    }
   }
 
-  function applyPerm() {
+  async function applyPerm() {
     if (permId == null || !permPick) return;
     const target = members.find((m) => m.id === permId);
-    setMembers((prev) => prev.map((m) => (m.id === permId ? { ...m, perm: permPick } : m)));
-    setPermId(null);
-    if (target) flash(`${target.name} 권한 → ${permPick}`);
+    try {
+      await updateRole(permId, permToRole(permPick));
+      setPermId(null);
+      if (target) flash(`${target.name} 권한 → ${permPick}`);
+      fetchDirectory();
+    } catch (err) {
+      flash(err instanceof ApiError ? err.message : '권한 변경에 실패했습니다.');
+    }
   }
 
-  function deactivateFromDelete() {
+  async function deactivateFromDelete() {
+    if (delId == null) return;
     const target = members.find((m) => m.id === delId);
-    setMembers((prev) => prev.map((m) => (m.id === delId ? { ...m, active: false } : m)));
-    setDelId(null);
-    if (target) flash(`${target.name} → 비활동`);
+    try {
+      await updateActive(delId, false);
+      setDelId(null);
+      if (target) flash(`${target.name} → 비활동`);
+      fetchDirectory();
+    } catch (err) {
+      flash(err instanceof ApiError ? err.message : '처리에 실패했습니다.');
+    }
   }
 
-  function confirmDelete() {
+  async function confirmDelete() {
+    if (delId == null) return;
     const target = members.find((m) => m.id === delId);
-    const snapshot = members;
-    setMembers((prev) => prev.filter((m) => m.id !== delId));
-    setDelId(null);
-    if (target) flash(`${target.name} 삭제됨`, snapshot);
+    try {
+      await updateWithdrawal(delId, true);
+      const closedId = delId;
+      setDelId(null);
+      if (target) flash(`${target.name} 탈퇴 처리됨`, closedId);
+      fetchDirectory();
+    } catch (err) {
+      flash(err instanceof ApiError ? err.message : '삭제에 실패했습니다.');
+    }
+  }
+
+  async function handlePhotoUpload(file: File) {
+    if (photoId == null) return;
+    const target = members.find((m) => m.id === photoId);
+    try {
+      await uploadMemberPhoto(photoId, file);
+      setPhotoId(null);
+      if (target) flash(`${target.name} 사진이 업로드되었습니다.`);
+      fetchDirectory();
+    } catch (err) {
+      flash(err instanceof ApiError ? err.message : '사진 업로드에 실패했습니다.');
+    }
   }
 
   function closeAll() {
@@ -232,21 +334,16 @@ export default function MembersPage() {
   const photoTarget = members.find((m) => m.id === photoId) ?? null;
   const deleteTarget = members.find((m) => m.id === delId) ?? null;
 
-  const activeCount = countMembers((m) => m.active);
-  const totalCount = members.length;
-
   const rangeLabel =
-    filteredMembers.length === 0
-      ? '0명'
-      : `${(currentPage - 1) * PAGE_SIZE + 1}–${Math.min(currentPage * PAGE_SIZE, filteredMembers.length)} / ${filteredMembers.length}명`;
+    totalElements === 0 ? '0명' : `${(page - 1) * PAGE_SIZE + 1}–${Math.min(page * PAGE_SIZE, totalElements)} / ${totalElements}명`;
 
   return (
     <div className="min-h-screen bg-[#F6F5F8] text-[#1B1B22]">
       <MembersHeader
         view={view}
         onViewChange={setView}
-        meInitial={isAdmin ? '도' : '민'}
-        meLabel={isAdmin ? '김도현 · 회장' : '최민석 · 일반 권한'}
+        meInitial={session?.member.name.slice(0, 1) ?? '?'}
+        meLabel={session ? `${session.member.name} · ${isRealAdmin ? '관리자' : '일반 권한'}` : ''}
       />
 
       <main className="mx-auto max-w-[1780px] px-8 pt-[34px] pb-[60px]">
@@ -255,8 +352,14 @@ export default function MembersPage() {
             <div className="mb-2 text-xs font-semibold tracking-[.16em] text-[#87878F]">MEMBER DIRECTORY</div>
             <h1 className="m-0 text-[32px] font-extrabold tracking-[-.01em]">인명부</h1>
           </div>
-          <MembersStats total={totalCount} activeCount={activeCount} inactiveCount={totalCount - activeCount} />
+          <MembersStats total={counts?.total ?? 0} activeCount={counts?.active ?? 0} inactiveCount={counts?.inactive ?? 0} />
         </div>
+
+        {loadError && (
+          <div className="mb-4 rounded-xl border border-[rgba(214,58,76,0.3)] bg-[rgba(214,58,76,0.06)] px-4 py-3 text-[13px] text-[#D63A4C]">
+            {loadError}
+          </div>
+        )}
 
         <MembersToolbar
           query={query}
@@ -281,12 +384,17 @@ export default function MembersPage() {
               columns={TABLE_COLUMNS}
               gridTemplate={isAdmin ? GRID_TEMPLATE : GRID_TEMPLATE_READONLY}
               tableMinWidth={isAdmin ? '1860px' : '1810px'}
-              rows={pageMembers}
+              rows={members}
               isAdmin={isAdmin}
               meId={meId}
-              onToggleActive={(m) => {
-                setMembers((prev) => prev.map((x) => (x.id === m.id ? { ...x, active: !x.active } : x)));
-                flash(`${m.name} → ${m.active ? '비활동' : '활동'}`);
+              onToggleActive={async (m) => {
+                try {
+                  await updateActive(m.id, !m.active);
+                  flash(`${m.name} → ${m.active ? '비활동' : '활동'}`);
+                  fetchDirectory();
+                } catch (err) {
+                  flash(err instanceof ApiError ? err.message : '활동 여부 변경에 실패했습니다.');
+                }
               }}
               onOpenStatus={(m) => {
                 setStatusId(m.id);
@@ -304,7 +412,7 @@ export default function MembersPage() {
               onDelete={(m) => setDelId(m.id)}
             />
 
-            {filteredMembers.length === 0 && (
+            {!loading && members.length === 0 && (
               <div className="px-5 py-[60px] text-center">
                 <div className="mb-3.5 text-sm text-[#6C6C78]">조건에 맞는 부원이 없습니다.</div>
                 <button
@@ -318,10 +426,10 @@ export default function MembersPage() {
 
             <MembersPagination
               rangeLabel={rangeLabel}
-              page={currentPage}
-              pageCount={pageCount}
+              page={page}
+              pageCount={totalPages}
               onPrev={() => setPage((p) => Math.max(1, p - 1))}
-              onNext={() => setPage((p) => Math.min(pageCount, p + 1))}
+              onNext={() => setPage((p) => Math.min(totalPages, p + 1))}
               onSelectPage={setPage}
             />
           </section>
@@ -354,6 +462,7 @@ export default function MembersPage() {
           initial={photoTarget.name.slice(0, 1)}
           avatarColor={AVATAR_COLORS[photoTarget.id % AVATAR_COLORS.length]}
           onClose={closeAll}
+          onUpload={handlePhotoUpload}
         />
       )}
 
@@ -369,7 +478,7 @@ export default function MembersPage() {
       {form && (
         <MemberFormModal
           form={form}
-          isEdit={members.some((m) => m.id === form.id)}
+          isEdit={form.id !== NEW_MEMBER_ID}
           formError={formError}
           onChange={(key, value) => setForm((prev) => (prev ? ({ ...prev, [key]: value } as Member) : prev))}
           onToggleActive={() => setForm((prev) => (prev ? { ...prev, active: !prev.active } : prev))}
@@ -385,11 +494,18 @@ export default function MembersPage() {
       {toast && (
         <Toast
           message={toast}
-          canUndo={!!undoSnapshot}
-          onUndo={() => {
-            if (undoSnapshot) setMembers(undoSnapshot);
+          canUndo={undoTargetId != null}
+          onUndo={async () => {
+            if (undoTargetId != null) {
+              try {
+                await updateWithdrawal(undoTargetId, false);
+                fetchDirectory();
+              } catch {
+                // best-effort undo; surfaced errors would be confusing on a toast action
+              }
+            }
             setToast(null);
-            setUndoSnapshot(null);
+            setUndoTargetId(null);
           }}
         />
       )}

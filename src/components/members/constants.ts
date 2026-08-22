@@ -1,10 +1,22 @@
 import type { Member, Track } from '@/components/members/types';
 
-export const TRACKS: Track[] = ['game', 'frontend', 'backend', 'ios', 'android', 'pm', 'design', 'data', 'security'];
+export const TRACKS: Track[] = [
+  'game',
+  'frontend',
+  'backend',
+  'ios',
+  'android',
+  'pm',
+  'design',
+  'data',
+  'security',
+  'devops',
+  'ps',
+];
 
 export const GRADES: Member['grade'][] = ['beginner', 'regular', 'mentor'];
 
-export const ENROLLS: Member['enroll'][] = ['재학', '휴학', '군휴학', '졸업'];
+export const ENROLLS: Member['enroll'][] = ['재학', '휴학', '군휴학', 'IPP', '졸업'];
 
 export const DEPTS = [
   '기계공학부',
@@ -53,6 +65,8 @@ export const TRACK_HUE: Record<Track, string> = {
   design: '#C6188C',
   data: '#0E8FA8',
   security: '#6B4BD6',
+  devops: '#8A6D3B',
+  ps: '#5B6470',
 };
 
 export const AVATAR_COLORS = ['#C360F3', '#8F27C4', '#9B4BE0', '#B478F0'];
