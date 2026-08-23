@@ -3,16 +3,21 @@
 import { DndContext, closestCenter, type DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, arrayMove, rectSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
-import { detachTrackPageMember, reorderTrackPageMembers, setTrackPageMemberVisibility } from '@/api/track/api';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
+import type { Track } from '@/api/auth/types';
+import { memberQueries } from '@/api/member/queries';
+import { EMPTY_MEMBER_FILTERS } from '@/api/member/types';
+import { attachTrackPageMembers, detachTrackPageMember, reorderTrackPageMembers, setTrackPageMemberVisibility } from '@/api/track/api';
 import { trackKeys } from '@/api/track/queries';
 import type { TrackPageDetailResponse, TrackPageMemberResponse } from '@/api/track/types';
 import { ApiError } from '@/api/client';
 import { Badge, Chip } from '@/components/ui/chip';
-import { DragHandle } from '@/components/ui/field';
+import { DragHandle, INPUT_CLASS_COMPACT } from '@/components/ui/field';
 import { Modal } from '@/components/ui/modal';
 import { Eyebrow } from '@/components/ui/section-card';
+import { Button } from '@/components/ui/button';
+import { TRACK_OPTIONS } from '@/app/(admin)/members/components/options';
 
 /**
  * 시안의 "함께 할 멤버들" 섹션. h2가 아니라 11px eyebrow 라벨이고, 오른쪽에 "N명 노출".
@@ -121,7 +126,17 @@ export function MembersSection({ trackPageId, detail }: { trackPageId: number; d
         사진·등급은 부원 명부에서 관리합니다. 이 화면에서는 배정, 노출 순서, 숨김만 다룹니다.
       </p>
 
-      {isAssignOpen && <AssignMemberModal onClose={() => setIsAssignOpen(false)} />}
+      {isAssignOpen && (
+        <AssignMemberModal
+          trackPageId={trackPageId}
+          existingMemberIds={detail.members.map((member) => member.memberId)}
+          onClose={() => setIsAssignOpen(false)}
+          onAssigned={() => {
+            setIsAssignOpen(false);
+            invalidate();
+          }}
+        />
+      )}
     </section>
   );
 }
@@ -171,20 +186,175 @@ function MemberRow({
   );
 }
 
-/** 부원 검색 API가 아직 없어(명부 담당자 작업 예정) 안내만 하는 스텁이다. */
-function AssignMemberModal({ onClose }: { onClose: () => void }) {
+const ASSIGN_MODAL_PAGE_SIZE = 8;
+
+/** 명부 검색·목록 API(GET /v1/members/directory)로 후보를 찾아 골라 배정한다. */
+function AssignMemberModal({
+  trackPageId,
+  existingMemberIds,
+  onClose,
+  onAssigned,
+}: {
+  trackPageId: number;
+  existingMemberIds: number[];
+  onClose: () => void;
+  onAssigned: () => void;
+}) {
+  const [keywordInput, setKeywordInput] = useState('');
+  const [keyword, setKeyword] = useState('');
+  const [trackFilter, setTrackFilter] = useState<Track[]>([]);
+  const [page, setPage] = useState(0);
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
+  // 검색은 타자마다 요청하지 않고 멈춘 뒤에 한 번만 보낸다.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setKeyword(keywordInput);
+      setPage(0);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [keywordInput]);
+
+  const { data, isLoading } = useQuery(
+    memberQueries.directory({
+      ...EMPTY_MEMBER_FILTERS,
+      keyword,
+      track: trackFilter,
+      page,
+      size: ASSIGN_MODAL_PAGE_SIZE,
+      sort: 'name',
+      direction: 'asc',
+      isAdmin: true,
+    }),
+  );
+
+  const existing = new Set(existingMemberIds);
+  const candidates = (data?.members ?? []).filter((member) => !existing.has(member.id));
+  const totalPages = data?.page.totalPages ?? 0;
+
+  const assignMutation = useMutation({
+    mutationFn: () => attachTrackPageMembers(trackPageId, selectedIds),
+    onSuccess: onAssigned,
+    onError: (e) => setError(e instanceof ApiError ? e.message : '배정에 실패했습니다.'),
+  });
+
+  function toggleTrack(track: Track) {
+    setTrackFilter((prev) => (prev.includes(track) ? prev.filter((t) => t !== track) : [...prev, track]));
+    setPage(0);
+  }
+
+  function toggleSelected(memberId: number) {
+    setSelectedIds((prev) => (prev.includes(memberId) ? prev.filter((id) => id !== memberId) : [...prev, memberId]));
+  }
+
   return (
-    <Modal title="부원 배정" eyebrow="명부 검색" onClose={onClose} width="440px">
-      <div className="px-6 py-5">
+    <Modal
+      title="부원 배정"
+      eyebrow="명부 검색"
+      onClose={onClose}
+      width="480px"
+      footer={
+        <>
+          <span className="text-faint mr-auto text-[11px]">{selectedIds.length}명 선택됨</span>
+          <Button onClick={onClose} className="px-4 py-2.5">
+            취소
+          </Button>
+          <Button
+            variant="primary"
+            onClick={() => assignMutation.mutate()}
+            disabled={selectedIds.length === 0 || assignMutation.isPending}
+            className="px-[18px] py-2.5"
+          >
+            배정
+          </Button>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-3 px-6 py-5">
         <input
-          disabled
-          placeholder="이름으로 검색 (준비 중)"
-          className="border-line bg-panel2 text-faint w-full rounded-[10px] border px-[13px] py-[11px] text-sm outline-none"
+          value={keywordInput}
+          onChange={(e) => setKeywordInput(e.target.value)}
+          placeholder="이름으로 검색"
+          className={INPUT_CLASS_COMPACT}
         />
-        <p className="text-faint m-0 pt-3 text-[11px] leading-[1.65]">
-          부원 검색 API 연동 대기 중입니다 — 명부 담당자의 검색 API 작업이 끝나면 이 화면에서 바로 검색·배정할 수 있게
-          연결합니다.
-        </p>
+
+        <div className="flex flex-wrap gap-1.5">
+          <Chip size="xs" selected={trackFilter.length === 0} onClick={() => setTrackFilter([])} className="cursor-pointer">
+            전체
+          </Chip>
+          {TRACK_OPTIONS.map((track) => (
+            <Chip
+              key={track}
+              size="xs"
+              selected={trackFilter.includes(track)}
+              onClick={() => toggleTrack(track)}
+              className="cursor-pointer"
+            >
+              {track}
+            </Chip>
+          ))}
+        </div>
+
+        <div className="border-line flex max-h-80 flex-col gap-1 overflow-y-auto rounded-[11px] border p-1.5">
+          {isLoading ? (
+            <p className="text-faint m-0 p-3 text-[13px]">불러오는 중…</p>
+          ) : candidates.length === 0 ? (
+            <p className="text-faint m-0 p-3 text-[13px]">
+              {existing.size > 0 && (data?.members.length ?? 0) > 0
+                ? '검색된 부원은 이미 모두 배정되어 있습니다.'
+                : '검색 결과가 없습니다.'}
+            </p>
+          ) : (
+            candidates.map((member) => (
+              <label
+                key={member.id}
+                className="hover:bg-panel2 flex cursor-pointer items-center gap-2.5 rounded-[9px] px-2.5 py-2 text-[13px]"
+              >
+                <input
+                  type="checkbox"
+                  checked={selectedIds.includes(member.id)}
+                  onChange={() => toggleSelected(member.id)}
+                />
+                {member.photoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={member.photoUrl} alt="" className="h-[22px] w-[22px] flex-none rounded-full object-cover" />
+                ) : (
+                  <span className="bg-line2 h-[22px] w-[22px] flex-none rounded-full" />
+                )}
+                <span className="truncate">{member.name}</span>
+                <Badge className="ml-auto flex-none">{member.track}</Badge>
+                <span className="text-faint flex-none text-[11px]">{member.memberType}</span>
+              </label>
+            ))
+          )}
+        </div>
+
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center gap-3 text-[12px]">
+            <button
+              type="button"
+              disabled={page === 0}
+              onClick={() => setPage((p) => p - 1)}
+              className="text-muted disabled:text-faint cursor-pointer disabled:cursor-not-allowed"
+            >
+              이전
+            </button>
+            <span className="text-faint">
+              {page + 1} / {totalPages}
+            </span>
+            <button
+              type="button"
+              disabled={page >= totalPages - 1}
+              onClick={() => setPage((p) => p + 1)}
+              className="text-muted disabled:text-faint cursor-pointer disabled:cursor-not-allowed"
+            >
+              다음
+            </button>
+          </div>
+        )}
+
+        {error && <p className="text-danger m-0 text-[11px]">{error}</p>}
       </div>
     </Modal>
   );

@@ -47,6 +47,10 @@ export function putTechStacks(trackPageId: number, techStackIds: number[]) {
   return apiClient.put<TechStackResponse[]>(`/v1/admin/track-pages/${trackPageId}/tech-stacks`, { techStackIds });
 }
 
+export function attachTrackPageMembers(trackPageId: number, memberIds: number[]) {
+  return apiClient.post<void>(`/v1/admin/track-pages/${trackPageId}/members`, { memberIds });
+}
+
 export function reorderTrackPageMembers(trackPageId: number, ids: number[]) {
   return apiClient.patch<void>(`/v1/admin/track-pages/${trackPageId}/members/order`, { ids });
 }
