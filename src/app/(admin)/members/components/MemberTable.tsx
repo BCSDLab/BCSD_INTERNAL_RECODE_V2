@@ -185,7 +185,7 @@ function MemberTableRow({
       <td className={CELL_CLASS}>
         {isAdmin ? (
           <CellButton onClick={() => actions.onChangeAcademicStatus(member)}>
-            {ACADEMIC_STATUS_LABELS[member.academicStatus]} ⌄
+            {ACADEMIC_STATUS_LABELS[member.academicStatus]}
           </CellButton>
         ) : (
           <span className="text-muted">{ACADEMIC_STATUS_LABELS[member.academicStatus]}</span>
@@ -214,7 +214,7 @@ function MemberTableRow({
       </td>
       <td className={CELL_CLASS}>
         {isAdmin ? (
-          <CellButton onClick={() => actions.onChangeRole(member)}>{MEMBER_ROLE_LABELS[member.role]} ⌄</CellButton>
+          <CellButton onClick={() => actions.onChangeRole(member)}>{MEMBER_ROLE_LABELS[member.role]}</CellButton>
         ) : (
           <span className="text-muted">{MEMBER_ROLE_LABELS[member.role]}</span>
         )}
@@ -291,9 +291,10 @@ function CellButton({ onClick, children }: { onClick: () => void; children: Reac
     <button
       type="button"
       onClick={onClick}
-      className="bg-panel2 text-text hover:bg-sunken cursor-pointer rounded-full px-2.5 py-1 text-[11px] font-medium whitespace-nowrap transition-colors"
+      className="bg-panel2 text-text hover:bg-sunken inline-flex cursor-pointer items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium whitespace-nowrap transition-colors"
     >
       {children}
+      <span className="text-faint text-[13px] leading-none">⌄</span>
     </button>
   );
 }
