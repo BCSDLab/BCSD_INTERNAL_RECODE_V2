@@ -285,16 +285,16 @@ function TrackChip({ track }: { track: Track }) {
   );
 }
 
-/** 학적 상태·권한처럼 클릭해서 바꾸는 값의 알약형 트리거 — 시안처럼 테두리 없이 채운다. */
+/** 학적 상태·권한처럼 클릭해서 바꾸는 값의 알약형 트리거 — 테두리 있는 셀렉트 스타일. */
 function CellButton({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="bg-panel2 text-text hover:bg-sunken inline-flex cursor-pointer items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium whitespace-nowrap transition-colors"
+      className="border-line bg-panel text-text hover:bg-sunken inline-flex cursor-pointer items-center gap-1 rounded-full border px-3 py-1 text-[13px] font-normal whitespace-nowrap transition-colors"
     >
       {children}
-      <span className="text-faint text-[13px] leading-none">⌄</span>
+      <span className="text-muted text-[10px] leading-none">▾</span>
     </button>
   );
 }
