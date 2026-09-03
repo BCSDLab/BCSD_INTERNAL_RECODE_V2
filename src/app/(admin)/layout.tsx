@@ -18,6 +18,7 @@ const NAV_ITEMS = [
   { href: '/curriculums', label: '커리큘럼' },
   { href: '/activities', label: '활동' },
   { href: '/games', label: '게임' },
+  { href: '/home', label: '메인' },
   { href: '/members', label: '인명부' },
 ] as const;
 
@@ -53,6 +54,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     '/curriculums': undefined,
     '/activities': activityPage?.totalElements,
     '/games': games?.length,
+    '/home': undefined,
     '/members': memberPage?.counts.total,
   };
 
