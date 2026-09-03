@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { activityQueries } from '@/api/activity/queries';
 import { logout } from '@/api/auth/api';
+import { gameQueries } from '@/api/game/queries';
 import { memberQueries } from '@/api/member/queries';
 import { trackQueries } from '@/api/track/queries';
 import { useAuthGuard } from '@/hooks/useAuthGuard';
@@ -16,6 +17,7 @@ const NAV_ITEMS = [
   { href: '/tracks', label: '트랙 페이지' },
   { href: '/curriculums', label: '커리큘럼' },
   { href: '/activities', label: '활동' },
+  { href: '/games', label: '게임' },
   { href: '/members', label: '인명부' },
 ] as const;
 
@@ -28,6 +30,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const isAuthenticated = status === 'ready' && !!session;
 
   const { data: trackPages } = useQuery({ ...trackQueries.trackPages(), enabled: isAuthenticated });
+  const { data: games } = useQuery({ ...gameQueries.games(), enabled: isAuthenticated });
 
   // 활동 총 건수는 size=1로 첫 페이지만 받아 totalElements만 읽는다.
   // 커리큘럼은 시안에 "18주"가 있지만 전체 주차를 세는 저렴한 엔드포인트가 없어 비워 둔다.
@@ -49,6 +52,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     '/tracks': trackPages?.length,
     '/curriculums': undefined,
     '/activities': activityPage?.totalElements,
+    '/games': games?.length,
     '/members': memberPage?.counts.total,
   };
 

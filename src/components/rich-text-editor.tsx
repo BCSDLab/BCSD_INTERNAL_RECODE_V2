@@ -6,6 +6,7 @@ import Underline from '@tiptap/extension-underline';
 import { EditorContent, useEditor, type Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { useState } from 'react';
+import type { ImagePurpose } from '@/api/media/types';
 import { Button } from '@/components/ui/button';
 import { INPUT_CLASS } from '@/components/ui/field';
 import { Modal } from '@/components/ui/modal';
@@ -15,9 +16,22 @@ import { useImageUpload } from '@/hooks/useImageUpload';
  * 시안의 본문 에디터: line 테두리 radius 12 한 덩어리 안에
  * 툴바(panel2 배경, padding 8·10, 구분선 1×18) · 본문(min-height 280, padding 18·20) ·
  * 바닥(panel2 배경, 글자수 + 안내문)이 들어간다.
+ *
+ * 활동 본문(T-15)과 게임 상세설명(T-38) 둘 다 이 컴포넌트를 쓴다 — 본문 삽입 이미지의
+ * 업로드 용도만 다르므로 imagePurpose로 구분한다.
  */
-export function RichTextEditor({ content, onChange }: { content: string; onChange: (html: string) => void }) {
-  const { upload } = useImageUpload('ACTIVITY_CONTENT');
+export function RichTextEditor({
+  content,
+  onChange,
+  imagePurpose = 'ACTIVITY_CONTENT',
+  footerNote = '본문은 활동 상세에서 전체가 보이고, 목록에는 요약만 노출됩니다',
+}: {
+  content: string;
+  onChange: (html: string) => void;
+  imagePurpose?: ImagePurpose;
+  footerNote?: string;
+}) {
+  const { upload } = useImageUpload(imagePurpose);
   const [isLinkOpen, setIsLinkOpen] = useState(false);
   const [linkUrl, setLinkUrl] = useState('');
   const [charCount, setCharCount] = useState(0);
@@ -94,9 +108,7 @@ export function RichTextEditor({ content, onChange }: { content: string; onChang
 
       <div className="border-line bg-panel2 text-faint flex items-center gap-2.5 border-t px-3 py-2 text-[11px]">
         <span className="whitespace-nowrap">{charCount.toLocaleString()}자</span>
-        <span className="ml-auto flex-none whitespace-nowrap">
-          본문은 활동 상세에서 전체가 보이고, 목록에는 요약만 노출됩니다
-        </span>
+        <span className="ml-auto flex-none whitespace-nowrap">{footerNote}</span>
       </div>
 
       {isLinkOpen && (

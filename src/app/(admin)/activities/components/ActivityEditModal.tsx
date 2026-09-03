@@ -14,7 +14,7 @@ import { Field, INPUT_CLASS_COMPACT } from '@/components/ui/field';
 import { ConfirmModal, Modal } from '@/components/ui/modal';
 import { Eyebrow } from '@/components/ui/section-card';
 import { useImageUpload } from '@/hooks/useImageUpload';
-import { RichTextEditor } from './RichTextEditor';
+import { RichTextEditor } from '@/components/rich-text-editor';
 
 interface FormValues {
   yearMonth: string;
