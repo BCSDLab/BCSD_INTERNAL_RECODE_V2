@@ -86,6 +86,7 @@ export function BuildsTab({ gameId }: { gameId: number }) {
               gameId={gameId}
               build={build}
               onDelete={() => deleteMutation.mutate(build.id)}
+              onUploadStart={() => setError(null)}
               onUploaded={invalidate}
               onError={setError}
             />
@@ -106,12 +107,14 @@ function BuildRow({
   gameId,
   build,
   onDelete,
+  onUploadStart,
   onUploaded,
   onError,
 }: {
   gameId: number;
   build: AdminGameBuildResponse;
   onDelete: () => void;
+  onUploadStart: () => void;
   onUploaded: () => void;
   onError: (message: string) => void;
 }) {
@@ -122,6 +125,7 @@ function BuildRow({
       const { uploadUrl, token } = await issueGameBuildUploadToken(gameId, build.id);
       await uploadGameBuildFile(uploadUrl, token, file);
     },
+    onMutate: onUploadStart,
     onSuccess: onUploaded,
     onError: (e) => onError(e instanceof ApiError ? e.message : '빌드 업로드에 실패했습니다.'),
   });
