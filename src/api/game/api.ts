@@ -1,9 +1,10 @@
-import { apiClient } from '@/api/client';
+import { ApiError, apiClient } from '@/api/client';
 import type {
   AdminGameBuildResponse,
   AdminGameDetailResponse,
   AdminGameMemberResponse,
   AdminGameSummaryResponse,
+  GameBuildUploadTokenResponse,
   GameCreateRequest,
   GameRatingRequest,
   GameRatingResponse,
@@ -77,4 +78,27 @@ export function createGameBuild(gameId: number, version: string) {
 
 export function deleteGameBuild(gameId: number, buildId: number) {
   return apiClient.delete<void>(`/v1/admin/games/${gameId}/builds/${buildId}`);
+}
+
+export function issueGameBuildUploadToken(gameId: number, buildId: number) {
+  return apiClient.post<GameBuildUploadTokenResponse>(`/v1/admin/games/${gameId}/builds/${buildId}/upload-token`);
+}
+
+/**
+ * 발급받은 토큰으로 홈페이지 서버에 ZIP을 직접 업로드한다(ADR-024) — 인터널 API를
+ * 경유하지 않으므로 apiClient가 아니라 이 origin으로 바로 fetch한다.
+ */
+export async function uploadGameBuildFile(uploadUrl: string, token: string, file: File): Promise<void> {
+  const res = await fetch(uploadUrl, {
+    method: 'POST',
+    headers: {
+      'X-Game-Build-Token': token,
+      'Content-Type': 'application/zip',
+    },
+    body: file,
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    throw new ApiError(res.status, body?.message ?? '빌드 업로드에 실패했습니다.');
+  }
 }

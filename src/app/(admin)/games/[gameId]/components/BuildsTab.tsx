@@ -1,8 +1,13 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
-import { createGameBuild, deleteGameBuild } from '@/api/game/api';
+import { useRef, useState } from 'react';
+import {
+  createGameBuild,
+  deleteGameBuild,
+  issueGameBuildUploadToken,
+  uploadGameBuildFile,
+} from '@/api/game/api';
 import { gameKeys, gameQueries } from '@/api/game/queries';
 import type { AdminGameBuildResponse, GameBuildStatus } from '@/api/game/types';
 import { ApiError } from '@/api/client';
@@ -18,11 +23,11 @@ const STATUS_LABELS: Record<GameBuildStatus, string> = {
   FAILED: '실패',
 };
 
+const UPLOADABLE_STATUSES: GameBuildStatus[] = ['PENDING', 'PROCESSING', 'FAILED'];
+
 /**
- * 이번 1차는 버전 메타만 다룬다(ADR-023) — 실제 ZIP 업로드·압축해제·서빙은 후속
- * 태스크(T-41)에서 홈페이지 서버 쪽 설계와 함께 붙는다. 등록 직후 상태는 항상
- * PENDING이고, 지금은 이 화면에서 상태를 다른 값으로 바꿀 방법이 없다 — 그래서
- * 진행률·업로드 트레이 같은 UI는 넣지 않는다(있는 척하면 안 된다).
+ * 빌드 버전을 등록하고, 등록된 빌드에 ZIP을 업로드한다(ADR-024). 업로드는
+ * 인터널 API를 경유하지 않는다 — 토큰만 발급받고 홈페이지 서버에 직접 올린다.
  */
 export function BuildsTab({ gameId }: { gameId: number }) {
   const queryClient = useQueryClient();
@@ -51,7 +56,7 @@ export function BuildsTab({ gameId }: { gameId: number }) {
   });
 
   return (
-    <SectionCard title="빌드" caption={`보관 ${builds?.length ?? 0}개 · 버전 메타데이터만 관리합니다`}>
+    <SectionCard title="빌드" caption={`보관 ${builds?.length ?? 0}개`}>
       <div className="flex gap-2 pb-3.5">
         <input
           value={version}
@@ -76,38 +81,103 @@ export function BuildsTab({ gameId }: { gameId: number }) {
       ) : (
         <div className="flex flex-col gap-1.5">
           {builds.map((build) => (
-            <BuildRow key={build.id} build={build} onDelete={() => deleteMutation.mutate(build.id)} />
+            <BuildRow
+              key={build.id}
+              gameId={gameId}
+              build={build}
+              onDelete={() => deleteMutation.mutate(build.id)}
+              onUploaded={invalidate}
+              onError={setError}
+            />
           ))}
         </div>
       )}
 
       <p className="text-faint m-0 pt-3 text-[11px] leading-[1.6]">
-        실제 빌드 파일 업로드·압축 해제·서빙은 아직 지원하지 않습니다 — 여기서는 버전 등록만 합니다.
+        ZIP은 index.html이 압축 루트에 바로 있거나 폴더 한 단계 아래에 있어야 합니다. 업로드 후 처리 결과가
+        반영될 때까지 잠시 걸릴 수 있습니다.
       </p>
       {error && <p className="text-danger m-0 pt-2 text-[11px]">{error}</p>}
     </SectionCard>
   );
 }
 
-function BuildRow({ build, onDelete }: { build: AdminGameBuildResponse; onDelete: () => void }) {
+function BuildRow({
+  gameId,
+  build,
+  onDelete,
+  onUploaded,
+  onError,
+}: {
+  gameId: number;
+  build: AdminGameBuildResponse;
+  onDelete: () => void;
+  onUploaded: () => void;
+  onError: (message: string) => void;
+}) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const uploadMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const { uploadUrl, token } = await issueGameBuildUploadToken(gameId, build.id);
+      await uploadGameBuildFile(uploadUrl, token, file);
+    },
+    onSuccess: onUploaded,
+    onError: (e) => onError(e instanceof ApiError ? e.message : '빌드 업로드에 실패했습니다.'),
+  });
+
+  const canUpload = UPLOADABLE_STATUSES.includes(build.status);
+
   return (
-    <div className="border-line bg-panel2 flex items-center gap-3 rounded-[10px] border px-3.5 py-2.5">
-      <span className="text-[13px] font-medium">{build.version}</span>
-      <span
-        className={`rounded-[5px] border px-1.5 py-0.5 text-[10px] tracking-[.08em] whitespace-nowrap ${
-          build.status === 'ACTIVE' ? 'border-primary-line text-primary-text' : 'border-line2 text-muted'
-        }`}
-      >
-        {STATUS_LABELS[build.status]}
-      </span>
-      <span className="text-faint ml-auto text-[11px]">{new Date(build.uploadedAt).toLocaleDateString('ko-KR')}</span>
-      <button
-        type="button"
-        onClick={onDelete}
-        className="text-faint hover:text-danger flex-none cursor-pointer text-xs"
-      >
-        삭제
-      </button>
+    <div className="border-line bg-panel2 flex flex-col gap-1.5 rounded-[10px] border px-3.5 py-2.5">
+      <div className="flex items-center gap-3">
+        <span className="text-[13px] font-medium">{build.version}</span>
+        <span
+          className={`rounded-[5px] border px-1.5 py-0.5 text-[10px] tracking-[.08em] whitespace-nowrap ${
+            build.status === 'ACTIVE' ? 'border-primary-line text-primary-text' : 'border-line2 text-muted'
+          }`}
+        >
+          {STATUS_LABELS[build.status]}
+        </span>
+        {build.storageBytes != null && (
+          <span className="text-faint text-[11px]">{(build.storageBytes / 1024 / 1024).toFixed(1)}MB</span>
+        )}
+        <span className="text-faint ml-auto text-[11px]">{new Date(build.uploadedAt).toLocaleDateString('ko-KR')}</span>
+
+        {canUpload && (
+          <>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".zip"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                e.target.value = '';
+                if (file) uploadMutation.mutate(file);
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploadMutation.isPending}
+              className="text-primary-text flex-none cursor-pointer text-xs whitespace-nowrap disabled:cursor-default disabled:opacity-50"
+            >
+              {uploadMutation.isPending ? '업로드 중…' : 'ZIP 업로드'}
+            </button>
+          </>
+        )}
+        <button
+          type="button"
+          onClick={onDelete}
+          className="text-faint hover:text-danger flex-none cursor-pointer text-xs"
+        >
+          삭제
+        </button>
+      </div>
+      {build.status === 'FAILED' && build.failureReason && (
+        <p className="text-danger m-0 text-[11px]">{build.failureReason}</p>
+      )}
     </div>
   );
 }
