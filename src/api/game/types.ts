@@ -44,7 +44,14 @@ export interface AdminGameBuildResponse {
   canvasHeight: number | null;
   storageBytes: number | null;
   buildFileUrl: string | null;
+  failureReason: string | null;
   uploadedAt: string;
+}
+
+export interface GameBuildUploadTokenResponse {
+  uploadUrl: string;
+  token: string;
+  expiresAt: string;
 }
 
 export interface AdminGameDetailResponse {
