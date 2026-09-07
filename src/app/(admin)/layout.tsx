@@ -20,6 +20,7 @@ const NAV_ITEMS = [
   { href: '/games', label: '게임' },
   { href: '/home', label: '메인' },
   { href: '/members', label: '인명부' },
+  { href: '/reservations', label: '동아리방 예약' },
 ] as const;
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
