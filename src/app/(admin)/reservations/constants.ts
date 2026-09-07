@@ -1,4 +1,4 @@
-import type { RepeatFrequency, RepeatWeeks } from '@/app/reservations/types';
+import type { RepeatFrequency, RepeatWeeks } from '@/app/(admin)/reservations/types';
 
 export const FREQ_OPTIONS: RepeatFrequency[] = ['매주', '격주'];
 

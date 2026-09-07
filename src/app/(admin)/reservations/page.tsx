@@ -5,21 +5,20 @@ import { useState } from 'react';
 import { cancelReservation, cancelReservationGroup, createReservation } from '@/api/reservation/api';
 import { reservationKeys, reservationQueries } from '@/api/reservation/queries';
 import { ApiError } from '@/api/client';
-import type { BookingFormProps } from '@/app/reservations/components/BookingForm';
-import { MyReservationsScreen } from '@/app/reservations/components/MyReservationsScreen';
-import { ReservationDetailModal } from '@/app/reservations/components/modals/ReservationDetailModal';
-import { ModalShell } from '@/app/reservations/components/modal-shell';
-import { ReservationHeader } from '@/app/reservations/components/ReservationHeader';
-import { RulesScreen } from '@/app/reservations/components/RulesScreen';
-import { StatusScreen } from '@/app/reservations/components/StatusScreen';
+import type { BookingFormProps } from '@/app/(admin)/reservations/components/BookingForm';
+import { MyReservationsScreen } from '@/app/(admin)/reservations/components/MyReservationsScreen';
+import { ReservationDetailModal } from '@/app/(admin)/reservations/components/modals/ReservationDetailModal';
+import { ModalShell } from '@/app/(admin)/reservations/components/modal-shell';
+import { RulesScreen } from '@/app/(admin)/reservations/components/RulesScreen';
+import { StatusScreen } from '@/app/(admin)/reservations/components/StatusScreen';
 import {
   buildCreateRequest,
   toDetailView,
   toMyReservationCard,
   toOccupancyRatioMap,
   toUiReservationFromDaily,
-} from '@/app/reservations/reservation-adapter';
-import { buildTimelineRows } from '@/app/reservations/reservation-logic';
+} from '@/app/(admin)/reservations/reservation-adapter';
+import { buildTimelineRows } from '@/app/(admin)/reservations/reservation-logic';
 import {
   addMonths,
   atMidnight,
@@ -29,15 +28,18 @@ import {
   startOfMonth,
   toDateKey,
   toMonthKey,
-} from '@/app/reservations/time-utils';
-import type { ReservationScreen } from '@/app/reservations/types';
-import { useBookingForm } from '@/app/reservations/use-booking-form';
-import { useSession } from '@/lib/auth/use-session';
+} from '@/app/(admin)/reservations/time-utils';
+import type { ReservationScreen } from '@/app/(admin)/reservations/types';
+import { useBookingForm } from '@/app/(admin)/reservations/use-booking-form';
+import { PageHeader } from '@/components/ui/page-header';
+
+const SCREEN_TABS: { key: ReservationScreen; label: string }[] = [
+  { key: 'status', label: '예약 현황' },
+  { key: 'mine', label: '내 예약' },
+  { key: 'rules', label: '이용 규칙' },
+];
 
 export default function ReservationsPage() {
-  const { session } = useSession();
-  const loggedIn = !!session;
-  const meInitial = session?.member.name.slice(0, 1) ?? '?';
   const queryClient = useQueryClient();
 
   const [now] = useState(() => new Date());
@@ -59,10 +61,10 @@ export default function ReservationsPage() {
   const isPastDay = selectedDate < today;
 
   const statusOccupancyQuery = useQuery(reservationQueries.monthlyOccupancy(monthKey));
-  const mineOccupancyQuery = useQuery({ ...reservationQueries.myMonthlyOccupancy(monthKey), enabled: loggedIn });
+  const mineOccupancyQuery = useQuery(reservationQueries.myMonthlyOccupancy(monthKey));
   const dailyQuery = useQuery(reservationQueries.daily(selectedKey));
-  const upcomingQuery = useQuery({ ...reservationQueries.myReservations('upcoming'), enabled: loggedIn });
-  const pastQuery = useQuery({ ...reservationQueries.myReservations('past'), enabled: loggedIn });
+  const upcomingQuery = useQuery(reservationQueries.myReservations('upcoming'));
+  const pastQuery = useQuery(reservationQueries.myReservations('past'));
   const detailQuery = useQuery({ ...reservationQueries.detail(detailId ?? 0), enabled: detailId != null });
 
   const statusRatio = statusOccupancyQuery.data ? toOccupancyRatioMap(statusOccupancyQuery.data) : new Map();
@@ -247,18 +249,31 @@ export default function ReservationsPage() {
               : null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#F6F2FB] via-[#EDF0F6] to-[#EBEEF4] px-6 pt-[34px] pb-[60px]">
-      <div className="mx-auto max-w-[1280px]">
-        <div className="overflow-hidden rounded-[18px] border border-[#E8E3F0] bg-white shadow-[0_1px_2px_rgba(27,11,40,.05),0_18px_48px_-12px_rgba(27,11,40,.16)]">
-          <ReservationHeader
-            screen={screen}
-            onScreenChange={setScreen}
-            upcomingCount={upcomingItems.length}
-            loggedIn={loggedIn}
-            userName={session?.member.name ?? ''}
-            meInitial={meInitial}
-          />
+    <>
+      <PageHeader crumb="홈페이지 / 동아리방 예약" title="동아리방 예약" />
 
+      <div className="w-full px-8 pt-6 pb-10">
+        <div className="border-line mb-5 flex gap-1 border-b">
+          {SCREEN_TABS.map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              onClick={() => setScreen(item.key)}
+              className={`cursor-pointer border-b-2 px-3.5 py-2.5 text-[13px] whitespace-nowrap transition-colors ${
+                screen === item.key
+                  ? 'border-primary text-text font-semibold'
+                  : 'text-muted hover:text-text border-transparent'
+              }`}
+            >
+              {item.label}
+              {item.key === 'mine' && upcomingItems.length > 0 && (
+                <span className="text-faint ml-1.5 text-[11px]">{upcomingItems.length}</span>
+              )}
+            </button>
+          ))}
+        </div>
+
+        <div className="border-line bg-panel overflow-hidden rounded-2xl border">
           {screen === 'status' && (
             <StatusScreen
               viewMonth={viewMonth}
@@ -273,8 +288,7 @@ export default function ReservationsPage() {
               daySummary={daySummary}
               timelineRows={buildTimelineRows(dayReservations)}
               onSelectMine={(id) => setDetailId(id)}
-              showForm={!isPastDay && loggedIn}
-              showLoginPrompt={!isPastDay && !loggedIn}
+              showForm={!isPastDay}
               showPastNote={isPastDay}
               loading={dailyQuery.isLoading}
               errorMessage={submitError ?? dailyFetchError}
@@ -320,6 +334,6 @@ export default function ReservationsPage() {
             <div className="p-8 text-center text-sm text-[#8895A7]">{detailError ?? '불러오는 중...'}</div>
           </ModalShell>
         ))}
-    </div>
+    </>
   );
 }

@@ -1,7 +1,7 @@
 'use client';
 
-import { MiniCalendar } from '@/app/reservations/components/MiniCalendar';
-import type { MyReservationCard } from '@/app/reservations/types';
+import { MiniCalendar } from '@/app/(admin)/reservations/components/MiniCalendar';
+import type { MyReservationCard } from '@/app/(admin)/reservations/types';
 
 interface MyReservationsScreenProps {
   viewMonth: Date;

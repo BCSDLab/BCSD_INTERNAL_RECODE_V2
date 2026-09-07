@@ -1,8 +1,8 @@
 'use client';
 
-import { RepeatSection } from '@/app/reservations/components/RepeatSection';
-import { TimeWheel } from '@/app/reservations/components/TimeWheel';
-import type { Occurrence, RepeatFrequency, RepeatWeeks } from '@/app/reservations/types';
+import { RepeatSection } from '@/app/(admin)/reservations/components/RepeatSection';
+import { TimeWheel } from '@/app/(admin)/reservations/components/TimeWheel';
+import type { Occurrence, RepeatFrequency, RepeatWeeks } from '@/app/(admin)/reservations/types';
 
 const HOUR_ITEMS = Array.from({ length: 24 }, (_, h) => ({ value: h, label: h < 10 ? `0${h}` : `${h}` }));
 const MINUTE_ITEMS = [

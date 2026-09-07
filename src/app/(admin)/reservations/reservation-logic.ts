@@ -8,8 +8,8 @@ import {
   isSameDay,
   mondayIndex,
   toDateKey,
-} from '@/app/reservations/time-utils';
-import type { Occurrence, RepeatFrequency, Reservation } from '@/app/reservations/types';
+} from '@/app/(admin)/reservations/time-utils';
+import type { Occurrence, RepeatFrequency, Reservation } from '@/app/(admin)/reservations/types';
 
 export function hasOverlap(dayReservations: Reservation[], start: number, end: number): boolean {
   return dayReservations.some((r) => start < r.end && end > r.start);

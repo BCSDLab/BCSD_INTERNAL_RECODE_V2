@@ -1,6 +1,6 @@
 'use client';
 
-import { RULES } from '@/app/reservations/constants';
+import { RULES } from '@/app/(admin)/reservations/constants';
 
 export function RulesScreen() {
   return (

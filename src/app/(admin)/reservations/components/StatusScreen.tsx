@@ -1,10 +1,9 @@
 'use client';
 
-import Link from 'next/link';
-import { BookingForm, type BookingFormProps } from '@/app/reservations/components/BookingForm';
-import { DailyTimeline } from '@/app/reservations/components/DailyTimeline';
-import { MiniCalendar } from '@/app/reservations/components/MiniCalendar';
-import type { TimelineRow } from '@/app/reservations/reservation-logic';
+import { BookingForm, type BookingFormProps } from '@/app/(admin)/reservations/components/BookingForm';
+import { DailyTimeline } from '@/app/(admin)/reservations/components/DailyTimeline';
+import { MiniCalendar } from '@/app/(admin)/reservations/components/MiniCalendar';
+import type { TimelineRow } from '@/app/(admin)/reservations/reservation-logic';
 
 interface StatusScreenProps {
   viewMonth: Date;
@@ -20,7 +19,6 @@ interface StatusScreenProps {
   timelineRows: TimelineRow[];
   onSelectMine: (reservationId: number) => void;
   showForm: boolean;
-  showLoginPrompt: boolean;
   showPastNote: boolean;
   loading: boolean;
   errorMessage: string | null;
@@ -42,7 +40,6 @@ export function StatusScreen({
   timelineRows,
   onSelectMine,
   showForm,
-  showLoginPrompt,
   showPastNote,
   loading,
   errorMessage,
@@ -91,19 +88,6 @@ export function StatusScreen({
         <DailyTimeline rows={timelineRows} onSelectMine={onSelectMine} />
 
         {showForm && <BookingForm {...bookingForm} />}
-
-        {showLoginPrompt && (
-          <div className="mt-[18px] rounded-[13px] border border-[#E4BBFB] bg-[#FBF1FE] p-[22px] text-center">
-            <div className="text-sm font-bold text-[#1B0B28]">예약하려면 로그인이 필요합니다</div>
-            <div className="mt-[5px] text-[12.5px] text-[#8895A7]">예약자 이름은 로그인 후에 보입니다</div>
-            <Link
-              href="/login"
-              className="mt-3.5 inline-block rounded-lg bg-[#b611f5] px-[26px] py-[9px] text-[13.5px] font-semibold text-white"
-            >
-              로그인
-            </Link>
-          </div>
-        )}
 
         {showPastNote && (
           <div className="mt-[18px] rounded-[11px] border border-dashed border-[#DDE3EC] bg-white px-4 py-3.5 text-[13px] text-[#8895A7]">
