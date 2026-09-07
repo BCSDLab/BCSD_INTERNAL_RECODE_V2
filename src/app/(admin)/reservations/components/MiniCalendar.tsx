@@ -1,7 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { WEEKDAY_LABELS, buildMonthCells, formatMonthLabel, isSameDay, toDateKey } from '@/app/reservations/time-utils';
+import { WEEKDAY_LABELS, buildMonthCells, formatMonthLabel, isSameDay, toDateKey } from '@/app/(admin)/reservations/time-utils';
 
 interface MiniCalendarProps {
   viewMonth: Date;

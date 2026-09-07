@@ -1,9 +1,9 @@
 'use client';
 
-import { FREQ_OPTIONS, WEEK_OPTIONS } from '@/app/reservations/constants';
-import { formatRange } from '@/app/reservations/reservation-logic';
-import { WEEKDAY_LABELS } from '@/app/reservations/time-utils';
-import type { Occurrence, RepeatFrequency, RepeatWeeks } from '@/app/reservations/types';
+import { FREQ_OPTIONS, WEEK_OPTIONS } from '@/app/(admin)/reservations/constants';
+import { formatRange } from '@/app/(admin)/reservations/reservation-logic';
+import { WEEKDAY_LABELS } from '@/app/(admin)/reservations/time-utils';
+import type { Occurrence, RepeatFrequency, RepeatWeeks } from '@/app/(admin)/reservations/types';
 
 interface RepeatSectionProps {
   repeatOn: boolean;

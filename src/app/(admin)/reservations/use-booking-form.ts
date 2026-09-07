@@ -1,9 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { generateOccurrences, formatRange, repeatSummaryLabel, validateSlot } from '@/app/reservations/reservation-logic';
-import { formatDuration, mondayIndex } from '@/app/reservations/time-utils';
-import type { RepeatFrequency, RepeatWeeks, Reservation } from '@/app/reservations/types';
+import { generateOccurrences, formatRange, repeatSummaryLabel, validateSlot } from '@/app/(admin)/reservations/reservation-logic';
+import { formatDuration, mondayIndex } from '@/app/(admin)/reservations/time-utils';
+import type { RepeatFrequency, RepeatWeeks, Reservation } from '@/app/(admin)/reservations/types';
 
 interface UseBookingFormArgs {
   selectedDate: Date;

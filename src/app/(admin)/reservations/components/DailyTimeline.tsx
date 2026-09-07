@@ -1,6 +1,6 @@
 'use client';
 
-import type { TimelineRow } from '@/app/reservations/reservation-logic';
+import type { TimelineRow } from '@/app/(admin)/reservations/reservation-logic';
 
 interface DailyTimelineProps {
   rows: TimelineRow[];

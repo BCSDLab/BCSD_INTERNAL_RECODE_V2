@@ -1,12 +1,12 @@
-import { formatRange } from '@/app/reservations/reservation-logic';
+import { formatRange } from '@/app/(admin)/reservations/reservation-logic';
 import {
   CANCEL_CUTOFF_MINUTES,
   WEEKDAY_LABELS,
   formatDateLabel,
   parseDateKey,
   toDateKey,
-} from '@/app/reservations/time-utils';
-import type { MyReservationCard, Reservation } from '@/app/reservations/types';
+} from '@/app/(admin)/reservations/time-utils';
+import type { MyReservationCard, Reservation } from '@/app/(admin)/reservations/types';
 import type {
   DailyReservationItemDto,
   JavaDayOfWeek,

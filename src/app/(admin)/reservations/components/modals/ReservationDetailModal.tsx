@@ -1,8 +1,8 @@
 'use client';
 
-import type { ReservationDetailView } from '@/app/reservations/reservation-adapter';
-import { formatMinutes } from '@/app/reservations/time-utils';
-import { ModalShell } from '@/app/reservations/components/modal-shell';
+import type { ReservationDetailView } from '@/app/(admin)/reservations/reservation-adapter';
+import { formatMinutes } from '@/app/(admin)/reservations/time-utils';
+import { ModalShell } from '@/app/(admin)/reservations/components/modal-shell';
 
 interface ReservationDetailModalProps {
   detail: ReservationDetailView;
