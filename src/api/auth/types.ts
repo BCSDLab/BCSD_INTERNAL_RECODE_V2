@@ -72,3 +72,15 @@ export interface InitialSetupRequest {
   newPassword: string;
   newPasswordConfirm: string;
 }
+
+export interface MemberContactUpdateRequest {
+  phoneNumber: string | null;
+  email: string;
+  githubId: string | null;
+}
+
+export interface PasswordChangeRequest {
+  currentPassword: string;
+  newPassword: string;
+  newPasswordConfirm: string;
+}

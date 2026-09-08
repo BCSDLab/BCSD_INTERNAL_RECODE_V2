@@ -119,6 +119,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </button>
           {isUserMenuOpen && (
             <div className="border-line2 bg-panel absolute bottom-full left-0 mb-2 w-full overflow-hidden rounded-[10px] border">
+              <Link
+                href="/profile"
+                onClick={() => setIsUserMenuOpen(false)}
+                className="text-muted hover:bg-panel2 hover:text-text block w-full px-3 py-2.5 text-left text-xs transition-colors"
+              >
+                내 정보 수정
+              </Link>
               <button
                 type="button"
                 onClick={handleLogout}
