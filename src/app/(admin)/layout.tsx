@@ -3,7 +3,6 @@
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useState } from 'react';
 import { activityQueries } from '@/api/activity/queries';
 import { logout } from '@/api/auth/api';
 import { gameQueries } from '@/api/game/queries';
@@ -27,7 +26,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const { session, status } = useAuthGuard();
   const router = useRouter();
   const pathname = usePathname();
-  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
   const isAuthenticated = status === 'ready' && !!session;
 
@@ -102,39 +100,58 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           })}
         </nav>
 
-        <div className="border-line relative mt-auto border-t pt-3.5">
-          <button
-            type="button"
-            onClick={() => setIsUserMenuOpen((open) => !open)}
-            className="flex w-full cursor-pointer items-center gap-2.5 text-left"
-          >
-            <div className="bg-primary h-7 w-7 flex-none rounded-full" />
-            <div className="flex min-w-0 flex-col gap-0.5">
-              <div className="text-xs font-medium whitespace-nowrap">{session.member.name}</div>
-              <div className="text-faint text-[11px] whitespace-nowrap">
-                {MEMBER_TYPE_LABELS[session.member.memberType]} · {TRACK_LABELS[session.member.track]}
-              </div>
+        <div className="border-line mt-auto flex items-center gap-2.5 border-t pt-3.5">
+          <div className="bg-primary h-7 w-7 flex-none rounded-full" />
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <div className="text-xs font-medium whitespace-nowrap">{session.member.name}</div>
+            <div className="text-faint text-[11px] whitespace-nowrap">
+              {MEMBER_TYPE_LABELS[session.member.memberType]} · {TRACK_LABELS[session.member.track]}
             </div>
-            <div className="text-faint ml-auto flex-none text-sm">⌄</div>
-          </button>
-          {isUserMenuOpen && (
-            <div className="border-line2 bg-panel absolute bottom-full left-0 mb-2 w-full overflow-hidden rounded-[10px] border">
-              <Link
-                href="/profile"
-                onClick={() => setIsUserMenuOpen(false)}
-                className="text-muted hover:bg-panel2 hover:text-text block w-full px-3 py-2.5 text-left text-xs transition-colors"
+          </div>
+          <div className="ml-auto flex flex-none gap-1">
+            <Link
+              href="/profile"
+              aria-label="내 정보 수정"
+              title="내 정보 수정"
+              className="bg-primary-soft text-primary-text hover:bg-primary-line flex h-[26px] w-[26px] flex-none items-center justify-center rounded-[7px] transition-colors"
+            >
+              <svg
+                width="13"
+                height="13"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
               >
-                내 정보 수정
-              </Link>
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="text-muted hover:bg-panel2 hover:text-text w-full cursor-pointer px-3 py-2.5 text-left text-xs transition-colors"
+                <path d="M12 20h9" />
+                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z" />
+              </svg>
+            </Link>
+            <button
+              type="button"
+              onClick={handleLogout}
+              aria-label="로그아웃"
+              title="로그아웃"
+              className="text-faint hover:bg-danger-soft hover:text-danger flex h-[26px] w-[26px] flex-none cursor-pointer items-center justify-center rounded-[7px] transition-colors"
+            >
+              <svg
+                width="13"
+                height="13"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
               >
-                로그아웃
-              </button>
-            </div>
-          )}
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <path d="M16 17l5-5-5-5" />
+                <path d="M21 12H9" />
+              </svg>
+            </button>
+          </div>
         </div>
       </aside>
 
