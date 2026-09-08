@@ -3,7 +3,9 @@ import type {
   InitialSetupRequest,
   LoginRequest,
   LoginResponse,
+  MemberContactUpdateRequest,
   MemberDetail,
+  PasswordChangeRequest,
   ResetTokenValidationResponse,
   SimpleMessageResponse,
 } from './types';
@@ -22,6 +24,14 @@ export function logout() {
 
 export function getMe(accessToken: string) {
   return apiClient.get<MemberDetail>('/v1/members/me', { accessToken });
+}
+
+export function updateMyContact(body: MemberContactUpdateRequest) {
+  return apiClient.patch<void>('/v1/members/me', body);
+}
+
+export function changeMyPassword(body: PasswordChangeRequest) {
+  return apiClient.patch<void>('/v1/members/me/password', body);
 }
 
 export function requestPasswordReset(email: string) {
