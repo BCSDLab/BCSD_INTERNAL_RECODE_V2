@@ -58,7 +58,7 @@ export function StatusScreen({
         onToday={onToday}
         ratioByDateKey={ratioByDateKey}
         footer={
-          <div className="flex flex-col gap-[5px] text-xs leading-[1.5] text-[#8895A7]">
+          <div className="text-muted flex flex-col gap-[5px] text-xs leading-[1.5]">
             <div className="flex items-center gap-[7px]">
               <span className="inline-block h-1 w-5 rounded-full bg-[#b611f5]" />그 날 예약된 비율
             </div>
@@ -67,15 +67,15 @@ export function StatusScreen({
         }
       />
 
-      <div className="min-w-0 flex-1 border-l border-[#E7ECF3] bg-[#FBFAFD] px-[26px] pt-6 pb-[26px]">
+      <div className="border-line bg-panel2 min-w-0 flex-1 border-l px-[26px] pt-6 pb-[26px]">
         <div className="flex items-center gap-2.5">
-          <span className="text-[21px] font-bold tracking-[-0.4px] text-[#1B0B28]">{dateLabel}</span>
-          <span className="rounded-md bg-[#EEF2F7] px-[9px] py-[3px] text-[11.5px] font-semibold text-[#64748B]">동아리방</span>
+          <span className="text-text text-[21px] font-bold tracking-[-0.4px]">{dateLabel}</span>
+          <span className="bg-sunken text-muted rounded-md px-[9px] py-[3px] text-[11.5px] font-semibold">동아리방</span>
         </div>
-        <div className="my-[5px] mb-4 text-[13px] text-[#8895A7]">{loading ? '불러오는 중...' : daySummary}</div>
+        <div className="text-muted my-[5px] mb-4 text-[13px]">{loading ? '불러오는 중...' : daySummary}</div>
 
         {errorMessage && (
-          <div className="mb-4 rounded-lg border border-[rgba(179,67,58,.3)] bg-[#FBF6F5] px-3.5 py-2.5 text-[13px] text-[#B3433A]">
+          <div className="border-danger-line bg-danger-soft text-danger mb-4 rounded-lg border px-3.5 py-2.5 text-[13px]">
             {errorMessage}
           </div>
         )}
@@ -90,7 +90,7 @@ export function StatusScreen({
         {showForm && <BookingForm {...bookingForm} />}
 
         {showPastNote && (
-          <div className="mt-[18px] rounded-[11px] border border-dashed border-[#DDE3EC] bg-white px-4 py-3.5 text-[13px] text-[#8895A7]">
+          <div className="border-line bg-panel text-muted mt-[18px] rounded-[11px] border border-dashed px-4 py-3.5 text-[13px]">
             지난 날짜입니다. 조회만 할 수 있습니다.
           </div>
         )}

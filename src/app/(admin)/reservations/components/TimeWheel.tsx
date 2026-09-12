@@ -61,7 +61,7 @@ export function TimeWheel({ items, selectedValue, onSelect, centerTrigger }: Tim
       <div
         ref={ref}
         onScroll={handleScroll}
-        className="h-[168px] snap-y snap-mandatory overflow-y-auto rounded-[10px] border border-[#DDE3EC] bg-white scrollbar-none [&::-webkit-scrollbar]:hidden"
+        className="border-line bg-panel scrollbar-none h-[168px] snap-y snap-mandatory overflow-y-auto rounded-[10px] border [&::-webkit-scrollbar]:hidden"
       >
         <div style={{ height: SPACER_HEIGHT }} />
         {items.map((item) => {
@@ -74,7 +74,7 @@ export function TimeWheel({ items, selectedValue, onSelect, centerTrigger }: Tim
               style={
                 active
                   ? { fontSize: 17, fontWeight: 800, color: '#b611f5' }
-                  : { fontSize: 14.5, fontWeight: 500, color: '#9AA6B5' }
+                  : { fontSize: 14.5, fontWeight: 500, color: 'var(--muted)' }
               }
             >
               {item.label}

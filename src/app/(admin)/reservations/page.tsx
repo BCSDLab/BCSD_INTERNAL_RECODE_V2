@@ -331,7 +331,7 @@ export default function ReservationsPage() {
           />
         ) : (
           <ModalShell onClose={closeDetail} maxWidth={472}>
-            <div className="p-8 text-center text-sm text-[#8895A7]">{detailError ?? '불러오는 중...'}</div>
+            <div className="text-muted p-8 text-center text-sm">{detailError ?? '불러오는 중...'}</div>
           </ModalShell>
         ))}
     </>

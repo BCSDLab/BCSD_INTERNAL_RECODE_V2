@@ -29,21 +29,21 @@ export function MiniCalendar({
   const cells = buildMonthCells(viewMonth);
 
   return (
-    <div className="w-[428px] flex-none bg-[#FBFAFD] px-6 pt-6 pb-[22px]">
+    <div className="bg-panel2 w-[428px] flex-none px-6 pt-6 pb-[22px]">
       <div className="mb-3.5 flex items-center gap-2.5">
-        <span className="text-[19px] font-bold tracking-[-0.3px] text-[#1B0B28]">{formatMonthLabel(viewMonth)}</span>
+        <span className="text-text text-[19px] font-bold tracking-[-0.3px]">{formatMonthLabel(viewMonth)}</span>
         <div className="flex-1" />
         <button
           type="button"
           onClick={onPrevMonth}
-          className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-[7px] border border-[#DDE3EC] text-[13px] text-[#8895A7]"
+          className="border-line text-muted flex h-7 w-7 cursor-pointer items-center justify-center rounded-[7px] border text-[13px]"
         >
           ‹
         </button>
         <button
           type="button"
           onClick={onNextMonth}
-          className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-[7px] border border-[#DDE3EC] text-[13px] text-[#1B0B28]"
+          className="border-line text-text flex h-7 w-7 cursor-pointer items-center justify-center rounded-[7px] border text-[13px]"
         >
           ›
         </button>
@@ -58,32 +58,32 @@ export function MiniCalendar({
         )}
       </div>
 
-      <div className="grid grid-cols-7 pb-[7px] text-center text-[11.5px] font-semibold text-[#9AA6B5]">
+      <div className="text-faint grid grid-cols-7 pb-[7px] text-center text-[11.5px] font-semibold">
         {WEEKDAY_LABELS.map((label) => (
           <div key={label}>{label}</div>
         ))}
       </div>
 
-      <div className="grid grid-cols-7 gap-px overflow-hidden rounded-[11px] border border-[#E7ECF3] bg-[#E7ECF3]">
+      <div className="border-line bg-line grid grid-cols-7 gap-px overflow-hidden rounded-[11px] border">
         {cells.map(({ date, inMonth }) => {
           const key = toDateKey(date);
           const past = inMonth && date < today && !isSameDay(date, today);
           const selected = inMonth && isSameDay(date, selectedDate);
           const ratio = ratioByDateKey.get(key) ?? 0;
 
-          let background = '#fff';
-          let color = '#1B0B28';
+          let background = 'var(--panel)';
+          let color = 'var(--text)';
           if (!inMonth) {
-            background = '#FAFBFD';
-            color = '#CBD3DD';
+            background = 'var(--panel2)';
+            color = 'var(--faint)';
           } else if (past) {
-            color = '#B4BEC9';
+            color = 'var(--faint)';
           }
           if (selected) {
             background = '#b611f5';
             color = '#fff';
           }
-          const barColor = selected ? 'rgba(255,255,255,.85)' : past ? '#C3CEDA' : '#b611f5';
+          const barColor = selected ? 'rgba(255,255,255,.85)' : past ? 'var(--faint)' : '#b611f5';
 
           return (
             <div
