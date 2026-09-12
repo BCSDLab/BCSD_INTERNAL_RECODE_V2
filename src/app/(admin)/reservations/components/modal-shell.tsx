@@ -24,11 +24,11 @@ export function ModalShell({ onClose, children, maxWidth }: ModalShellProps) {
   }, []);
 
   return createPortal(
-    <div onClick={onClose} className="fixed inset-0 z-[60] flex items-center justify-center bg-[rgba(27,11,40,.5)] p-6">
+    <div onClick={onClose} className="fixed inset-0 z-[60] flex items-center justify-center bg-[rgba(10,8,16,.55)] p-6">
       <div
         onClick={(e) => e.stopPropagation()}
         style={{ width: maxWidth }}
-        className="max-h-[calc(100%-48px)] w-full max-w-full overflow-auto rounded-2xl bg-white shadow-[0_30px_70px_rgba(27,11,40,.35)]"
+        className="bg-panel max-h-[calc(100%-48px)] w-full max-w-full overflow-auto rounded-2xl shadow-[0_30px_70px_rgba(27,11,40,.35)]"
       >
         {children}
       </div>

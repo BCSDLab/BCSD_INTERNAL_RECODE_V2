@@ -70,18 +70,18 @@ export function BookingForm({
   onConfirm,
 }: BookingFormProps) {
   return (
-    <div className="mt-[22px] rounded-[15px] border border-[#EAE3F3] bg-white p-[22px] shadow-[0_1px_3px_rgba(27,11,40,.04),0_10px_26px_-14px_rgba(182,17,245,.18)]">
+    <div className="border-line bg-panel mt-[22px] rounded-[15px] border p-[22px] shadow-[0_1px_3px_rgba(27,11,40,.04),0_10px_26px_-14px_rgba(182,17,245,.18)]">
       <div className="mb-3.5 flex items-baseline gap-2.5">
-        <span className="text-[15px] font-bold text-[#1B0B28]">이 날 예약하기</span>
-        <span className="text-xs text-[#9AA6B5]">시 · 분(30분 단위)을 스크롤해서 고릅니다</span>
+        <span className="text-text text-[15px] font-bold">이 날 예약하기</span>
+        <span className="text-faint text-xs">시 · 분(30분 단위)을 스크롤해서 고릅니다</span>
       </div>
 
       <div className="flex flex-nowrap items-end gap-3.5">
         <div>
-          <div className="mb-[7px] text-xs font-semibold text-[#64748B]">시작</div>
+          <div className="text-muted mb-[7px] text-xs font-semibold">시작</div>
           <div className="flex items-center gap-1.5">
             <TimeWheel items={HOUR_ITEMS} selectedValue={Math.floor(start / 60)} onSelect={(h) => onSetStart(h * 60 + (start % 60))} centerTrigger={centerTrigger} />
-            <span className="text-base font-bold text-[#B6C0CE]">:</span>
+            <span className="text-faint text-base font-bold">:</span>
             <TimeWheel
               items={MINUTE_ITEMS}
               selectedValue={start % 60}
@@ -91,13 +91,13 @@ export function BookingForm({
           </div>
         </div>
 
-        <span className="pb-[70px] text-[15px] text-[#B6C0CE]">–</span>
+        <span className="text-faint pb-[70px] text-[15px]">–</span>
 
         <div>
-          <div className="mb-[7px] text-xs font-semibold text-[#64748B]">종료</div>
+          <div className="text-muted mb-[7px] text-xs font-semibold">종료</div>
           <div className="flex items-center gap-1.5">
             <TimeWheel items={HOUR_ITEMS} selectedValue={Math.floor(end / 60)} onSelect={(h) => onSetEnd(h * 60 + (end % 60))} centerTrigger={centerTrigger} />
-            <span className="text-base font-bold text-[#B6C0CE]">:</span>
+            <span className="text-faint text-base font-bold">:</span>
             <TimeWheel
               items={MINUTE_ITEMS}
               selectedValue={end % 60}
@@ -109,28 +109,28 @@ export function BookingForm({
       </div>
 
       {warning && (
-        <div className="mt-3 rounded-r-[7px] border-l-[3px] border-[#B3433A] bg-[#FBF6F5] px-3 py-[9px] text-xs leading-[1.5] text-[#5A4A48]">
+        <div className="border-danger bg-danger-soft text-text mt-3 rounded-r-[7px] border-l-[3px] px-3 py-[9px] text-xs leading-[1.5]">
           {warning}
         </div>
       )}
 
       <div className="mt-4 flex gap-3">
         <div className="flex-1">
-          <div className="mb-1.5 text-xs font-semibold text-[#64748B]">사용 목적</div>
+          <div className="text-muted mb-1.5 text-xs font-semibold">사용 목적</div>
           <input
             value={purpose}
             onChange={(e) => onPurposeChange(e.target.value)}
             placeholder="예: 프론트엔드 세션"
-            className="w-full rounded-lg border border-[#DDE3EC] px-[11px] py-[9px] text-[13.5px] text-[#1B0B28] outline-none"
+            className="border-line text-text w-full rounded-lg border px-[11px] py-[9px] text-[13.5px] outline-none"
           />
         </div>
         <div className="w-24 flex-none">
-          <div className="mb-1.5 text-xs font-semibold text-[#64748B]">인원</div>
+          <div className="text-muted mb-1.5 text-xs font-semibold">인원</div>
           <input
             value={headcount}
             onChange={(e) => onHeadcountChange(e.target.value.replace(/[^0-9]/g, ''))}
             inputMode="numeric"
-            className="w-full rounded-lg border border-[#DDE3EC] px-[11px] py-[9px] text-[13.5px] text-[#1B0B28] outline-none"
+            className="border-line text-text w-full rounded-lg border px-[11px] py-[9px] text-[13.5px] outline-none"
           />
         </div>
       </div>
@@ -155,19 +155,19 @@ export function BookingForm({
           className="flex h-4 w-4 flex-none cursor-pointer items-center justify-center rounded [font-size:10px]"
           style={{
             border: '1.5px solid #b611f5',
-            background: agree ? '#b611f5' : '#fff',
+            background: agree ? '#b611f5' : 'var(--panel)',
             color: '#fff',
           }}
         >
           {agree ? '✓' : ''}
         </button>
-        <span className="text-[13px] whitespace-nowrap text-[#4A5A6D]">이용 규칙을 읽었고, 사용 후 정리하겠습니다</span>
+        <span className="text-muted text-[13px] whitespace-nowrap">이용 규칙을 읽었고, 사용 후 정리하겠습니다</span>
         <button type="button" onClick={onOpenRules} className="cursor-pointer text-[12.5px] font-semibold text-[#b611f5]">
           규칙 보기
         </button>
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center gap-3.5 border-t border-[#EEF2F7] pt-4">
+      <div className="border-line mt-4 flex flex-wrap items-center gap-3.5 border-t pt-4">
         <button
           type="button"
           disabled={!valid || !agree}
@@ -176,12 +176,12 @@ export function BookingForm({
           style={
             valid && agree
               ? { background: '#b611f5', color: '#fff', cursor: 'pointer', boxShadow: '0 2px 8px rgba(182,17,245,.32)' }
-              : { background: '#E7ECF3', color: '#A6B1BF', cursor: 'default' }
+              : { background: 'var(--sunken)', color: 'var(--faint)', cursor: 'default' }
           }
         >
           {confirmLabel}
         </button>
-        <div className="min-w-0 flex-1 text-[12.5px] leading-[1.5] text-[#8895A7]">{quotaNote}</div>
+        <div className="text-muted min-w-0 flex-1 text-[12.5px] leading-[1.5]">{quotaNote}</div>
       </div>
     </div>
   );
