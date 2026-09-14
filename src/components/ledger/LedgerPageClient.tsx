@@ -6,6 +6,9 @@ import { INITIAL_LEDGER_ENTRIES, EMPTY_LEDGER_FILTERS } from '@/components/ledge
 import { LedgerDetailView } from '@/components/ledger/LedgerDetailView';
 import { LedgerListView } from '@/components/ledger/LedgerListView';
 import { Toast } from '@/components/ledger/LedgerUi';
+import { IMPORT_DUES_MATCHES } from '@/components/ledger/import/initial-data';
+import { TransactionImportFlow } from '@/components/ledger/import/TransactionImportFlow';
+import type { ImportTransaction } from '@/components/ledger/import/types';
 import type { LedgerEntry, LedgerFilters, LedgerScreen } from '@/components/ledger/types';
 import { isCompleteLedgerDate } from '@/components/ledger/utils';
 
@@ -24,6 +27,7 @@ export function LedgerPageClient() {
   const [filters, setFilters] = useState<LedgerFilters>(EMPTY_LEDGER_FILTERS);
   const [screen, setScreen] = useState<LedgerScreen>({ name: 'list' });
   const [evidenceState, setEvidenceState] = useState<EvidenceState>(null);
+  const [isImportOpen, setIsImportOpen] = useState(false);
   const [toast, setToast] = useState('');
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -82,6 +86,46 @@ export function LedgerPageClient() {
     flash('장부 기록을 수정했습니다');
   }
 
+  function saveImportedTransactions(transactions: ImportTransaction[], fileName: string) {
+    setEntries((current) => {
+      const newTransactions = transactions.filter(
+        (transaction) => !current.some((entry) => entry.id === `imported-${transaction.id}`),
+      );
+      if (newTransactions.length === 0) return current;
+
+      const latestEntry = [...current].sort((a, b) => b.occurredAt.localeCompare(a.occurredAt))[0];
+      let balance = latestEntry?.balance ?? 0;
+      const importedEntries: LedgerEntry[] = newTransactions.map((transaction) => {
+        balance += transaction.type === 'deposit' ? transaction.amount : -transaction.amount;
+        const match = IMPORT_DUES_MATCHES.find((option) => option.memberId === transaction.duesMatchId);
+
+        return {
+          id: `imported-${transaction.id}`,
+          occurredAt: transaction.occurredAt,
+          type: transaction.type,
+          category: transaction.category,
+          counterparty: transaction.counterparty,
+          description:
+            transaction.note ||
+            (transaction.category === '회비'
+              ? '2026년 2학기 회비'
+              : transaction.category === '회비 반환'
+                ? '2026년 2학기 회비 반환'
+                : '가져온 거래내역'),
+          note: transaction.note,
+          amount: transaction.amount,
+          balance,
+          source: fileName,
+          linkStatus: match ? 'confirmed' : 'none',
+          duesLink: match ? { ...match } : undefined,
+          evidences: transaction.evidences.map((importedEvidence) => ({ ...importedEvidence })),
+        };
+      });
+
+      return [...current, ...importedEntries];
+    });
+  }
+
   return (
     <div className="bg-bg text-text min-h-screen">
       <header className="border-line bg-panel/90 sticky top-0 z-30 flex h-16 items-center border-b px-8 backdrop-blur-[14px]">
@@ -111,6 +155,7 @@ export function LedgerPageClient() {
         onFiltersChange={setFilters}
         onResetFilters={() => setFilters(EMPTY_LEDGER_FILTERS)}
         onOpenEntry={(entryId) => setScreen({ name: 'detail', entryId })}
+        onOpenImport={() => setIsImportOpen(true)}
       />
 
       {detailEntry && (
@@ -144,6 +189,16 @@ export function LedgerPageClient() {
             flash('증빙을 삭제했습니다.');
           }}
           onDownloaded={() => flash('증빙 다운로드를 시작했습니다.')}
+        />
+      )}
+
+      {isImportOpen && (
+        <TransactionImportFlow
+          onCancel={() => setIsImportOpen(false)}
+          onSave={(transactions, fileName) => {
+            saveImportedTransactions(transactions, fileName);
+            flash(`${transactions.length}건의 거래를 장부에 반영했습니다.`);
+          }}
         />
       )}
 

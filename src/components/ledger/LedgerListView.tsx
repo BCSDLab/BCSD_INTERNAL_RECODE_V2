@@ -12,6 +12,7 @@ interface LedgerListViewProps {
   onFiltersChange: (filters: LedgerFilters) => void;
   onResetFilters: () => void;
   onOpenEntry: (entryId: string) => void;
+  onOpenImport: () => void;
 }
 
 type FilterKey = 'occurredAt' | 'type' | 'category' | 'linkStatus' | 'counterparty' | 'description' | 'amount';
@@ -147,6 +148,7 @@ export function LedgerListView({
   onFiltersChange,
   onResetFilters,
   onOpenEntry,
+  onOpenImport,
 }: LedgerListViewProps) {
   const [openFilter, setOpenFilter] = useState<FilterKey | null>(null);
   const counterpartyOptions = useMemo(
@@ -210,6 +212,9 @@ export function LedgerListView({
           <h1 className="text-[25px] font-extrabold tracking-[-0.02em]">장부 관리</h1>
           <p className="text-muted mt-1.5 text-xs">계좌 입·출금 내역과 회비 연결 상태를 한곳에서 관리합니다.</p>
         </div>
+        <Button tone="primary" onClick={onOpenImport} className="ml-auto">
+          거래내역 가져오기
+        </Button>
       </div>
 
       <section className="border-line bg-panel rounded-[13px] border">

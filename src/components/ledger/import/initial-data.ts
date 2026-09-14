@@ -1,0 +1,91 @@
+import type { ImportDuesMatch, ImportTransaction } from '@/components/ledger/import/types';
+
+export const IMPORT_DUES_MATCHES: ImportDuesMatch[] = [
+  {
+    memberId: 'minjun',
+    memberName: '김민준',
+    studentNumber: '2024174012',
+    track: 'Backend',
+    semester: '2026년 2학기',
+    requiredAmount: 60000,
+  },
+  {
+    memberId: 'seoyeon',
+    memberName: '이서연',
+    studentNumber: '2024198033',
+    track: 'Design',
+    semester: '2026년 2학기',
+    requiredAmount: 60000,
+  },
+  {
+    memberId: 'jian',
+    memberName: '박지안',
+    studentNumber: '2023156018',
+    track: 'Android',
+    semester: '2026년 2학기',
+    requiredAmount: 60000,
+  },
+  {
+    memberId: 'somi',
+    memberName: '한소미',
+    studentNumber: '2022137044',
+    track: 'Frontend',
+    semester: '2026년 2학기',
+    requiredAmount: 50000,
+    refundReason: '탈퇴로 인한 11월 회비 반환',
+    refundAmount: 10000,
+  },
+];
+
+export function createInitialImportTransactions(): ImportTransaction[] {
+  return [
+    {
+      id: 'import-001',
+      occurredAt: '2026-11-16T09:10',
+      type: 'deposit',
+      counterparty: '김민준',
+      amount: 40000,
+      selected: true,
+      category: '회비',
+      duesMatchId: 'minjun',
+      note: '',
+      evidences: [],
+    },
+    {
+      id: 'import-002',
+      occurredAt: '2026-11-17T18:22',
+      type: 'deposit',
+      counterparty: '이서연',
+      amount: 10000,
+      selected: true,
+      category: '회비',
+      duesMatchId: 'seoyeon',
+      note: '',
+      evidences: [],
+    },
+    {
+      id: 'import-003',
+      occurredAt: '2026-11-18T08:40',
+      type: 'withdrawal',
+      counterparty: '박지안',
+      amount: 15000,
+      selected: true,
+      category: '기타',
+      duesMatchId: null,
+      note: '',
+      evidences: [],
+    },
+    {
+      id: 'import-004',
+      occurredAt: '2026-11-18T08:41',
+      type: 'withdrawal',
+      counterparty: '한소미',
+      amount: 10000,
+      selected: true,
+      category: '회비 반환',
+      duesMatchId: 'somi',
+      note: '',
+      evidences: [],
+    },
+  ];
+}
