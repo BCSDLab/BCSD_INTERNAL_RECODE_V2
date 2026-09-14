@@ -5,7 +5,7 @@ import type { ChangeEvent } from 'react';
 import { DUES_LINK_OPTIONS, REFUND_LINK_OPTIONS } from '@/components/ledger/initial-data';
 import { Button, Input, ModalFrame, Panel, Select } from '@/components/ledger/LedgerUi';
 import type { Evidence, LedgerCategory, LedgerEntry } from '@/components/ledger/types';
-import { LEDGER_CATEGORIES } from '@/components/ledger/types';
+import { LEDGER_CATEGORIES, MAX_EVIDENCE_COUNT } from '@/components/ledger/types';
 import { entryTypeLabel, formatOccurredAt, formatWon } from '@/components/ledger/utils';
 
 interface LedgerDetailViewProps {
@@ -146,16 +146,26 @@ export function LedgerDetailView({ entry, allEntries, onClose, onSave, onOpenEvi
     const files = Array.from(event.target.files ?? []);
     if (files.length === 0) return;
 
+    const remainingCount = MAX_EVIDENCE_COUNT - evidences.length;
+    if (remainingCount <= 0) {
+      setError(`증빙은 최대 ${MAX_EVIDENCE_COUNT}개까지 첨부할 수 있습니다.`);
+      event.target.value = '';
+      return;
+    }
+
+    const acceptedFiles = files.slice(0, remainingCount);
+    const exceededLimit = acceptedFiles.length < files.length;
+
     try {
       const additions = await Promise.all(
-        files.map(async (file, index): Promise<Evidence> => ({
+        acceptedFiles.map(async (file, index): Promise<Evidence> => ({
           id: `evidence-${Date.now()}-${index}`,
           name: file.name,
           dataUrl: await readAsDataUrl(file),
         })),
       );
-      setEvidences((current) => [...current, ...additions]);
-      setError('');
+      setEvidences((current) => [...current, ...additions].slice(0, MAX_EVIDENCE_COUNT));
+      setError(exceededLimit ? `증빙은 최대 ${MAX_EVIDENCE_COUNT}개까지만 첨부했습니다.` : '');
     } catch {
       setError('증빙 파일을 읽지 못했습니다. 다시 선택해주세요.');
     } finally {
@@ -170,6 +180,10 @@ export function LedgerDetailView({ entry, allEntries, onClose, onSave, onOpenEvi
     }
     if (entry.type === 'withdrawal' && evidences.length === 0) {
       setError('출금 내역은 증빙을 한 개 이상 첨부해주세요.');
+      return;
+    }
+    if (evidences.length > MAX_EVIDENCE_COUNT) {
+      setError(`증빙은 최대 ${MAX_EVIDENCE_COUNT}개까지 첨부할 수 있습니다.`);
       return;
     }
 
@@ -273,9 +287,10 @@ export function LedgerDetailView({ entry, allEntries, onClose, onSave, onOpenEvi
                             {isEditing && (
                               <button
                                 type="button"
-                                onClick={() =>
-                                  setEvidences((current) => current.filter((item) => item.id !== evidence.id))
-                                }
+                                onClick={() => {
+                                  setEvidences((current) => current.filter((item) => item.id !== evidence.id));
+                                  setError('');
+                                }}
                                 aria-label={`${evidence.name} 삭제`}
                                 className="text-faint hover:text-danger cursor-pointer bg-transparent text-sm"
                               >
@@ -293,9 +308,10 @@ export function LedgerDetailView({ entry, allEntries, onClose, onSave, onOpenEvi
                         <button
                           type="button"
                           onClick={() => evidenceInput.current?.click()}
-                          className="text-primary-text cursor-pointer bg-transparent text-[11.5px] font-semibold hover:underline"
+                          disabled={evidences.length >= MAX_EVIDENCE_COUNT}
+                          className="text-primary-text cursor-pointer bg-transparent text-[11.5px] font-semibold hover:underline disabled:cursor-default disabled:no-underline disabled:opacity-45"
                         >
-                          증빙 추가
+                          증빙 추가 ({evidences.length}/{MAX_EVIDENCE_COUNT})
                         </button>
                         <input
                           ref={evidenceInput}

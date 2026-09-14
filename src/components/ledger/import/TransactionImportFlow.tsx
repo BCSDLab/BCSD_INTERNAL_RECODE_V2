@@ -5,6 +5,7 @@ import { Button } from '@/components/ledger/LedgerUi';
 import { IMPORT_DUES_MATCHES, createInitialImportTransactions } from '@/components/ledger/import/initial-data';
 import type { ImportStep, ImportTransaction } from '@/components/ledger/import/types';
 import type { Evidence } from '@/components/ledger/types';
+import { MAX_EVIDENCE_COUNT } from '@/components/ledger/types';
 import { formatWon } from '@/components/ledger/utils';
 
 interface TransactionImportFlowProps {
@@ -26,6 +27,15 @@ function displayTime(value: string) {
 
 function matchFor(transaction: ImportTransaction) {
   return IMPORT_DUES_MATCHES.find((match) => match.memberId === transaction.duesMatchId);
+}
+
+function readAsDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
 }
 
 function ProportionalColumns({ minimums }: { minimums: readonly number[] }) {
@@ -131,6 +141,7 @@ export function TransactionImportFlow({ onCancel, onSave }: TransactionImportFlo
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [evidenceTarget, setEvidenceTarget] = useState<string | null>(null);
+  const [evidenceError, setEvidenceError] = useState('');
   const excelInput = useRef<HTMLInputElement>(null);
   const evidenceInput = useRef<HTMLInputElement>(null);
   const pendingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -164,17 +175,39 @@ export function TransactionImportFlow({ onCancel, onSave }: TransactionImportFlo
     setFileName(file.name);
   }
 
-  function addEvidence(file?: File) {
-    if (!file || !evidenceTarget) return;
-    const evidence: Evidence = { id: `import-evidence-${Date.now()}`, name: file.name };
-    const reader = new FileReader();
-    reader.onload = () => {
-      updateTransaction(evidenceTarget, (transaction) => ({
+  async function addEvidences(fileList: FileList | null) {
+    const files = Array.from(fileList ?? []);
+    const target = evidenceTarget;
+    if (files.length === 0 || !target) return;
+
+    const currentCount = transactions.find((transaction) => transaction.id === target)?.evidences.length ?? 0;
+    const remainingCount = MAX_EVIDENCE_COUNT - currentCount;
+    if (remainingCount <= 0) {
+      setEvidenceError(`증빙은 거래당 최대 ${MAX_EVIDENCE_COUNT}개까지 첨부할 수 있습니다.`);
+      return;
+    }
+
+    const acceptedFiles = files.slice(0, remainingCount);
+    const exceededLimit = acceptedFiles.length < files.length;
+
+    try {
+      const selectedAt = Date.now();
+      const evidences = await Promise.all(
+        acceptedFiles.map(async (file, index): Promise<Evidence> => ({
+          id: `import-evidence-${selectedAt}-${index}`,
+          name: file.name,
+          dataUrl: await readAsDataUrl(file),
+        })),
+      );
+
+      updateTransaction(target, (transaction) => ({
         ...transaction,
-        evidences: [...transaction.evidences, { ...evidence, dataUrl: String(reader.result) }],
+        evidences: [...transaction.evidences, ...evidences].slice(0, MAX_EVIDENCE_COUNT),
       }));
-    };
-    reader.readAsDataURL(file);
+      setEvidenceError(exceededLimit ? `증빙은 거래당 최대 ${MAX_EVIDENCE_COUNT}개까지만 첨부했습니다.` : '');
+    } catch {
+      setEvidenceError('증빙 파일을 읽지 못했습니다. 다시 선택해주세요.');
+    }
   }
 
   function analyzeFile() {
@@ -404,13 +437,22 @@ export function TransactionImportFlow({ onCancel, onSave }: TransactionImportFlo
               ref={evidenceInput}
               type="file"
               accept="image/*"
+              multiple
               className="hidden"
               onChange={(event) => {
-                addEvidence(event.target.files?.[0]);
+                void addEvidences(event.target.files);
                 event.target.value = '';
               }}
             />
             <div className="px-[22px] pt-4 pb-5">
+              <div className="mb-2 flex items-center gap-3 text-[11px]">
+                <span className="text-faint">거래당 증빙 최대 {MAX_EVIDENCE_COUNT}개</span>
+                {evidenceError && (
+                  <span role="alert" className="text-danger ml-auto font-semibold">
+                    {evidenceError}
+                  </span>
+                )}
+              </div>
               <div className="border-line overflow-x-auto rounded-[13px] border">
                 <table className="w-full min-w-[680px] table-fixed border-collapse text-center">
                   <ProportionalColumns minimums={[80, 56, 68, 80, 100, 316]} />
@@ -452,12 +494,13 @@ export function TransactionImportFlow({ onCancel, onSave }: TransactionImportFlo
                                   <button
                                     type="button"
                                     aria-label={`${evidence.name} 제거`}
-                                    onClick={() =>
+                                    onClick={() => {
                                       updateTransaction(transaction.id, (current) => ({
                                         ...current,
                                         evidences: current.evidences.filter((item) => item.id !== evidence.id),
-                                      }))
-                                    }
+                                      }));
+                                      setEvidenceError('');
+                                    }}
                                     className="text-faint cursor-pointer"
                                   >
                                     ×
@@ -466,13 +509,15 @@ export function TransactionImportFlow({ onCancel, onSave }: TransactionImportFlo
                               ))}
                               <button
                                 type="button"
+                                disabled={transaction.evidences.length >= MAX_EVIDENCE_COUNT}
                                 onClick={() => {
                                   setEvidenceTarget(transaction.id);
+                                  setEvidenceError('');
                                   evidenceInput.current?.click();
                                 }}
-                                className="border-dash text-muted cursor-pointer rounded-full border border-dashed px-2.5 py-1 text-[11.5px]"
+                                className="border-dash text-muted cursor-pointer rounded-full border border-dashed px-2.5 py-1 text-[11.5px] disabled:cursor-default disabled:opacity-45"
                               >
-                                + 추가
+                                + 추가 ({transaction.evidences.length}/{MAX_EVIDENCE_COUNT})
                               </button>
                             </>
                           )}

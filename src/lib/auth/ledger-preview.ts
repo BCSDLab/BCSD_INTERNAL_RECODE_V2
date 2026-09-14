@@ -18,5 +18,5 @@ export const LEDGER_PREVIEW_SESSION: Session = {
 };
 
 export function isLedgerPreviewPath(pathname: string) {
-  return LEDGER_PREVIEW_ENABLED && pathname === '/ledger';
+  return LEDGER_PREVIEW_ENABLED && (pathname === '/ledger' || pathname.startsWith('/ledger/'));
 }

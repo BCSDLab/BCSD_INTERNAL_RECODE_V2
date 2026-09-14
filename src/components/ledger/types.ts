@@ -12,6 +12,8 @@ export interface Evidence {
   dataUrl?: string;
 }
 
+export const MAX_EVIDENCE_COUNT = 5;
+
 export interface DuesLink {
   memberId: string;
   memberName: string;

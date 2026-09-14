@@ -4,7 +4,7 @@ import { useRef, useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 import { Button, Input, ModalFrame, Select } from '@/components/ledger/LedgerUi';
 import type { EntryType, Evidence, LedgerCategory, LedgerEntry } from '@/components/ledger/types';
-import { LEDGER_CATEGORIES } from '@/components/ledger/types';
+import { LEDGER_CATEGORIES, MAX_EVIDENCE_COUNT } from '@/components/ledger/types';
 
 interface LedgerEntryFormProps {
   entry: LedgerEntry;
@@ -39,16 +39,26 @@ export function LedgerEntryForm({ entry, currentBalance, onClose, onSave }: Ledg
     const files = Array.from(event.target.files ?? []);
     if (files.length === 0) return;
 
+    const remainingCount = MAX_EVIDENCE_COUNT - evidences.length;
+    if (remainingCount <= 0) {
+      setError(`증빙은 최대 ${MAX_EVIDENCE_COUNT}개까지 첨부할 수 있습니다.`);
+      event.target.value = '';
+      return;
+    }
+
+    const acceptedFiles = files.slice(0, remainingCount);
+    const exceededLimit = acceptedFiles.length < files.length;
+
     try {
       const additions = await Promise.all(
-        files.map(async (file, index): Promise<Evidence> => ({
+        acceptedFiles.map(async (file, index): Promise<Evidence> => ({
           id: `evidence-${Date.now()}-${index}`,
           name: file.name,
           dataUrl: await readAsDataUrl(file),
         })),
       );
-      setEvidences((current) => [...current, ...additions]);
-      setError('');
+      setEvidences((current) => [...current, ...additions].slice(0, MAX_EVIDENCE_COUNT));
+      setError(exceededLimit ? `증빙은 최대 ${MAX_EVIDENCE_COUNT}개까지만 첨부했습니다.` : '');
     } catch {
       setError('증빙 파일을 읽지 못했습니다. 다시 선택해주세요.');
     } finally {
@@ -74,6 +84,10 @@ export function LedgerEntryForm({ entry, currentBalance, onClose, onSave }: Ledg
 
     if (type === 'withdrawal' && evidences.length === 0) {
       setError('출금 내역은 증빙을 한 개 이상 첨부해주세요.');
+      return;
+    }
+    if (evidences.length > MAX_EVIDENCE_COUNT) {
+      setError(`증빙은 최대 ${MAX_EVIDENCE_COUNT}개까지 첨부할 수 있습니다.`);
       return;
     }
 
@@ -231,12 +245,13 @@ export function LedgerEntryForm({ entry, currentBalance, onClose, onSave }: Ledg
             <section>
               <div className="mb-2 flex items-center">
                 <span className="text-muted text-[11px] font-bold">지출 증빙 · 한 개 이상 필수</span>
-                <span className="text-faint ml-auto text-[10.5px]">이미지 또는 PDF</span>
+                <span className="text-faint ml-auto text-[10.5px]">이미지 또는 PDF · 최대 {MAX_EVIDENCE_COUNT}개</span>
               </div>
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="border-dash bg-panel2 text-muted hover:border-primary-line hover:bg-primary-sunken flex h-[104px] w-full cursor-pointer flex-col items-center justify-center rounded-[10px] border border-dashed text-xs"
+                disabled={evidences.length >= MAX_EVIDENCE_COUNT}
+                className="border-dash bg-panel2 text-muted hover:border-primary-line hover:bg-primary-sunken flex h-[104px] w-full cursor-pointer flex-col items-center justify-center rounded-[10px] border border-dashed text-xs disabled:cursor-default disabled:opacity-45"
               >
                 <span className="text-primary-text mb-1 text-xl">+</span>
                 영수증·이체확인증을 선택하세요
@@ -259,7 +274,10 @@ export function LedgerEntryForm({ entry, currentBalance, onClose, onSave }: Ledg
                       {evidence.name}
                       <button
                         type="button"
-                        onClick={() => setEvidences((items) => items.filter((item) => item.id !== evidence.id))}
+                        onClick={() => {
+                          setEvidences((items) => items.filter((item) => item.id !== evidence.id));
+                          setError('');
+                        }}
                         aria-label={`${evidence.name} 삭제`}
                         className="text-faint cursor-pointer text-sm"
                       >

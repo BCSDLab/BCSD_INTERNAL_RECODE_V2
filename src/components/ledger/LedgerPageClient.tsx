@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import Link from 'next/link';
 import { EvidenceViewer } from '@/components/ledger/EvidenceViewer';
 import { INITIAL_LEDGER_ENTRIES, EMPTY_LEDGER_FILTERS } from '@/components/ledger/initial-data';
 import { LedgerDetailView } from '@/components/ledger/LedgerDetailView';
@@ -10,6 +11,7 @@ import { IMPORT_DUES_MATCHES } from '@/components/ledger/import/initial-data';
 import { TransactionImportFlow } from '@/components/ledger/import/TransactionImportFlow';
 import type { ImportTransaction } from '@/components/ledger/import/types';
 import type { LedgerEntry, LedgerFilters, LedgerScreen } from '@/components/ledger/types';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { isCompleteLedgerDate } from '@/components/ledger/utils';
 
 type EvidenceState = { entryId: string; evidenceId: string } | null;
@@ -136,16 +138,22 @@ export function LedgerPageClient() {
           >
             장부
           </span>
-          <span aria-disabled="true" className="text-faint text-[13px] font-medium">
+          <Link
+            href="/ledger/dues"
+            className="text-muted hover:text-primary-text text-[13px] font-medium transition-colors"
+          >
             회비
-          </span>
+          </Link>
           <span aria-disabled="true" className="text-faint text-[13px] font-medium">
             면제 사유
           </span>
         </nav>
-        <span className="border-primary-line bg-primary-soft text-primary-text ml-auto rounded-full border px-3 py-1.5 text-[11.5px] font-semibold">
-          관리자
-        </span>
+        <div className="ml-auto flex items-center gap-2.5">
+          <span className="border-primary-line bg-primary-soft text-primary-text rounded-full border px-3 py-1.5 text-[11.5px] font-semibold">
+            관리자
+          </span>
+          <ThemeToggle />
+        </div>
       </header>
 
       <LedgerListView
