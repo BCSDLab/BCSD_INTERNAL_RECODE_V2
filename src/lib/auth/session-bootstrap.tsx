@@ -3,6 +3,7 @@
 import { usePathname } from 'next/navigation';
 import { useEffect } from 'react';
 import { getMe, reissue } from '@/api/auth/api';
+import { isLedgerPreviewPath, LEDGER_PREVIEW_SESSION } from '@/lib/auth/ledger-preview';
 import { setSession } from '@/lib/auth/session-store';
 
 export function SessionBootstrap() {
@@ -10,6 +11,11 @@ export function SessionBootstrap() {
 
   useEffect(() => {
     if (pathname === '/logout') {
+      return;
+    }
+
+    if (isLedgerPreviewPath(pathname)) {
+      setSession(LEDGER_PREVIEW_SESSION);
       return;
     }
 

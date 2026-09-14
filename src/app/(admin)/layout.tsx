@@ -9,6 +9,7 @@ import { gameQueries } from '@/api/game/queries';
 import { memberQueries } from '@/api/member/queries';
 import { trackQueries } from '@/api/track/queries';
 import { useAuthGuard } from '@/hooks/useAuthGuard';
+import { isLedgerPreviewPath } from '@/lib/auth/ledger-preview';
 import { setSession } from '@/lib/auth/session-store';
 import { MEMBER_TYPE_LABELS, TRACK_LABELS } from '@/lib/member-labels';
 
@@ -20,6 +21,7 @@ const NAV_ITEMS = [
   { href: '/home', label: '메인' },
   { href: '/members', label: '인명부' },
   { href: '/reservations', label: '동아리방 예약' },
+  { href: '/ledger', label: '장부/회비 관리' },
 ] as const;
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -28,19 +30,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname();
 
   const isAuthenticated = status === 'ready' && !!session;
+  const shouldFetchCounts = isAuthenticated && !isLedgerPreviewPath(pathname);
 
-  const { data: trackPages } = useQuery({ ...trackQueries.trackPages(), enabled: isAuthenticated });
-  const { data: games } = useQuery({ ...gameQueries.games(), enabled: isAuthenticated });
+  const { data: trackPages } = useQuery({ ...trackQueries.trackPages(), enabled: shouldFetchCounts });
+  const { data: games } = useQuery({ ...gameQueries.games(), enabled: shouldFetchCounts });
 
   // 활동 총 건수는 size=1로 첫 페이지만 받아 totalElements만 읽는다.
   // 커리큘럼은 시안에 "18주"가 있지만 전체 주차를 세는 저렴한 엔드포인트가 없어 비워 둔다.
-  const { data: activityPage } = useQuery({ ...activityQueries.total(), enabled: isAuthenticated });
+  const { data: activityPage } = useQuery({ ...activityQueries.total(), enabled: shouldFetchCounts });
 
   // 인명부 총원. counts는 필터와 무관한 전체 집계라 1건만 받아도 총원이 정확하다.
   // 관리자와 일반이 읽는 경로가 다르므로 role로 갈라 준다(일반도 목록 조회는 허용된다).
   const { data: memberPage } = useQuery({
     ...memberQueries.total(session?.member.role === 'ADMIN'),
-    enabled: isAuthenticated,
+    enabled: shouldFetchCounts,
   });
 
   if (!isAuthenticated) {

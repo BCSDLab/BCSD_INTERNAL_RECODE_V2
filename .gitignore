@@ -23,6 +23,7 @@
 # misc
 .DS_Store
 *.pem
+/와이어프레임 기반 디자인 생성/
 
 # debug
 npm-debug.log*
