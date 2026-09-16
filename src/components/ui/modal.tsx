@@ -11,6 +11,11 @@ import { Button } from './button';
  * Base UI Dialog로 감싸서 포커스 트랩·ESC 닫기·스크롤 락을 얻는다 — 이전 구현은 이 셋이
  * 전부 없었다. `onClose`를 부르면 부모가 이 컴포넌트를 언마운트하는 방식(항상 open)이라
  * `open`은 항상 true로 두고, Base UI가 닫으려 할 때만 onClose를 호출한다.
+ *
+ * Dialog.Portal은 AdminLayout의 `text-text` 래퍼 바깥(document.body 바로 밑)에 그려진다.
+ * body 기본 글자색은 auth 화면 전용 토큰(--foreground, 흰색 고정)이라, 명시적 색 클래스가
+ * 없는 텍스트(제목 등)가 라이트 모드에서 흰 배경에 흰 글자로 안 보이게 된다. Popup에
+ * text-text를 직접 걸어 관리자 색상 컨텍스트를 이 트리 안에서 다시 세운다.
  */
 export function Modal({
   eyebrow,
@@ -33,7 +38,7 @@ export function Modal({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(10,8,16,.55)] p-8">
           <Dialog.Popup
             style={{ width }}
-            className="border-line2 bg-panel flex max-h-full max-w-full flex-col overflow-hidden rounded-[18px] border outline-none"
+            className="border-line2 bg-panel text-text flex max-h-full max-w-full flex-col overflow-hidden rounded-[18px] border outline-none"
           >
             <div className="border-line flex items-center gap-3 border-b px-6 py-[18px]">
               <div className="flex min-w-0 flex-col gap-1">

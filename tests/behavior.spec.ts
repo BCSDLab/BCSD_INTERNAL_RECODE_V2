@@ -62,6 +62,18 @@ test.describe('Button (Base UI + cva 전환)', () => {
 });
 
 test.describe('Modal (Base UI Dialog 전환)', () => {
+  test('제목 글자색이 배경과 실제로 구분된다 — Dialog.Portal이 AdminLayout의 text-text 밖에 그려져 흰 배경에 흰 글자가 됐던 회귀', async ({
+    page,
+  }) => {
+    await gotoAsAdmin(page, '/members');
+    await page.getByRole('button', { name: '+ 부원 추가' }).click();
+    const title = page.getByText('새 부원');
+    await expect(title).toBeVisible();
+
+    const color = await title.evaluate((el) => getComputedStyle(el).color);
+    expect(color).not.toBe('rgb(255, 255, 255)');
+  });
+
   test('열리면 포커스가 다이얼로그 안으로 이동한다(포커스 트랩) — 이전 구현엔 없던 동작', async ({ page }) => {
     await gotoAsAdmin(page, '/members');
     await page.getByRole('button', { name: '+ 부원 추가' }).click();

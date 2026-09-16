@@ -23,6 +23,9 @@ export default defineConfig({
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   expect: {
-    toHaveScreenshot: { maxDiffPixelRatio: 0.01, animations: 'disabled' },
+    // 0.01(전체 픽셀의 1%)은 느슨했다 — 모달 안 제목 한 줄이 흰 배경에 흰 글자로 안 보이는
+    // 실제 버그가 이 임계값 밑에 숨어 통과된 적이 있다(모달이 풀페이지 스크린샷의 작은
+    // 영역이라 전체 대비 비중이 작았다). 0.001로 좁혀서 이런 국소적 회귀도 잡히게 한다.
+    toHaveScreenshot: { maxDiffPixelRatio: 0.001, animations: 'disabled' },
   },
 });
