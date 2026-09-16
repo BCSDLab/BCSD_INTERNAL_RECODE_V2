@@ -31,7 +31,17 @@
   }
 }
 @custom-variant data-selected {
-  &:where([data-selected='true']) {
+  &:where([data-selected]:not([data-selected='false'])) {
+    @slot;
+  }
+}
+@custom-variant data-highlighted {
+  &:where([data-highlighted]:not([data-highlighted='false'])) {
+    @slot;
+  }
+}
+@custom-variant data-placeholder {
+  &:where([data-placeholder]:not([data-placeholder='false'])) {
     @slot;
   }
 }

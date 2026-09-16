@@ -13,6 +13,7 @@ import { ApiError } from '@/api/client';
 import { Button } from '@/components/ui/button';
 import { DragHandle, Field, INPUT_CLASS } from '@/components/ui/field';
 import { ConfirmModal, Modal } from '@/components/ui/modal';
+import { Select } from '@/components/ui/select';
 import { Eyebrow } from '@/components/ui/section-card';
 import { formatWeekLabel, parseWeekLabel } from './week-label';
 
@@ -102,36 +103,32 @@ export function CurriculumRail({
   return (
     <div className="border-line flex min-w-0 flex-col gap-4 border-r px-5 pt-[22px] pb-8">
       <Field label={<Eyebrow>트랙</Eyebrow>}>
-        <select
-          value={trackPageId}
-          onChange={(e) => onSelectTrackPage(e.target.value ? Number(e.target.value) : '')}
+        <Select
+          value={String(trackPageId)}
+          onValueChange={(v) => onSelectTrackPage(v ? Number(v) : '')}
+          options={[
+            { value: '', label: '선택하세요' },
+            ...trackPages.map((trackPage) => ({ value: String(trackPage.id), label: trackPage.displayName })),
+          ]}
           className={INPUT_CLASS}
-        >
-          <option value="">선택하세요</option>
-          {trackPages.map((trackPage) => (
-            <option key={trackPage.id} value={trackPage.id}>
-              {trackPage.displayName}
-            </option>
-          ))}
-        </select>
+        />
       </Field>
 
       {trackPageId !== '' && (
         <div className="flex flex-col gap-2">
           <Field label={<Eyebrow>세트</Eyebrow>}>
-            <select
-              value={curriculumId}
-              onChange={(e) => onSelectCurriculum(e.target.value ? Number(e.target.value) : '')}
+            <Select
+              value={String(curriculumId)}
+              onValueChange={(v) => onSelectCurriculum(v ? Number(v) : '')}
+              options={[
+                { value: '', label: '선택하세요' },
+                ...curriculums.map((set) => ({
+                  value: String(set.id),
+                  label: `${set.name}${set.isPublished ? ' · 공개' : ''}`,
+                })),
+              ]}
               className={INPUT_CLASS}
-            >
-              <option value="">선택하세요</option>
-              {curriculums.map((set) => (
-                <option key={set.id} value={set.id}>
-                  {set.name}
-                  {set.isPublished ? ' · 공개' : ''}
-                </option>
-              ))}
-            </select>
+            />
           </Field>
           <div className="flex flex-wrap gap-2">
             <Button variant="dashed" onClick={() => setIsAddSetOpen(true)} className="flex-1">
@@ -372,18 +369,15 @@ function AddSetModal({
     >
       <div className="flex flex-col gap-3.5 px-6 py-5">
         <Field label="다른 세트 복제 (선택)">
-          <select
-            value={sourceId}
-            onChange={(e) => setSourceId(e.target.value ? Number(e.target.value) : '')}
+          <Select
+            value={String(sourceId)}
+            onValueChange={(v) => setSourceId(v ? Number(v) : '')}
+            options={[
+              { value: '', label: '복제하지 않음' },
+              ...existing.map((set) => ({ value: String(set.id), label: set.name })),
+            ]}
             className={INPUT_CLASS}
-          >
-            <option value="">복제하지 않음</option>
-            {existing.map((set) => (
-              <option key={set.id} value={set.id}>
-                {set.name}
-              </option>
-            ))}
-          </select>
+          />
         </Field>
         <Field label="이름" hint={isClone ? '비워두면 원본 이름을 씁니다.' : undefined}>
           <input value={name} onChange={(e) => setName(e.target.value)} className={INPUT_CLASS} />

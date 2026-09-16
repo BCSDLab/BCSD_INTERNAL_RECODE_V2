@@ -131,3 +131,44 @@ test.describe('Chip (Base UI Toggle 전환)', () => {
     await expect(chip).toHaveAttribute('aria-pressed', 'true');
   });
 });
+
+test.describe('Select (네이티브 select 대체)', () => {
+  test('트리거를 클릭해 팝업에서 옵션을 고르면 표시값이 바뀐다', async ({ page }) => {
+    await gotoAsAdmin(page, '/members');
+    await page.getByRole('button', { name: '+ 부원 추가' }).click();
+    await expect(page.getByText('새 부원')).toBeVisible();
+
+    const trackTrigger = page.getByRole('combobox', { name: '트랙 *' });
+    await expect(trackTrigger).toHaveText('FrontEnd');
+
+    await trackTrigger.click();
+    await page.getByRole('option', { name: 'BackEnd' }).click();
+    await expect(trackTrigger).toHaveText('BackEnd');
+  });
+});
+
+test.describe('Checkbox (네이티브 checkbox 대체)', () => {
+  test('클릭하면 체크 상태가 바뀌고, 선택된 인원 수가 반영된다', async ({ page }) => {
+    await gotoAsAdmin(page, '/tracks/1');
+    await page.getByRole('button', { name: '+ 부원 배정 · 명부 검색' }).click();
+    await page.getByRole('heading', { name: '부원 배정' }).waitFor();
+    await page.getByText('이영희').waitFor();
+
+    const checkbox = page.getByRole('checkbox');
+    await expect(checkbox).toHaveAttribute('aria-checked', 'false');
+    await checkbox.click();
+    await expect(checkbox).toHaveAttribute('aria-checked', 'true');
+    await expect(page.getByText('1명 선택됨')).toBeVisible();
+  });
+});
+
+test.describe('Tabs (games/[gameId] 탭 전환)', () => {
+  test('탭을 클릭하면 패널이 바뀌고 이전 탭 내용은 언마운트된다', async ({ page }) => {
+    await gotoAsAdmin(page, '/games/1');
+    await expect(page.getByText('제작 트랙')).toBeVisible();
+
+    await page.getByRole('tab', { name: '등급정보' }).click();
+    await expect(page.getByText('제작 트랙')).toBeHidden();
+    await expect(page.getByText('내용정보 표시')).toBeVisible();
+  });
+});

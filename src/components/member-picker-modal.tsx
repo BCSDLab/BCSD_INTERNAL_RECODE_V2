@@ -8,6 +8,7 @@ import { EMPTY_MEMBER_FILTERS } from '@/api/member/types';
 import { TRACK_OPTIONS } from '@/app/(admin)/members/components/options';
 import { Badge, Chip } from '@/components/ui/chip';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { INPUT_CLASS_COMPACT } from '@/components/ui/field';
 import { Modal } from '@/components/ui/modal';
 
@@ -145,11 +146,7 @@ export function MemberPickerModal({
                 key={member.id}
                 className="hover:bg-panel2 flex cursor-pointer items-center gap-2.5 rounded-[9px] px-2.5 py-2 text-[13px]"
               >
-                <input
-                  type="checkbox"
-                  checked={selectedIds.includes(member.id)}
-                  onChange={() => toggleSelected(member.id)}
-                />
+                <Checkbox checked={selectedIds.includes(member.id)} onCheckedChange={() => toggleSelected(member.id)} />
                 {member.photoUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={member.photoUrl} alt="" className="h-[22px] w-[22px] flex-none rounded-full object-cover" />
