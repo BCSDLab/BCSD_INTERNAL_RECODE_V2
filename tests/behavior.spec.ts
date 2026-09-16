@@ -113,3 +113,21 @@ test.describe('Modal (Base UI Dialog 전환)', () => {
     await expect(detailTitle).toBeHidden();
   });
 });
+
+test.describe('Chip (Base UI Toggle 전환)', () => {
+  test('키보드로 포커스해 Enter로 누를 수 있다 — 이전엔 <span>이라 탭도, 키보드 조작도 안 됐다', async ({
+    page,
+  }) => {
+    await gotoAsAdmin(page, '/members');
+
+    const filterSidebar = page.locator('aside', { hasText: '활동 여부' });
+    const chip = filterSidebar.getByRole('button', { name: /^활동/ });
+    await expect(chip).toBeVisible();
+    await expect(chip).toHaveAttribute('aria-pressed', 'false');
+
+    await chip.focus();
+    await expect(chip).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(chip).toHaveAttribute('aria-pressed', 'true');
+  });
+});

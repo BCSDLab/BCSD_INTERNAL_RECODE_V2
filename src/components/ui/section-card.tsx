@@ -1,8 +1,13 @@
 'use client';
 
+import { CARD_CLASS, CardAction, CardDescription, CardHeader, CardTitle } from './card';
+
 /**
  * 시안의 섹션 카드: border-line / radius 16 / bg panel / padding 22.
  * 헤더는 "제목(12px 600 대문자 자간.14em muted) + 설명(11px faint) + 오른쪽 액션".
+ * ui/card.tsx의 조립 블록으로 구성된다 — 이 슬롯 API(title/caption/action)가 안 맞는
+ * 화면은 CardHeader/CardTitle을 직접 쓴다. 바깥 태그는 접근성 랜드마크(section)를
+ * 유지하려고 Card(div)를 재사용하지 않고 CARD_CLASS만 가져다 쓴다.
  */
 export function SectionCard({
   title,
@@ -18,12 +23,12 @@ export function SectionCard({
   className?: string;
 }) {
   return (
-    <section className={`border-line bg-panel rounded-2xl border p-[22px] ${className}`}>
-      <div className="flex flex-wrap items-center gap-2.5 pb-4">
-        <h2 className="text-muted m-0 text-xs font-semibold tracking-[.14em] whitespace-nowrap uppercase">{title}</h2>
-        {caption && <span className="text-faint text-[11px]">{caption}</span>}
-        {action && <div className="ml-auto flex-none">{action}</div>}
-      </div>
+    <section className={`${CARD_CLASS} ${className}`}>
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+        {caption && <CardDescription>{caption}</CardDescription>}
+        {action && <CardAction>{action}</CardAction>}
+      </CardHeader>
       {children}
     </section>
   );

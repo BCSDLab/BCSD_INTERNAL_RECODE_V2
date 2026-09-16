@@ -1,10 +1,16 @@
 'use client';
 
+import { Toggle } from '@base-ui/react/toggle';
+
 /**
  * 시안의 알약형 칩. **선택 상태는 primary로 채우지 않는다** — primary-soft(10%) 배경 +
  * primary-line 테두리 + primary-text 글자다. primary 채우기는 주 액션 버튼 전용이다.
  *
  * size: md(13px/8·14) 트랙·카테고리 칩 / sm(12px/6·12) 연도 필터 / xs(11px/5·11) 등급 필터
+ *
+ * 이전엔 `<span selected onClick>`이라 키보드로 focus·조작이 안 됐다(탭 이동도 안 되고
+ * Enter/Space도 안 먹었다). Base UI Toggle로 바꿔 실제 <button>에 aria-pressed까지
+ * 얻는다 — 호출부는 selected→pressed, onClick→onPressedChange로만 바꾸면 된다.
  */
 type ChipSize = 'md' | 'sm' | 'xs';
 
@@ -16,28 +22,29 @@ const SIZES: Record<ChipSize, string> = {
 
 export function Chip({
   size = 'md',
-  selected = false,
   className = '',
   children,
   ...props
-}: React.HTMLAttributes<HTMLSpanElement> & { size?: ChipSize; selected?: boolean }) {
+}: Omit<Toggle.Props, 'className'> & { size?: ChipSize; className?: string }) {
   return (
-    <span
-      className={`inline-flex flex-none items-center gap-[7px] rounded-full whitespace-nowrap transition-colors ${
-        SIZES[size]
-      } ${
-        selected
-          ? 'border-primary-line bg-primary-soft text-primary-text border font-medium'
-          : 'border-line text-muted hover:border-line2 hover:text-text border'
-      } ${className}`}
+    <Toggle
+      className={(state) =>
+        `inline-flex flex-none cursor-pointer items-center gap-[7px] rounded-full whitespace-nowrap transition-colors ${
+          SIZES[size]
+        } ${
+          state.pressed
+            ? 'border-primary-line bg-primary-soft text-primary-text border font-medium'
+            : 'border-line text-muted hover:border-line2 hover:text-text border'
+        } ${className}`
+      }
       {...props}
     >
       {children}
-    </span>
+    </Toggle>
   );
 }
 
-/** 칩 줄 끝의 "+ 추가" 점선 칩. */
+/** 칩 줄 끝의 "+ 추가" 점선 칩. 두 상태를 오가는 토글이 아니라 액션 트리거라 그대로 버튼이다. */
 export function DashedChip({
   size = 'md',
   className = '',
