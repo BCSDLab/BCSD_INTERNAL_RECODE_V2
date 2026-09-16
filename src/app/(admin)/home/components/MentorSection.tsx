@@ -9,6 +9,7 @@ import { addMentorSlot, removeMentorSlot, reorderMentorSlots } from '@/api/home/
 import { homeKeys, homeQueries } from '@/api/home/queries';
 import type { AdminMentorSlotResponse } from '@/api/home/types';
 import { ApiError } from '@/api/client';
+import { Avatar } from '@/components/ui/avatar';
 import { MemberPickerModal } from '@/components/member-picker-modal';
 import { SectionCard } from '@/components/ui/section-card';
 
@@ -126,12 +127,7 @@ function MentorRow({ slot, onRemove }: { slot: AdminMentorSlotResponse; onRemove
       <span {...attributes} {...listeners} className="text-faint flex-none cursor-grab text-[13px] select-none">
         ⠿
       </span>
-      {slot.profileImageUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={slot.profileImageUrl} alt="" className="h-[26px] w-[26px] flex-none rounded-full object-cover" />
-      ) : (
-        <span className="bg-primary h-[26px] w-[26px] flex-none rounded-full" />
-      )}
+      <Avatar src={slot.profileImageUrl} name={slot.name} size="md" />
       <div className="flex min-w-0 flex-col">
         <span className="truncate text-[13px]">{slot.name}</span>
         <span className="text-faint truncate text-[11px]">{slot.trackName} · 멘토</span>

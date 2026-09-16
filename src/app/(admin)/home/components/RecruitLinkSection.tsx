@@ -8,6 +8,7 @@ import { ApiError } from '@/api/client';
 import { Button } from '@/components/ui/button';
 import { Field, INPUT_CLASS } from '@/components/ui/field';
 import { SectionCard } from '@/components/ui/section-card';
+import { SwitchRow } from '@/components/ui/switch';
 
 interface FormValues {
   googleFormUrl: string;
@@ -83,28 +84,26 @@ export function RecruitLinkSection() {
         </Field>
 
         <div className="flex gap-3.5">
-          <Field label="모집 상태" className="flex-1">
-            <button
-              type="button"
-              onClick={() => setForm((prev) => ({ ...prev, isOpen: !prev.isOpen }))}
-              className={`flex w-full cursor-pointer items-center gap-[9px] rounded-[10px] border px-[13px] py-[11px] ${
+          {/*
+            Field는 <label>로 감싸는데, 그 안의 SwitchRow도 자체적으로 클릭·hidden input을
+            관리하는 컨트롤이라 <label> 안에 두면 클릭이 이중으로 먹을 수 있다(암묵적
+            label-for 연결 + SwitchRow 자체 클릭이 겹침). 그래서 이 필드만 Field를 쓰지
+            않고 같은 캡션 레이아웃을 <div>로 직접 만든다.
+          */}
+          <div className="flex min-w-0 flex-1 flex-col gap-[7px]">
+            <span className="text-muted text-xs whitespace-nowrap">모집 상태</span>
+            <SwitchRow
+              checked={form.isOpen}
+              onCheckedChange={(next) => setForm((prev) => ({ ...prev, isOpen: next }))}
+              className={`w-full gap-[9px] rounded-[10px] border px-[13px] py-[11px] ${
                 form.isOpen ? 'border-primary-line bg-primary-soft' : 'border-line bg-panel2'
               }`}
             >
               <span className={`text-sm whitespace-nowrap ${form.isOpen ? 'text-primary-text' : 'text-muted'}`}>
                 {form.isOpen ? '모집 중 · 버튼 활성' : '모집 종료'}
               </span>
-              <span
-                className={`relative ml-auto h-[18px] w-8 flex-none rounded-full ${form.isOpen ? 'bg-primary' : 'bg-line2'}`}
-              >
-                <span
-                  className={`bg-on-primary absolute top-0.5 h-3.5 w-3.5 rounded-full transition-all ${
-                    form.isOpen ? 'right-0.5' : 'bg-panel left-0.5'
-                  }`}
-                />
-              </span>
-            </button>
-          </Field>
+            </SwitchRow>
+          </div>
           <Field label="모집 종료 예정일" hint="선택" className="w-[180px] flex-none">
             <input
               type="date"

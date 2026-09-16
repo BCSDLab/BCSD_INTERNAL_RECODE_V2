@@ -2,7 +2,9 @@
 
 import type { Track } from '@/api/auth/types';
 import type { MemberDirectoryItem, MemberSortKey, SortDirection } from '@/api/member/types';
+import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/chip';
+import { Switch } from '@/components/ui/switch';
 import { formatPhoneNumber } from '@/lib/format-phone';
 import {
   ACADEMIC_STATUS_LABELS,
@@ -308,17 +310,8 @@ function MemberAvatar({
   isAdmin: boolean;
   onChangePhoto: (member: MemberDirectoryItem) => void;
 }) {
-  const inner = member.photoUrl ? (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img src={member.photoUrl} alt="" className="h-full w-full rounded-full object-cover" />
-  ) : (
-    <span className="bg-primary text-on-primary flex h-full w-full items-center justify-center rounded-full text-xs font-semibold">
-      {member.name.slice(0, 1)}
-    </span>
-  );
-
   if (!isAdmin) {
-    return <span className="block h-[34px] w-[34px] flex-none overflow-hidden rounded-full">{inner}</span>;
+    return <Avatar src={member.photoUrl} name={member.name} size="lg" />;
   }
 
   return (
@@ -326,9 +319,9 @@ function MemberAvatar({
       type="button"
       onClick={() => onChangePhoto(member)}
       title="사진 변경"
-      className="hover:ring-primary-line block h-[34px] w-[34px] flex-none cursor-pointer overflow-hidden rounded-full transition-shadow hover:ring-2"
+      className="hover:ring-primary-line block flex-none cursor-pointer rounded-full transition-shadow hover:ring-2"
     >
-      {inner}
+      <Avatar src={member.photoUrl} name={member.name} size="lg" />
     </button>
   );
 }
@@ -344,21 +337,9 @@ function ActiveToggle({
   onToggle: () => void;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onToggle}
-      disabled={disabled}
-      aria-pressed={active}
-      className="flex cursor-pointer items-center gap-2 whitespace-nowrap disabled:cursor-default disabled:opacity-45"
-    >
-      <span className={`relative h-[18px] w-8 flex-none rounded-full ${active ? 'bg-primary' : 'bg-line2'}`}>
-        <span
-          className={`absolute top-0.5 h-3.5 w-3.5 rounded-full transition-all ${
-            active ? 'bg-on-primary right-0.5' : 'bg-panel left-0.5'
-          }`}
-        />
-      </span>
+    <label className="flex cursor-pointer items-center gap-2 whitespace-nowrap">
+      <Switch checked={active} onCheckedChange={onToggle} disabled={disabled} />
       <span className={`text-[11px] ${active ? 'text-primary-text' : 'text-faint'}`}>{active ? '활동' : '비활동'}</span>
-    </button>
+    </label>
   );
 }

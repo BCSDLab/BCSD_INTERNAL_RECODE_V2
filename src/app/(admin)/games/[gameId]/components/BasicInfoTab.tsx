@@ -18,6 +18,7 @@ import { gameKeys } from '@/api/game/queries';
 import type { AdminGameDetailResponse, AdminGameMemberResponse } from '@/api/game/types';
 import { trackQueries } from '@/api/track/queries';
 import { ApiError } from '@/api/client';
+import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Field, INPUT_CLASS } from '@/components/ui/field';
 import { ConfirmModal } from '@/components/ui/modal';
@@ -265,12 +266,7 @@ function ParticipantRow({ member, onRemove }: { member: AdminGameMemberResponse;
       <span {...attributes} {...listeners} className="text-faint flex-none cursor-grab text-xs select-none">
         ⠿
       </span>
-      {member.profileImageUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={member.profileImageUrl} alt="" className="h-[26px] w-[26px] flex-none rounded-full object-cover" />
-      ) : (
-        <span className="bg-primary h-[26px] w-[26px] flex-none rounded-full" />
-      )}
+      <Avatar src={member.profileImageUrl} name={member.name} size="md" />
       <span className="truncate text-[13px]">{member.name}</span>
       <button
         type="button"
