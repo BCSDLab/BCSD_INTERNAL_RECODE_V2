@@ -52,10 +52,10 @@ for (const theme of THEMES) {
 }
 
 /**
- * 모달이 열린 상태의 화면. Phase 2(Dialog)부터는 이게 진짜 회귀 대상이다 —
- * ui/modal.tsx(Modal)와 reservations/modal-shell.tsx(ModalShell) 둘 다 커버한다.
+ * 클릭 등 상호작용 뒤의 화면(모달 열림, 탭 전환 등). Phase 2(Dialog)부터는 이게
+ * 진짜 회귀 대상이다 — 초기 렌더만 찍는 PAGES 위 스크린샷으로는 못 잡는다.
  */
-const MODAL_CASES: { name: string; path: string; open: (page: Page) => Promise<void> }[] = [
+const INTERACTION_CASES: { name: string; path: string; open: (page: Page) => Promise<void> }[] = [
   {
     name: 'members-add-modal',
     path: '/members',
@@ -82,15 +82,23 @@ const MODAL_CASES: { name: string; path: string; open: (page: Page) => Promise<v
       await page.getByText('이영희').waitFor();
     },
   },
+  {
+    name: 'game-description-editor',
+    path: '/games/1',
+    open: async (page) => {
+      await page.getByRole('tab', { name: '상세설명' }).click();
+      await page.getByText('설명입니다').waitFor();
+    },
+  },
 ];
 
 for (const theme of THEMES) {
-  test.describe(`modal states (${theme})`, () => {
+  test.describe(`interaction states (${theme})`, () => {
     test.use({
       colorScheme: theme === 'dark' ? 'dark' : 'light',
     });
 
-    for (const { name, path, open } of MODAL_CASES) {
+    for (const { name, path, open } of INTERACTION_CASES) {
       test(name, async ({ page }) => {
         await page.addInitScript(
           (t) => window.localStorage.setItem('bcsd-internal-theme', t),
