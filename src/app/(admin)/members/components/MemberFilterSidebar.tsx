@@ -98,14 +98,7 @@ function FilterChip({
   onToggle: () => void;
 }) {
   return (
-    <Chip
-      size="xs"
-      selected={selected}
-      onClick={onToggle}
-      aria-pressed={selected}
-      role="button"
-      className="cursor-pointer"
-    >
+    <Chip size="xs" pressed={selected} onPressedChange={onToggle} className="cursor-pointer">
       {label}
       {count !== undefined && <ChipCount>{count}</ChipCount>}
     </Chip>

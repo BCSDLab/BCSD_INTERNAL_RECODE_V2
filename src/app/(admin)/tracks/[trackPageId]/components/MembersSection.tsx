@@ -80,15 +80,15 @@ export function MembersSection({ trackPageId, detail }: { trackPageId: number; d
       </div>
 
       <div className="flex gap-1.5 pb-3">
-        <Chip size="xs" selected={typeFilter === null} onClick={() => setTypeFilter(null)} className="cursor-pointer">
+        <Chip size="xs" pressed={typeFilter === null} onPressedChange={() => setTypeFilter(null)} className="cursor-pointer">
           전체
         </Chip>
         {memberTypes.map((type) => (
           <Chip
             key={type}
             size="xs"
-            selected={typeFilter === type}
-            onClick={() => setTypeFilter(type)}
+            pressed={typeFilter === type}
+            onPressedChange={() => setTypeFilter(type)}
             className="cursor-pointer"
           >
             {type}
@@ -280,15 +280,20 @@ function AssignMemberModal({
         />
 
         <div className="flex flex-wrap gap-1.5">
-          <Chip size="xs" selected={trackFilter.length === 0} onClick={() => setTrackFilter([])} className="cursor-pointer">
+          <Chip
+            size="xs"
+            pressed={trackFilter.length === 0}
+            onPressedChange={() => setTrackFilter([])}
+            className="cursor-pointer"
+          >
             전체
           </Chip>
           {TRACK_OPTIONS.map((track) => (
             <Chip
               key={track}
               size="xs"
-              selected={trackFilter.includes(track)}
-              onClick={() => toggleTrack(track)}
+              pressed={trackFilter.includes(track)}
+              onPressedChange={() => toggleTrack(track)}
               className="cursor-pointer"
             >
               {track}
