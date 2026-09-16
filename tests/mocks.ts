@@ -212,6 +212,17 @@ const myReservations = {
   ],
 };
 
+const reservationDetail = {
+  id: 1,
+  date: '2026-01-01',
+  start: 600,
+  end: 720,
+  purpose: '스터디',
+  headcount: 4,
+  cancelledAt: null,
+  group: null,
+};
+
 const routes: RouteEntry[] = [
   { method: 'GET', pattern: /\/v1\/members\/me$/, body: sessionMember() },
   { method: 'GET', pattern: /\/v1\/admin\/track-pages\/\d+\/curriculums$/, body: curriculums },
@@ -235,6 +246,7 @@ const routes: RouteEntry[] = [
   { method: 'GET', pattern: /\/v1\/reservations\/monthly-occupancy$/, body: monthlyOccupancy },
   { method: 'GET', pattern: /\/v1\/reservations\/me\/monthly-occupancy$/, body: monthlyOccupancy },
   { method: 'GET', pattern: /\/v1\/reservations\/me$/, body: myReservations },
+  { method: 'GET', pattern: /\/v1\/reservations\/\d+$/, body: reservationDetail },
 ];
 
 function sessionMember() {

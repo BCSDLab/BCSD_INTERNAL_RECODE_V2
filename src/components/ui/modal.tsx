@@ -1,10 +1,16 @@
 'use client';
 
+import { Dialog } from '@base-ui/react/dialog';
+import { X } from 'lucide-react';
 import { Button } from './button';
 
 /**
  * 시안의 모달 셸: rgba(10,8,16,.55) 오버레이 + radius 18 / line2 테두리 / panel 배경.
  * 머리(eyebrow + 제목 + ✕) · 본문 · 바닥(안내문 + 취소/저장)으로 나뉜다.
+ *
+ * Base UI Dialog로 감싸서 포커스 트랩·ESC 닫기·스크롤 락을 얻는다 — 이전 구현은 이 셋이
+ * 전부 없었다. `onClose`를 부르면 부모가 이 컴포넌트를 언마운트하는 방식(항상 open)이라
+ * `open`은 항상 true로 두고, Base UI가 닫으려 할 때만 onClose를 호출한다.
  */
 export function Modal({
   eyebrow,
@@ -22,32 +28,37 @@ export function Modal({
   children: React.ReactNode;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(10,8,16,.55)] p-8">
-      <div
-        style={{ width }}
-        className="border-line2 bg-panel flex max-h-full max-w-full flex-col overflow-hidden rounded-[18px] border"
-      >
-        <div className="border-line flex items-center gap-3 border-b px-6 py-[18px]">
-          <div className="flex min-w-0 flex-col gap-1">
-            {eyebrow && (
-              <div className="text-faint text-[11px] tracking-[.14em] whitespace-nowrap uppercase">{eyebrow}</div>
-            )}
-            <div className="text-[17px] font-semibold tracking-[-.01em]">{title}</div>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-faint hover:text-text ml-auto flex-none cursor-pointer px-2 py-1 text-[15px] transition-colors"
+    <Dialog.Root open modal onOpenChange={(open) => !open && onClose()}>
+      <Dialog.Portal>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(10,8,16,.55)] p-8">
+          <Dialog.Popup
+            style={{ width }}
+            className="border-line2 bg-panel flex max-h-full max-w-full flex-col overflow-hidden rounded-[18px] border outline-none"
           >
-            ✕
-          </button>
+            <div className="border-line flex items-center gap-3 border-b px-6 py-[18px]">
+              <div className="flex min-w-0 flex-col gap-1">
+                {eyebrow && (
+                  <div className="text-faint text-[11px] tracking-[.14em] whitespace-nowrap uppercase">{eyebrow}</div>
+                )}
+                <Dialog.Title className="m-0 text-[17px] font-semibold tracking-[-.01em]">{title}</Dialog.Title>
+              </div>
+              <Dialog.Close
+                aria-label="닫기"
+                className="text-faint hover:text-text ml-auto flex-none cursor-pointer px-2 py-1 transition-colors"
+              >
+                <X size={15} />
+              </Dialog.Close>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-auto">{children}</div>
+
+            {footer && (
+              <div className="border-line bg-panel2 flex items-center gap-2.5 border-t px-6 py-3.5">{footer}</div>
+            )}
+          </Dialog.Popup>
         </div>
-
-        <div className="min-h-0 flex-1 overflow-auto">{children}</div>
-
-        {footer && <div className="border-line bg-panel2 flex items-center gap-2.5 border-t px-6 py-3.5">{footer}</div>}
-      </div>
-    </div>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }
 
