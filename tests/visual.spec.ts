@@ -72,6 +72,16 @@ const MODAL_CASES: { name: string; path: string; open: (page: Page) => Promise<v
       await page.getByText('예약 상세').waitFor();
     },
   },
+  {
+    name: 'track-assign-member-modal',
+    path: '/tracks/1',
+    open: async (page) => {
+      await page.getByRole('button', { name: '+ 부원 배정 · 명부 검색' }).click();
+      await page.getByRole('heading', { name: '부원 배정' }).waitFor();
+      // 후보 목록은 검색 결과가 온 뒤 그려진다 — 텍스트가 실제로 페인트될 때까지 기다린다.
+      await page.getByText('이영희').waitFor();
+    },
+  },
 ];
 
 for (const theme of THEMES) {

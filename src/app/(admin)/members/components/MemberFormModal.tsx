@@ -10,6 +10,7 @@ import type { AcademicStatus, MemberDirectoryItem } from '@/api/member/types';
 import { Button } from '@/components/ui/button';
 import { Field, INPUT_CLASS_COMPACT } from '@/components/ui/field';
 import { Modal } from '@/components/ui/modal';
+import { Select } from '@/components/ui/select';
 import { ACADEMIC_STATUS_LABELS, MEMBER_TYPE_LABELS, TRACK_LABELS } from '@/lib/member-labels';
 import {
   ACADEMIC_STATUS_OPTIONS,
@@ -229,46 +230,31 @@ export function MemberFormModal({
         )}
 
         <FormField label="트랙 *">
-          <select
+          <Select
             value={form.track}
-            onChange={(e) => update({ track: e.target.value as Track })}
+            onValueChange={(v) => update({ track: v as Track })}
+            options={TRACK_OPTIONS.map((track) => ({ value: track, label: TRACK_LABELS[track] }))}
             className={INPUT_CLASS_COMPACT}
-          >
-            {TRACK_OPTIONS.map((track) => (
-              <option key={track} value={track}>
-                {TRACK_LABELS[track]}
-              </option>
-            ))}
-          </select>
+          />
         </FormField>
 
         <FormField label="구분 *">
-          <select
+          <Select
             value={form.memberType}
-            onChange={(e) => update({ memberType: e.target.value as MemberType })}
+            onValueChange={(v) => update({ memberType: v as MemberType })}
+            options={MEMBER_TYPE_OPTIONS.map((memberType) => ({ value: memberType, label: MEMBER_TYPE_LABELS[memberType] }))}
             className={INPUT_CLASS_COMPACT}
-          >
-            {MEMBER_TYPE_OPTIONS.map((memberType) => (
-              <option key={memberType} value={memberType}>
-                {MEMBER_TYPE_LABELS[memberType]}
-              </option>
-            ))}
-          </select>
+          />
         </FormField>
 
         {isNew && (
           <FormField label="학적 상태 *">
-            <select
+            <Select
               value={form.academicStatus}
-              onChange={(e) => update({ academicStatus: e.target.value as AcademicStatus })}
+              onValueChange={(v) => update({ academicStatus: v as AcademicStatus })}
+              options={ACADEMIC_STATUS_OPTIONS.map((status) => ({ value: status, label: ACADEMIC_STATUS_LABELS[status] }))}
               className={INPUT_CLASS_COMPACT}
-            >
-              {ACADEMIC_STATUS_OPTIONS.map((status) => (
-                <option key={status} value={status}>
-                  {ACADEMIC_STATUS_LABELS[status]}
-                </option>
-              ))}
-            </select>
+            />
           </FormField>
         )}
 
@@ -280,25 +266,22 @@ export function MemberFormModal({
           />
         </FormField>
 
+        {/*
+          목록에 없는 값(빈 문자열 포함 — 이 필드가 생기기 전 만들어진 회원은 전부 빈 값이다)이면
+          이 자리를 채우는 옵션 없이는 트리거가 플레이스홀더로 빈다. 그러면 실제로는 비어 있는데
+          "기계공학부"가 선택된 것처럼 보여, 확인 안 하고 저장을 누르면 그 값이 그대로 저장되는
+          사고가 났다. 빈 값 전용 옵션을 맨 앞에 둬서 그 경우에만 여기가 선택되게 한다.
+        */}
         <FormField label="학부(학과) *" error={errors.department}>
-          <select
+          <Select
             value={form.department}
-            onChange={(e) => update({ department: e.target.value })}
+            onValueChange={(v) => update({ department: v })}
+            options={[
+              ...(!DEPARTMENT_OPTIONS.includes(form.department) ? [{ value: '', label: '— 선택 안 함 —' }] : []),
+              ...DEPARTMENT_OPTIONS.map((department) => ({ value: department, label: department })),
+            ]}
             className={INPUT_CLASS_COMPACT}
-          >
-            {/*
-              목록에 없는 값(빈 문자열 포함 — 이 필드가 생기기 전 만들어진 회원은 전부 빈 값이다)이면
-              네이티브 select는 이 자리를 채우는 옵션 없이 그냥 첫 번째 옵션을 보여준다. 그러면 실제로는
-              비어 있는데 "기계공학부"가 선택된 것처럼 보여, 확인 안 하고 저장을 누르면 그 값이 그대로
-              저장되는 사고가 났다. 빈 값 전용 옵션을 맨 앞에 둬서 그 경우에만 여기가 선택되게 한다.
-            */}
-            {!DEPARTMENT_OPTIONS.includes(form.department) && <option value="">— 선택 안 함 —</option>}
-            {DEPARTMENT_OPTIONS.map((department) => (
-              <option key={department} value={department}>
-                {department}
-              </option>
-            ))}
-          </select>
+          />
         </FormField>
 
         <FormField label="이메일(Google) *" error={errors.email}>
@@ -331,18 +314,15 @@ export function MemberFormModal({
         {!isNew && (
           <>
             <FormField label="보직">
-              <select
+              <Select
                 value={form.position}
-                onChange={(e) => update({ position: e.target.value })}
+                onValueChange={(v) => update({ position: v })}
+                options={[
+                  { value: '', label: '— 없음' },
+                  ...POSITION_OPTIONS.map((position) => ({ value: position, label: position })),
+                ]}
                 className={INPUT_CLASS_COMPACT}
-              >
-                <option value="">— 없음</option>
-                {POSITION_OPTIONS.map((position) => (
-                  <option key={position} value={position}>
-                    {position}
-                  </option>
-                ))}
-              </select>
+              />
             </FormField>
 
             <FormField label="생일" error={errors.birthDate}>
@@ -355,28 +335,30 @@ export function MemberFormModal({
             </FormField>
 
             <FormField label="납부 대상">
-              <select
+              <Select
                 value={form.duesRequired ? 'O' : 'X'}
-                onChange={(e) => update({ duesRequired: e.target.value === 'O' })}
+                onValueChange={(v) => update({ duesRequired: v === 'O' })}
+                options={[
+                  { value: 'O', label: 'O · 납부 대상' },
+                  { value: 'X', label: 'X · 대상 아님' },
+                ]}
                 className={INPUT_CLASS_COMPACT}
-              >
-                <option value="O">O · 납부 대상</option>
-                <option value="X">X · 대상 아님</option>
-              </select>
+              />
             </FormField>
           </>
         )}
 
         {isNew && (
           <FormField label="활동 여부">
-            <select
+            <Select
               value={form.active ? 'true' : 'false'}
-              onChange={(e) => update({ active: e.target.value === 'true' })}
+              onValueChange={(v) => update({ active: v === 'true' })}
+              options={[
+                { value: 'true', label: '활동으로 등록' },
+                { value: 'false', label: '비활동으로 등록' },
+              ]}
               className={INPUT_CLASS_COMPACT}
-            >
-              <option value="true">활동으로 등록</option>
-              <option value="false">비활동으로 등록</option>
-            </select>
+            />
           </FormField>
         )}
 

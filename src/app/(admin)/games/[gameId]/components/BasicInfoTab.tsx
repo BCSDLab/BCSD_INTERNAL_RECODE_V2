@@ -21,6 +21,7 @@ import { ApiError } from '@/api/client';
 import { Button } from '@/components/ui/button';
 import { Field, INPUT_CLASS } from '@/components/ui/field';
 import { ConfirmModal } from '@/components/ui/modal';
+import { Select } from '@/components/ui/select';
 import { SectionCard } from '@/components/ui/section-card';
 import { useDebouncedSave } from '@/hooks/useDebouncedSave';
 import { MemberPickerModal } from '@/components/member-picker-modal';
@@ -177,18 +178,15 @@ export function BasicInfoTab({ gameId, detail }: { gameId: number; detail: Admin
 
           <div className="flex gap-3.5">
             <Field label="제작 트랙" className="flex-1">
-              <select
-                value={form.trackId ?? ''}
-                onChange={(e) => updateForm({ trackId: e.target.value ? Number(e.target.value) : null })}
+              <Select
+                value={String(form.trackId ?? '')}
+                onValueChange={(v) => updateForm({ trackId: v ? Number(v) : null })}
+                options={[
+                  { value: '', label: '선택 안 함' },
+                  ...(tracks ?? []).map((track) => ({ value: String(track.id), label: `${track.name} (${track.code})` })),
+                ]}
                 className={INPUT_CLASS}
-              >
-                <option value="">선택 안 함</option>
-                {(tracks ?? []).map((track) => (
-                  <option key={track.id} value={track.id}>
-                    {track.name} ({track.code})
-                  </option>
-                ))}
-              </select>
+              />
             </Field>
             <Field label="팀" className="flex-1">
               <input

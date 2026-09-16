@@ -6,6 +6,7 @@ import { useParams } from 'next/navigation';
 import { useState } from 'react';
 import { gameQueries } from '@/api/game/queries';
 import { PageHeader } from '@/components/ui/page-header';
+import { Tabs, TabsList, TabsPanel, TabsTab } from '@/components/ui/tabs';
 import { BasicInfoTab } from './components/BasicInfoTab';
 import { BuildsTab } from './components/BuildsTab';
 import { DescriptionTab } from './components/DescriptionTab';
@@ -44,33 +45,34 @@ export default function GameEditPage() {
         {isLoading || !detail ? (
           <p className="text-faint m-0 text-[13px]">불러오는 중…</p>
         ) : (
-          <div className="flex min-w-0 flex-col gap-5">
-            <div className="border-line flex gap-1 border-b">
+          <Tabs value={tab} onValueChange={setTab} className="flex min-w-0 flex-col gap-5">
+            <TabsList>
               {TABS.map((item) => (
-                <button
-                  key={item}
-                  type="button"
-                  onClick={() => setTab(item)}
-                  className={`cursor-pointer border-b-2 px-3.5 py-2.5 text-[13px] whitespace-nowrap transition-colors ${
-                    tab === item
-                      ? 'border-primary text-text font-semibold'
-                      : 'text-muted hover:text-text border-transparent'
-                  }`}
-                >
+                <TabsTab key={item} value={item}>
                   {item}
                   {item === '스크린샷' && detail.screenshots.length > 0 && (
                     <span className="text-faint ml-1.5 text-[11px]">{detail.screenshots.length}</span>
                   )}
-                </button>
+                </TabsTab>
               ))}
-            </div>
+            </TabsList>
 
-            {tab === '기본정보' && <BasicInfoTab gameId={gameId} detail={detail} />}
-            {tab === '상세설명' && <DescriptionTab gameId={gameId} detail={detail} />}
-            {tab === '스크린샷' && <ScreenshotsTab gameId={gameId} detail={detail} />}
-            {tab === '등급정보' && <RatingTab gameId={gameId} detail={detail} />}
-            {tab === '빌드' && <BuildsTab gameId={gameId} />}
-          </div>
+            <TabsPanel value="기본정보">
+              <BasicInfoTab gameId={gameId} detail={detail} />
+            </TabsPanel>
+            <TabsPanel value="상세설명">
+              <DescriptionTab gameId={gameId} detail={detail} />
+            </TabsPanel>
+            <TabsPanel value="스크린샷">
+              <ScreenshotsTab gameId={gameId} detail={detail} />
+            </TabsPanel>
+            <TabsPanel value="등급정보">
+              <RatingTab gameId={gameId} detail={detail} />
+            </TabsPanel>
+            <TabsPanel value="빌드">
+              <BuildsTab gameId={gameId} />
+            </TabsPanel>
+          </Tabs>
         )}
       </div>
     </>

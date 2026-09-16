@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Field, INPUT_CLASS, INPUT_CLASS_COMPACT, DragHandle } from '@/components/ui/field';
 import { Modal } from '@/components/ui/modal';
 import { PageHeader } from '@/components/ui/page-header';
+import { Select } from '@/components/ui/select';
 import { useSortableList } from '@/hooks/useSortableList';
 
 const EMPTY: AdminGameSummaryResponse[] = [];
@@ -222,18 +223,15 @@ function CreateGameModal({ onClose, onCreated }: { onClose: () => void; onCreate
           />
         </Field>
         <Field label="제작 트랙" hint="선택 사항">
-          <select
-            value={trackId}
-            onChange={(e) => setTrackId(e.target.value ? Number(e.target.value) : '')}
+          <Select
+            value={String(trackId)}
+            onValueChange={(v) => setTrackId(v ? Number(v) : '')}
+            options={[
+              { value: '', label: '선택 안 함' },
+              ...(tracks ?? []).map((track) => ({ value: String(track.id), label: `${track.name} (${track.code})` })),
+            ]}
             className={INPUT_CLASS}
-          >
-            <option value="">선택 안 함</option>
-            {(tracks ?? []).map((track) => (
-              <option key={track.id} value={track.id}>
-                {track.name} ({track.code})
-              </option>
-            ))}
-          </select>
+          />
         </Field>
         <Field label="팀" hint="예: 1팀 (선택 사항)">
           <input
