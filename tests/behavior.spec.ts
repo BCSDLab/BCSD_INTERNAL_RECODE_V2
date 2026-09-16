@@ -172,3 +172,24 @@ test.describe('Tabs (games/[gameId] 탭 전환)', () => {
     await expect(page.getByText('내용정보 표시')).toBeVisible();
   });
 });
+
+test.describe('RichTextEditor 툴바 (Base UI Toggle 전환)', () => {
+  test('굵게 버튼을 누르면 aria-pressed가 바뀐다 — 이전엔 <button>이라 상태가 시각적으로만 있었다', async ({
+    page,
+  }) => {
+    await gotoAsAdmin(page, '/games/1');
+    await page.getByRole('tab', { name: '상세설명' }).click();
+    const content = page.getByText('설명입니다');
+    await content.waitFor();
+
+    // 커서만 놓고 누르면 "다음 입력부터 굵게"라 문서가 안 바뀌어 리렌더가 안 된다 —
+    // 실제로 굵게 적용되는 걸(선택 영역에 적용) 보려면 텍스트를 먼저 선택해야 한다.
+    await content.click();
+    await page.keyboard.press('ControlOrMeta+A');
+
+    const boldButton = page.getByRole('button', { name: 'B', exact: true });
+    await expect(boldButton).toHaveAttribute('aria-pressed', 'false');
+    await boldButton.click();
+    await expect(boldButton).toHaveAttribute('aria-pressed', 'true');
+  });
+});

@@ -1,5 +1,6 @@
 'use client';
 
+import { Toggle } from '@base-ui/react/toggle';
 import Image from '@tiptap/extension-image';
 import Link from '@tiptap/extension-link';
 import Underline from '@tiptap/extension-underline';
@@ -151,6 +152,14 @@ export function RichTextEditor({
   );
 }
 
+const TOOL_BUTTON_CLASS =
+  'flex-none cursor-pointer rounded-[7px] px-[9px] py-[5px] text-xs whitespace-nowrap transition-colors';
+
+/**
+ * 굵게·기울임·밑줄·목록·인용은 실제로 켜짐/꺼짐이 있는 토글(editor.isActive)인데
+ * 지금까지 그냥 <button>이라 시각 상태만 있고 aria-pressed가 없었다. mark가 있으면
+ * Base UI Toggle로, 없으면(이미지 삽입처럼 상태 없는 액션) 그대로 버튼으로 그린다.
+ */
 function ToolButton({
   editor,
   mark,
@@ -162,16 +171,23 @@ function ToolButton({
   onClick: () => void;
   children: React.ReactNode;
 }) {
-  const isActive = mark ? editor.isActive(mark) : false;
+  if (!mark) {
+    return (
+      <button type="button" onClick={onClick} className={`${TOOL_BUTTON_CLASS} text-muted hover:bg-sunken hover:text-text`}>
+        {children}
+      </button>
+    );
+  }
+
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`flex-none cursor-pointer rounded-[7px] px-[9px] py-[5px] text-xs whitespace-nowrap transition-colors ${
-        isActive ? 'bg-sunken text-text' : 'text-muted hover:bg-sunken hover:text-text'
-      }`}
+    <Toggle
+      pressed={editor.isActive(mark)}
+      onPressedChange={onClick}
+      className={(state) =>
+        `${TOOL_BUTTON_CLASS} ${state.pressed ? 'bg-sunken text-text' : 'text-muted hover:bg-sunken hover:text-text'}`
+      }
     >
       {children}
-    </button>
+    </Toggle>
   );
 }
