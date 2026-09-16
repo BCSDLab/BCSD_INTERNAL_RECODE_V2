@@ -60,3 +60,44 @@ test.describe('Button (Base UI + cva 전환)', () => {
     await expect(dialogTitle).toBeHidden({ timeout: 3000 });
   });
 });
+
+test.describe('Modal (Base UI Dialog 전환)', () => {
+  test('열리면 포커스가 다이얼로그 안으로 이동한다(포커스 트랩) — 이전 구현엔 없던 동작', async ({ page }) => {
+    await gotoAsAdmin(page, '/members');
+    await page.getByRole('button', { name: '+ 부원 추가' }).click();
+    await expect(page.getByText('새 부원')).toBeVisible();
+
+    // DOM 순서상 첫 tabbable 요소는 헤더의 닫기 버튼이다.
+    await expect(page.getByRole('button', { name: '닫기' })).toBeFocused();
+  });
+
+  test('ESC를 누르면 닫힌다 — 이전 구현(ui/modal.tsx)엔 없던 동작', async ({ page }) => {
+    await gotoAsAdmin(page, '/members');
+    await page.getByRole('button', { name: '+ 부원 추가' }).click();
+
+    const dialogTitle = page.getByText('새 부원');
+    await expect(dialogTitle).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(dialogTitle).toBeHidden();
+  });
+
+  test('오버레이(바깥) 클릭으로 닫힌다', async ({ page }) => {
+    await gotoAsAdmin(page, '/members');
+    await page.getByRole('button', { name: '+ 부원 추가' }).click();
+
+    const dialogTitle = page.getByText('새 부원');
+    await expect(dialogTitle).toBeVisible();
+    await page.mouse.click(10, 10);
+    await expect(dialogTitle).toBeHidden();
+  });
+
+  test('예약 상세 모달(modal-shell.tsx)도 ESC로 닫힌다', async ({ page }) => {
+    await gotoAsAdmin(page, '/reservations');
+    await page.getByText('눌러서 상세 보기 · 취소').click();
+
+    const detailTitle = page.getByText('예약 상세');
+    await expect(detailTitle).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(detailTitle).toBeHidden();
+  });
+});
