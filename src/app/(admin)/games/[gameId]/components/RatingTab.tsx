@@ -7,6 +7,7 @@ import { gameKeys } from '@/api/game/queries';
 import type { AdminGameDetailResponse, GameContentDescriptor, GameRatingLevel } from '@/api/game/types';
 import { ApiError } from '@/api/client';
 import { Button } from '@/components/ui/button';
+import { Chip } from '@/components/ui/chip';
 import { Field, INPUT_CLASS } from '@/components/ui/field';
 import { ConfirmModal } from '@/components/ui/modal';
 import { SectionCard } from '@/components/ui/section-card';
@@ -190,22 +191,14 @@ export function RatingTab({ gameId, detail }: { gameId: number; detail: AdminGam
         <Field label="내용정보 표시">
           <div className="flex flex-wrap gap-1.5">
             {(Object.keys(DESCRIPTOR_LABELS) as GameContentDescriptor[]).map((key) => (
-              <label
+              <Chip
                 key={key}
-                className={`flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs whitespace-nowrap transition-colors ${
-                  form.contentDescriptors.includes(key)
-                    ? 'border-primary-line bg-primary-soft text-primary-text'
-                    : 'border-line text-muted hover:border-line2'
-                }`}
+                size="sm"
+                pressed={form.contentDescriptors.includes(key)}
+                onPressedChange={() => toggleDescriptor(key)}
               >
-                <input
-                  type="checkbox"
-                  className="hidden"
-                  checked={form.contentDescriptors.includes(key)}
-                  onChange={() => toggleDescriptor(key)}
-                />
                 {DESCRIPTOR_LABELS[key]}
-              </label>
+              </Chip>
             ))}
           </div>
         </Field>

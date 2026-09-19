@@ -32,6 +32,7 @@ import {
 import type { ReservationScreen } from '@/app/(admin)/reservations/types';
 import { useBookingForm } from '@/app/(admin)/reservations/use-booking-form';
 import { PageHeader } from '@/components/ui/page-header';
+import { Tabs, TabsList, TabsPanel, TabsTab } from '@/components/ui/tabs';
 
 const SCREEN_TABS: { key: ReservationScreen; label: string }[] = [
   { key: 'status', label: '예약 현황' },
@@ -253,29 +254,21 @@ export default function ReservationsPage() {
       <PageHeader crumb="홈페이지 / 동아리방 예약" title="동아리방 예약" />
 
       <div className="w-full px-8 pt-6 pb-10">
-        <div className="border-line mb-5 flex gap-1 border-b">
-          {SCREEN_TABS.map((item) => (
-            <button
-              key={item.key}
-              type="button"
-              onClick={() => setScreen(item.key)}
-              className={`cursor-pointer border-b-2 px-3.5 py-2.5 text-[13px] whitespace-nowrap transition-colors ${
-                screen === item.key
-                  ? 'border-primary text-text font-semibold'
-                  : 'text-muted hover:text-text border-transparent'
-              }`}
-            >
-              {item.label}
-              {item.key === 'mine' && upcomingItems.length > 0 && (
-                <span className="text-faint ml-1.5 text-[11px]">{upcomingItems.length}</span>
-              )}
-            </button>
-          ))}
-        </div>
+        <Tabs value={screen} onValueChange={setScreen}>
+          <TabsList className="mb-5">
+            {SCREEN_TABS.map((item) => (
+              <TabsTab key={item.key} value={item.key}>
+                {item.label}
+                {item.key === 'mine' && upcomingItems.length > 0 && (
+                  <span className="text-faint ml-1.5 text-[11px]">{upcomingItems.length}</span>
+                )}
+              </TabsTab>
+            ))}
+          </TabsList>
 
-        <div className="border-line bg-panel overflow-hidden rounded-2xl border">
-          {screen === 'status' && (
-            <StatusScreen
+          <div className="border-line bg-panel overflow-hidden rounded-2xl border">
+            <TabsPanel value="status">
+              <StatusScreen
               viewMonth={viewMonth}
               selectedDate={selectedDate}
               today={today}
@@ -294,29 +287,32 @@ export default function ReservationsPage() {
               errorMessage={submitError ?? dailyFetchError}
               createResultMessage={createResultMessage}
               bookingForm={bookingFormProps}
-            />
-          )}
+              />
+            </TabsPanel>
 
-          {screen === 'mine' && (
-            <MyReservationsScreen
-              viewMonth={viewMonth}
-              selectedDate={selectedDate}
-              today={today}
-              onSelectDate={selectDate}
-              onPrevMonth={() => setViewMonth((m) => addMonths(m, -1))}
-              onNextMonth={() => setViewMonth((m) => addMonths(m, 1))}
-              ratioByDateKey={mineRatio}
-              tab={tab}
-              onTabChange={setTab}
-              upcomingCards={upcomingCards}
-              pastCards={pastCards}
-              loading={upcomingQuery.isLoading || pastQuery.isLoading}
-              errorMessage={mineError}
-            />
-          )}
+            <TabsPanel value="mine">
+              <MyReservationsScreen
+                viewMonth={viewMonth}
+                selectedDate={selectedDate}
+                today={today}
+                onSelectDate={selectDate}
+                onPrevMonth={() => setViewMonth((m) => addMonths(m, -1))}
+                onNextMonth={() => setViewMonth((m) => addMonths(m, 1))}
+                ratioByDateKey={mineRatio}
+                tab={tab}
+                onTabChange={setTab}
+                upcomingCards={upcomingCards}
+                pastCards={pastCards}
+                loading={upcomingQuery.isLoading || pastQuery.isLoading}
+                errorMessage={mineError}
+              />
+            </TabsPanel>
 
-          {screen === 'rules' && <RulesScreen />}
-        </div>
+            <TabsPanel value="rules">
+              <RulesScreen />
+            </TabsPanel>
+          </div>
+        </Tabs>
       </div>
 
       {detailId != null &&

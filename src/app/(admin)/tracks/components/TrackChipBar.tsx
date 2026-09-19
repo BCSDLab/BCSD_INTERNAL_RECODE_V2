@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { ChipCount, DashedChip } from '@/components/ui/chip';
 import { Field, INPUT_CLASS } from '@/components/ui/field';
 import { Modal } from '@/components/ui/modal';
+import { Select } from '@/components/ui/select';
 import { useSortableList } from '@/hooks/useSortableList';
 
 // useSortableList는 매 렌더마다 참조가 바뀌지 않는 배열을 기대한다 — `data ?? []`처럼
@@ -134,18 +135,15 @@ function CreateTrackPageModal({ onClose, onCreated }: { onClose: () => void; onC
     >
       <div className="flex flex-col gap-3.5 px-6 py-5">
         <Field label="트랙">
-          <select
-            value={trackId}
-            onChange={(e) => setTrackId(e.target.value ? Number(e.target.value) : '')}
+          <Select
+            value={String(trackId)}
+            onValueChange={(v) => setTrackId(v ? Number(v) : '')}
+            options={[
+              { value: '', label: '선택하세요' },
+              ...availableTracks.map((track) => ({ value: String(track.id), label: `${track.name} (${track.code})` })),
+            ]}
             className={INPUT_CLASS}
-          >
-            <option value="">선택하세요</option>
-            {availableTracks.map((track) => (
-              <option key={track.id} value={track.id}>
-                {track.name} ({track.code})
-              </option>
-            ))}
-          </select>
+          />
         </Field>
         <Field label="트랙명">
           <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} className={INPUT_CLASS} />

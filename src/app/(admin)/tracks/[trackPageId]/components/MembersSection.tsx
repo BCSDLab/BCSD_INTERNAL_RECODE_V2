@@ -13,6 +13,7 @@ import { trackKeys } from '@/api/track/queries';
 import type { TrackPageDetailResponse, TrackPageMemberResponse } from '@/api/track/types';
 import { ApiError } from '@/api/client';
 import { Badge, Chip } from '@/components/ui/chip';
+import { Checkbox } from '@/components/ui/checkbox';
 import { DragHandle, INPUT_CLASS_COMPACT } from '@/components/ui/field';
 import { Modal } from '@/components/ui/modal';
 import { Eyebrow } from '@/components/ui/section-card';
@@ -316,11 +317,7 @@ function AssignMemberModal({
                 key={member.id}
                 className="hover:bg-panel2 flex cursor-pointer items-center gap-2.5 rounded-[9px] px-2.5 py-2 text-[13px]"
               >
-                <input
-                  type="checkbox"
-                  checked={selectedIds.includes(member.id)}
-                  onChange={() => toggleSelected(member.id)}
-                />
+                <Checkbox checked={selectedIds.includes(member.id)} onCheckedChange={() => toggleSelected(member.id)} />
                 {member.photoUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={member.photoUrl} alt="" className="h-[22px] w-[22px] flex-none rounded-full object-cover" />
