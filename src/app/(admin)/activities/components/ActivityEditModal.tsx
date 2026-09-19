@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Field, INPUT_CLASS_COMPACT } from '@/components/ui/field';
 import { ConfirmModal, Modal } from '@/components/ui/modal';
 import { Eyebrow } from '@/components/ui/section-card';
+import { SwitchRow } from '@/components/ui/switch';
 import { useImageUpload } from '@/hooks/useImageUpload';
 import { RichTextEditor } from '@/components/rich-text-editor';
 
@@ -278,10 +279,10 @@ export function ActivityEditModal({
           {!isNew && detail && (
             <div className="flex flex-col gap-[9px]">
               <Eyebrow>설정</Eyebrow>
-              <button
-                type="button"
-                onClick={() => publishMutation.mutate(!detail.isPublished)}
-                className={`flex cursor-pointer items-center gap-[9px] rounded-[9px] border px-[11px] py-[9px] ${
+              <SwitchRow
+                checked={detail.isPublished}
+                onCheckedChange={(next) => publishMutation.mutate(next)}
+                className={`gap-[9px] rounded-[9px] border px-[11px] py-[9px] ${
                   detail.isPublished ? 'border-primary-line bg-primary-soft' : 'border-line'
                 }`}
               >
@@ -290,18 +291,7 @@ export function ActivityEditModal({
                 >
                   랜딩에 공개
                 </span>
-                <span
-                  className={`relative ml-auto h-[18px] w-8 flex-none rounded-full ${
-                    detail.isPublished ? 'bg-primary' : 'bg-line2'
-                  }`}
-                >
-                  <span
-                    className={`bg-on-primary absolute top-0.5 h-3.5 w-3.5 rounded-full transition-all ${
-                      detail.isPublished ? 'right-0.5' : 'bg-panel left-0.5'
-                    }`}
-                  />
-                </span>
-              </button>
+              </SwitchRow>
             </div>
           )}
 

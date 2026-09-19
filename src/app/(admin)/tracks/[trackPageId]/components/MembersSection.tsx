@@ -12,6 +12,7 @@ import { attachTrackPageMembers, detachTrackPageMember, reorderTrackPageMembers,
 import { trackKeys } from '@/api/track/queries';
 import type { TrackPageDetailResponse, TrackPageMemberResponse } from '@/api/track/types';
 import { ApiError } from '@/api/client';
+import { Avatar } from '@/components/ui/avatar';
 import { Badge, Chip } from '@/components/ui/chip';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DragHandle, INPUT_CLASS_COMPACT } from '@/components/ui/field';
@@ -161,12 +162,7 @@ function MemberRow({
       }`}
     >
       <DragHandle {...attributes} {...listeners} className="text-xs" />
-      {member.profileImageUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={member.profileImageUrl} alt="" className="h-[26px] w-[26px] flex-none rounded-full object-cover" />
-      ) : (
-        <span className={`h-[26px] w-[26px] flex-none rounded-full ${member.isVisible ? 'bg-primary' : 'bg-line2'}`} />
-      )}
+      <Avatar src={member.profileImageUrl} name={member.name} size="md" />
       <span className="truncate text-[13px]">{member.name}</span>
       <button
         type="button"
@@ -318,12 +314,7 @@ function AssignMemberModal({
                 className="hover:bg-panel2 flex cursor-pointer items-center gap-2.5 rounded-[9px] px-2.5 py-2 text-[13px]"
               >
                 <Checkbox checked={selectedIds.includes(member.id)} onCheckedChange={() => toggleSelected(member.id)} />
-                {member.photoUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={member.photoUrl} alt="" className="h-[22px] w-[22px] flex-none rounded-full object-cover" />
-                ) : (
-                  <span className="bg-line2 h-[22px] w-[22px] flex-none rounded-full" />
-                )}
+                <Avatar src={member.photoUrl} name={member.name} size="sm" />
                 <span className="truncate">{member.name}</span>
                 <Badge className="ml-auto flex-none">{member.track}</Badge>
                 <span className="text-faint flex-none text-[11px]">{member.memberType}</span>
