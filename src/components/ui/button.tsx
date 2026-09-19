@@ -1,5 +1,9 @@
 'use client';
 
+import { Button as ButtonPrimitive } from '@base-ui/react/button';
+import { cva, type VariantProps } from 'class-variance-authority';
+import { cn } from '@/lib/utils';
+
 /**
  * 시안의 버튼 4종을 그대로 옮긴다. 값을 임의로 바꾸지 않는다.
  *
@@ -11,35 +15,39 @@
  * - dashed   : "추가" 자리를 나타내는 점선 버튼(+ 주차 추가, + 부원 배정).
  * - dangerOutline : 실선 danger 테두리(모달의 활동 삭제).
  */
-type Variant = 'outline' | 'danger' | 'primary' | 'dashed' | 'dangerOutline';
-
-const BASE = 'cursor-pointer whitespace-nowrap transition-colors disabled:cursor-default disabled:opacity-45';
-
-const VARIANTS: Record<Variant, string> = {
-  outline:
-    'text-xs border border-line2 rounded-[9px] px-3 py-2 text-muted hover:border-primary-line hover:text-primary-text',
-  danger: 'text-xs border border-line2 rounded-[9px] px-3 py-2 text-muted hover:border-danger-line hover:text-danger',
-  primary: 'text-xs rounded-[9px] px-[14px] py-[9px] font-semibold text-on-primary bg-primary hover:opacity-90',
-  dashed:
-    'text-xs text-center rounded-[10px] border border-dashed border-dash p-2.5 text-muted hover:border-primary-line hover:text-primary-text',
-  dangerOutline:
-    'text-xs text-center border border-danger-line rounded-[9px] px-3 py-[9px] text-danger hover:bg-danger-soft',
-};
+const buttonVariants = cva('cursor-pointer whitespace-nowrap transition-colors disabled:cursor-default disabled:opacity-45', {
+  variants: {
+    variant: {
+      outline:
+        'text-xs border border-line2 rounded-[9px] px-3 py-2 text-muted hover:border-primary-line hover:text-primary-text',
+      danger:
+        'text-xs border border-line2 rounded-[9px] px-3 py-2 text-muted hover:border-danger-line hover:text-danger',
+      primary: 'text-xs rounded-[9px] px-[14px] py-[9px] font-semibold text-on-primary bg-primary hover:opacity-90',
+      dashed:
+        'text-xs text-center rounded-[10px] border border-dashed border-dash p-2.5 text-muted hover:border-primary-line hover:text-primary-text',
+      dangerOutline:
+        'text-xs text-center border border-danger-line rounded-[9px] px-3 py-[9px] text-danger hover:bg-danger-soft',
+    },
+  },
+  defaultVariants: {
+    variant: 'outline',
+  },
+});
 
 export function Button({
-  variant = 'outline',
-  className = '',
+  variant,
+  className,
   type = 'button',
   ...props
-}: React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant }) {
-  return <button type={type} className={`${BASE} ${VARIANTS[variant]} ${className}`} {...props} />;
+}: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {
+  return <ButtonPrimitive type={type} className={cn(buttonVariants({ variant }), className)} {...props} />;
 }
 
-/** 버튼과 같은 모양이 필요한 링크(랜딩에서 보기 ↗). */
+/** 버튼과 같은 모양이 필요한 링크(랜딩에서 보기 ↗). Base UI의 render prop으로 <a>를 그린다. */
 export function ButtonLink({
-  variant = 'outline',
-  className = '',
+  variant,
+  className,
   ...props
-}: React.AnchorHTMLAttributes<HTMLAnchorElement> & { variant?: Variant }) {
-  return <a className={`${BASE} inline-block ${VARIANTS[variant]} ${className}`} {...props} />;
+}: VariantProps<typeof buttonVariants> & React.AnchorHTMLAttributes<HTMLAnchorElement>) {
+  return <Button render={<a {...props} />} variant={variant} className={cn('inline-block', className)} />;
 }
