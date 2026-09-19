@@ -1,6 +1,64 @@
 @import 'tailwindcss';
 
 /*
+ * shadcn/Base UI 컴포넌트가 열림·선택·비활성 등 상태를 data-* 속성으로 내보내는 관례에 맞춘
+ * Tailwind variant. 컴포넌트 클래스에서 `data-open:`, `data-checked:` 처럼 쓴다.
+ * (shadcn CLI가 생성하는 `shadcn/tailwind.css`의 해당 부분만 가져왔다 — 나머지는 이 프로젝트에서
+ * 안 쓰는 accordion/scroll-fade 유틸이라 들이지 않는다.)
+ */
+@custom-variant data-open {
+  &:where([data-state='open']),
+  &:where([data-open]:not([data-open='false'])) {
+    @slot;
+  }
+}
+@custom-variant data-closed {
+  &:where([data-state='closed']),
+  &:where([data-closed]:not([data-closed='false'])) {
+    @slot;
+  }
+}
+@custom-variant data-checked {
+  &:where([data-state='checked']),
+  &:where([data-checked]:not([data-checked='false'])) {
+    @slot;
+  }
+}
+@custom-variant data-unchecked {
+  &:where([data-state='unchecked']),
+  &:where([data-unchecked]:not([data-unchecked='false'])) {
+    @slot;
+  }
+}
+@custom-variant data-selected {
+  &:where([data-selected='true']) {
+    @slot;
+  }
+}
+@custom-variant data-disabled {
+  &:where([data-disabled='true']),
+  &:where([data-disabled]:not([data-disabled='false'])) {
+    @slot;
+  }
+}
+@custom-variant data-active {
+  &:where([data-state='active']),
+  &:where([data-active]:not([data-active='false'])) {
+    @slot;
+  }
+}
+@custom-variant data-horizontal {
+  &:where([data-orientation='horizontal']) {
+    @slot;
+  }
+}
+@custom-variant data-vertical {
+  &:where([data-orientation='vertical']) {
+    @slot;
+  }
+}
+
+/*
  * 인증 화면(로그인·초기설정·비밀번호 재설정)이 쓰는 토큰. 기존 값을 그대로 둔다 —
  * (auth)/layout.tsx가 #0b0d1a 그라디언트를 인라인으로 깔고 있어 여기 값과 맞아야 한다.
  */
