@@ -193,3 +193,31 @@ test.describe('RichTextEditor 툴바 (Base UI Toggle 전환)', () => {
     await expect(boldButton).toHaveAttribute('aria-pressed', 'true');
   });
 });
+
+test.describe('Switch (활동 여부 · 공개 토글 · 모집 상태 통일)', () => {
+  test('인명부 활동 스위치를 누르면 PATCH .../active가 정확한 값으로 나간다', async ({ page }) => {
+    await gotoAsAdmin(page, '/members');
+
+    let requestedActive: unknown;
+    await page.route('**/v1/admin/members/*/active', async (route) => {
+      requestedActive = route.request().postDataJSON().active;
+      await route.fulfill({ status: 204 });
+    });
+
+    // 이름·기수 등 다른 텍스트와 안 겹치게 접근 가능한 이름(aria-checked 있는 switch)으로 찾는다.
+    const switchControl = page.getByRole('switch').first();
+    await expect(switchControl).toHaveAttribute('aria-checked', 'true');
+    await switchControl.click();
+
+    expect(requestedActive).toBe(false);
+  });
+
+  test('공개 토글(카드 전체가 스위치)을 누르면 상태가 바뀐다', async ({ page }) => {
+    await gotoAsAdmin(page, '/home');
+
+    const recruitSwitch = page.getByRole('switch');
+    await expect(recruitSwitch).toHaveAttribute('aria-checked', 'true');
+    await recruitSwitch.click();
+    await expect(recruitSwitch).toHaveAttribute('aria-checked', 'false');
+  });
+});

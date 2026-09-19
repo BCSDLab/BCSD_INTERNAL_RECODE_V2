@@ -6,6 +6,7 @@ import type { Track } from '@/api/auth/types';
 import { memberQueries } from '@/api/member/queries';
 import { EMPTY_MEMBER_FILTERS } from '@/api/member/types';
 import { TRACK_OPTIONS } from '@/app/(admin)/members/components/options';
+import { Avatar } from '@/components/ui/avatar';
 import { Badge, Chip } from '@/components/ui/chip';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -147,12 +148,7 @@ export function MemberPickerModal({
                 className="hover:bg-panel2 flex cursor-pointer items-center gap-2.5 rounded-[9px] px-2.5 py-2 text-[13px]"
               >
                 <Checkbox checked={selectedIds.includes(member.id)} onCheckedChange={() => toggleSelected(member.id)} />
-                {member.photoUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={member.photoUrl} alt="" className="h-[22px] w-[22px] flex-none rounded-full object-cover" />
-                ) : (
-                  <span className="bg-line2 h-[22px] w-[22px] flex-none rounded-full" />
-                )}
+                <Avatar src={member.photoUrl} name={member.name} size="sm" />
                 <span className="truncate">{member.name}</span>
                 <Badge className="ml-auto flex-none">{member.track}</Badge>
                 <span className="text-faint flex-none text-[11px]">{member.memberType}</span>
