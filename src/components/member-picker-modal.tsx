@@ -111,8 +111,8 @@ export function MemberPickerModal({
         <div className="flex flex-wrap gap-1.5">
           <Chip
             size="xs"
-            selected={trackFilter.length === 0}
-            onClick={() => setTrackFilter([])}
+            pressed={trackFilter.length === 0}
+            onPressedChange={() => setTrackFilter([])}
             className="cursor-pointer"
           >
             전체
@@ -121,8 +121,8 @@ export function MemberPickerModal({
             <Chip
               key={track}
               size="xs"
-              selected={trackFilter.includes(track)}
-              onClick={() => toggleTrack(track)}
+              pressed={trackFilter.includes(track)}
+              onPressedChange={() => toggleTrack(track)}
               className="cursor-pointer"
             >
               {track}

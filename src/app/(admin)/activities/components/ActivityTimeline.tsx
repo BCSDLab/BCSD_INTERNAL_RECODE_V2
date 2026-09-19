@@ -36,15 +36,20 @@ export function ActivityTimeline({
     <div className="flex flex-col gap-[18px]">
       <div className="flex items-center gap-2">
         <div className="flex gap-1.5">
-          <Chip size="sm" selected={yearFilter === null} onClick={() => setYearFilter(null)} className="cursor-pointer">
+          <Chip
+            size="sm"
+            pressed={yearFilter === null}
+            onPressedChange={() => setYearFilter(null)}
+            className="cursor-pointer"
+          >
             전체 연도
           </Chip>
           {years.map((year) => (
             <Chip
               key={year}
               size="sm"
-              selected={yearFilter === year}
-              onClick={() => setYearFilter(year)}
+              pressed={yearFilter === year}
+              onPressedChange={() => setYearFilter(year)}
               className="cursor-pointer"
             >
               {year}
