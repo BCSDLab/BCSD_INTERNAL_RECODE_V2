@@ -50,3 +50,46 @@ for (const theme of THEMES) {
     }
   });
 }
+
+/**
+ * 모달이 열린 상태의 화면. Phase 2(Dialog)부터는 이게 진짜 회귀 대상이다 —
+ * ui/modal.tsx(Modal)와 reservations/modal-shell.tsx(ModalShell) 둘 다 커버한다.
+ */
+const MODAL_CASES: { name: string; path: string; open: (page: Page) => Promise<void> }[] = [
+  {
+    name: 'members-add-modal',
+    path: '/members',
+    open: async (page) => {
+      await page.getByRole('button', { name: '+ 부원 추가' }).click();
+      await page.getByText('새 부원').waitFor();
+    },
+  },
+  {
+    name: 'reservations-detail-modal',
+    path: '/reservations',
+    open: async (page) => {
+      await page.getByText('눌러서 상세 보기 · 취소').click();
+      await page.getByText('예약 상세').waitFor();
+    },
+  },
+];
+
+for (const theme of THEMES) {
+  test.describe(`modal states (${theme})`, () => {
+    test.use({
+      colorScheme: theme === 'dark' ? 'dark' : 'light',
+    });
+
+    for (const { name, path, open } of MODAL_CASES) {
+      test(name, async ({ page }) => {
+        await page.addInitScript(
+          (t) => window.localStorage.setItem('bcsd-internal-theme', t),
+          theme,
+        );
+        await gotoAsAdmin(page, path);
+        await open(page);
+        await expect(page).toHaveScreenshot(`${name}-${theme}.png`, { fullPage: true });
+      });
+    }
+  });
+}
