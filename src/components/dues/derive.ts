@@ -1,5 +1,5 @@
 import type { ExemptionPeriod } from '@/components/dues/exemptions';
-import { WITHDRAWAL_EXEMPTION_REASON } from '@/components/dues/exemptions';
+import { monthIsInExemption, WITHDRAWAL_EXEMPTION_REASON } from '@/components/dues/exemptions';
 import type { MemberDues, RefundStatus, SemesterDuesStatus, SemesterDuesSummary } from '@/components/dues/types';
 import type { LedgerEntry } from '@/components/ledger/types';
 
@@ -21,7 +21,22 @@ function sumConfirmed(entries: LedgerEntry[], memberId: string, match: (entry: L
 function deriveMemberDues(member: MemberDues, entries: LedgerEntry[], exemptions: ExemptionPeriod[]): MemberDues {
   if (member.assessedAmount === null) return member;
 
-  const assessedAmount = member.assessedAmount;
+  const semesterMonths = ['2026-09', '2026-10', '2026-11', '2026-12', '2027-01', '2027-02'];
+  const memberExemptions = exemptions.filter((exemption) => exemption.memberId === member.id);
+  const months = semesterMonths.map((month, index) => {
+    const exemption = memberExemptions.find((item) => monthIsInExemption(month, item));
+    if (exemption) {
+      const period = `${exemption.startMonth.replace('-', '.')}~${exemption.endMonth?.replace('-', '.') ?? '계속'}`;
+      return {
+        status: 'exempt' as const,
+        description: month === exemption.startMonth ? `${exemption.reason} ${period}` : exemption.reason,
+      };
+    }
+
+    const original = member.months[index];
+    return original.status === 'exempt' ? { status: 'unpaid' as const, description: '연결된 기록 없음' } : original;
+  });
+  const assessedAmount = months.filter((month) => month.status !== 'exempt').length * 10000;
   const grossPaid = sumConfirmed(entries, member.id, (entry) => entry.type === 'deposit' && entry.category === '회비');
   const refundedAmount = sumConfirmed(
     entries,
@@ -45,22 +60,38 @@ function deriveMemberDues(member: MemberDues, entries: LedgerEntry[], exemptions
             : 'paid';
 
   const refundStatus: RefundStatus =
-    grossExcess === 0 ? (refundedAmount > 0 ? 'completed' : 'none') : refundedAmount === 0 ? 'needed' : refundedAmount < grossExcess ? 'partial' : 'completed';
+    grossExcess === 0
+      ? refundedAmount > 0
+        ? 'completed'
+        : 'none'
+      : refundedAmount === 0
+        ? 'needed'
+        : refundedAmount < grossExcess
+          ? 'partial'
+          : 'completed';
 
-  const hasWithdrawalExemption = exemptions.some(
+  const hasWithdrawalExemption = memberExemptions.some(
     (exemption) => exemption.memberId === member.id && exemption.reason === WITHDRAWAL_EXEMPTION_REASON,
   );
 
   return {
     ...member,
+    months,
     status,
+    assessedAmount,
     paidAmount: netPaid,
     unpaidAmount: Math.max(0, assessedAmount - netPaid),
     excessAmount: remainingExcess > 0 ? remainingExcess : undefined,
     refundStatus,
     refundAmount: remainingExcess > 0 ? remainingExcess : undefined,
     refundReason:
-      remainingExcess > 0 ? (hasWithdrawalExemption ? '탈퇴 기간' : '초과 납부') : refundStatus === 'completed' ? member.refundReason : undefined,
+      remainingExcess > 0
+        ? hasWithdrawalExemption
+          ? '탈퇴 기간'
+          : '초과 납부'
+        : refundStatus === 'completed'
+          ? member.refundReason
+          : undefined,
   };
 }
 
@@ -92,5 +123,16 @@ export function deriveSemesterSummary(base: SemesterDuesSummary, members: Member
       member.status === 'partial',
   );
 
-  return { ...base, totalMembers, exemptMembers, targetMembers, completedMembers, unpaidMembers, totalAmount, paidAmount, unpaidAmount, needsReview };
+  return {
+    ...base,
+    totalMembers,
+    exemptMembers,
+    targetMembers,
+    completedMembers,
+    unpaidMembers,
+    totalAmount,
+    paidAmount,
+    unpaidAmount,
+    needsReview,
+  };
 }

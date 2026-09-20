@@ -137,9 +137,12 @@ export function LedgerPageClient() {
           >
             회비
           </Link>
-          <span aria-disabled="true" className="text-faint text-[13px] font-medium">
+          <Link
+            href="/ledger/exemptions"
+            className="text-muted hover:text-primary-text text-[13px] font-medium transition-colors"
+          >
             면제 사유
-          </span>
+          </Link>
         </nav>
         <div className="ml-auto flex items-center gap-2.5">
           <span className="border-primary-line bg-primary-soft text-primary-text rounded-full border px-3 py-1.5 text-[11.5px] font-semibold">

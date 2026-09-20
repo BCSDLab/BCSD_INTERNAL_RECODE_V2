@@ -6,6 +6,13 @@ export interface ExemptionPeriod {
   endMonth: string | null;
 }
 
+export interface ExemptionDraft {
+  memberId: string;
+  reason: string;
+  startMonth: string;
+  endMonth: string | null;
+}
+
 export const WITHDRAWAL_EXEMPTION_REASON = '탈퇴';
 
 export const INITIAL_EXEMPTIONS: ExemptionPeriod[] = [
@@ -44,4 +51,25 @@ export const INITIAL_EXEMPTIONS: ExemptionPeriod[] = [
     startMonth: '2024-09',
     endMonth: null,
   },
+  {
+    id: 'exemption-mentor-conference',
+    memberId: 'member-mentor',
+    reason: '해외 학회 참가'.normalize('NFC'),
+    startMonth: '2026-10',
+    endMonth: '2026-10',
+  },
 ];
+
+export const INITIAL_EXEMPTION_REASONS = [
+  '해외 연수',
+  'Frontend 트랙장',
+  WITHDRAWAL_EXEMPTION_REASON,
+  '멘토',
+  '부트캠르(소프티어)',
+  '졸업',
+  '해외 학회 참가',
+].map((reason) => reason.normalize('NFC'));
+
+export function monthIsInExemption(month: string, exemption: ExemptionPeriod) {
+  return month >= exemption.startMonth && (exemption.endMonth === null || month <= exemption.endMonth);
+}
