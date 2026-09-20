@@ -151,7 +151,7 @@ const memberDirectory = {
       academicStatus: 'ENROLLED',
       university: '한밭대학교',
       department: '컴퓨터공학과',
-      position: null,
+      positionCodes: [],
       birthDate: null,
       duesRequired: true,
       studentNumber: '2000123456',
@@ -171,7 +171,7 @@ const memberDirectory = {
       academicStatus: 'ENROLLED',
       university: '한밭대학교',
       department: '컴퓨터공학과',
-      position: '회장',
+      positionCodes: ['PRESIDENT'],
       birthDate: null,
       duesRequired: false,
       studentNumber: '1900123456',
@@ -191,7 +191,7 @@ const memberDirectory = {
       academicStatus: 'ENROLLED',
       university: '한밭대학교',
       department: '산업디자인학과',
-      position: null,
+      positionCodes: [],
       birthDate: null,
       duesRequired: true,
       studentNumber: '2100123456',
@@ -243,7 +243,13 @@ const reservationDetail = {
   group: null,
 };
 
+const positions = [
+  { code: 'PRESIDENT', name: '회장' },
+  { code: 'VICE_PRESIDENT', name: '부회장' },
+];
+
 const routes: RouteEntry[] = [
+  { method: 'GET', pattern: /\/v1\/positions$/, body: positions },
   { method: 'GET', pattern: /\/v1\/members\/me$/, body: sessionMember() },
   { method: 'GET', pattern: /\/v1\/admin\/track-pages\/\d+\/curriculums$/, body: curriculums },
   { method: 'GET', pattern: /\/v1\/admin\/track-pages\/\d+$/, body: trackPageDetail },

@@ -39,15 +39,6 @@ export const DEPARTMENT_OPTIONS = [
   '미래융합학부',
 ];
 
-const POSITION_TRACKS = ['Frontend', 'Backend', 'Game', 'DA', 'PM', 'Design', 'IOS', 'Android', 'Security'];
-
-/** 역할(position)은 자유 입력이 아니라 정해진 보직 목록에서 고른다. 미지정은 null이다. */
-export const POSITION_OPTIONS = [
-  '회장',
-  '부회장',
-  ...POSITION_TRACKS.flatMap((track) => [`${track} 트랙장`, `${track} 교육장`]),
-];
-
 export const DEFAULT_UNIVERSITY = '한국기술교육대학교';
 export const DEFAULT_DEPARTMENT = '컴퓨터공학부';
 

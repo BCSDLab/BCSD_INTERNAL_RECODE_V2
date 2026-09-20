@@ -1,7 +1,9 @@
 'use client';
 
+import { useQuery } from '@tanstack/react-query';
 import type { Track } from '@/api/auth/types';
 import type { MemberDirectoryItem, MemberSortKey, SortDirection } from '@/api/member/types';
+import { positionQueries } from '@/api/position/queries';
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/chip';
 import { Switch } from '@/components/ui/switch';
@@ -55,6 +57,8 @@ export function MemberTable({
   onResetFilters: () => void;
 }) {
   const columnCount = isAdmin ? 18 : 17;
+  const { data: positions = [] } = useQuery(positionQueries.list());
+  const positionLabels = new Map(positions.map((position) => [position.code, position.name]));
 
   return (
     <div className="overflow-x-auto">
@@ -96,6 +100,7 @@ export function MemberTable({
               isSelf={member.id === currentMemberId}
               isPending={pendingMemberId === member.id}
               actions={actions}
+              positionLabels={positionLabels}
             />
           ))}
 
@@ -161,12 +166,14 @@ function MemberTableRow({
   isSelf,
   isPending,
   actions,
+  positionLabels,
 }: {
   member: MemberDirectoryItem;
   isAdmin: boolean;
   isSelf: boolean;
   isPending: boolean;
   actions: MemberRowActions;
+  positionLabels: Map<string, string>;
 }) {
   return (
     <tr
@@ -206,7 +213,11 @@ function MemberTableRow({
         {member.phoneNumber ? formatPhoneNumber(member.phoneNumber) : <Empty />}
       </td>
       <td className={`${CELL_CLASS} text-muted max-w-[220px] truncate`}>{member.email}</td>
-      <td className={CELL_CLASS}>{member.position ?? <Empty />}</td>
+      <td className={CELL_CLASS}>
+        {member.positionCodes.length > 0
+          ? member.positionCodes.map((code) => positionLabels.get(code) ?? code).join(', ')
+          : <Empty />}
+      </td>
       <td className={`${CELL_CLASS} text-muted max-w-[160px] truncate`}>
         {member.githubId ? `@${member.githubId}` : <Empty />}
       </td>

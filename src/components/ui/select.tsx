@@ -16,7 +16,22 @@ export interface SelectOption {
  *
  * 옵션은 호출부가 만든 배열을 그대로 받는다 — MemberFormModal의 "빈 값 전용 옵션"처럼
  * 화면마다 다른 옵션 구성 로직을 이 컴포넌트 안으로 끌어오지 않는다.
+ *
+ * multiple을 켜면 값·콜백이 string[]이 된다(Base UI Select가 그대로 지원 — 항목을 눌러도
+ * 팝업이 닫히지 않고 계속 고를 수 있다). 트리거에는 고른 라벨을 쉼표로 이어 보여준다.
  */
+type SelectSingleProps = {
+  multiple?: false;
+  value: string;
+  onValueChange: (value: string) => void;
+};
+
+type SelectMultipleProps = {
+  multiple: true;
+  value: string[];
+  onValueChange: (value: string[]) => void;
+};
+
 export function Select({
   value,
   onValueChange,
@@ -24,25 +39,33 @@ export function Select({
   placeholder,
   className = '',
   disabled,
-}: {
-  value: string;
-  onValueChange: (value: string) => void;
+  multiple,
+}: (SelectSingleProps | SelectMultipleProps) & {
   options: SelectOption[];
   placeholder?: string;
   className?: string;
   disabled?: boolean;
 }) {
+  const labelByValue = new Map(options.map((option) => [option.value, option.label]));
+
   return (
     <SelectPrimitive.Root
       value={value}
-      onValueChange={(next) => onValueChange(next ?? '')}
+      onValueChange={(next) => onValueChange((multiple ? (next ?? []) : (next ?? '')) as never)}
       disabled={disabled}
       items={options}
+      multiple={multiple}
     >
       <SelectPrimitive.Trigger
         className={`flex w-full min-w-0 items-center justify-between gap-2 rounded-[10px] border border-line bg-panel2 text-sm text-text outline-none transition-colors focus:border-primary-line focus:bg-primary-sunken data-disabled:cursor-default data-disabled:opacity-45 data-placeholder:text-faint ${className}`}
       >
-        <SelectPrimitive.Value placeholder={placeholder} className="truncate" />
+        {multiple ? (
+          <span className={`truncate ${value.length === 0 ? 'text-faint' : ''}`}>
+            {value.length > 0 ? value.map((v) => labelByValue.get(v) ?? v).join(', ') : placeholder}
+          </span>
+        ) : (
+          <SelectPrimitive.Value placeholder={placeholder} className="truncate" />
+        )}
         <SelectPrimitive.Icon className="text-faint flex-none">
           <ChevronDown size={14} />
         </SelectPrimitive.Icon>

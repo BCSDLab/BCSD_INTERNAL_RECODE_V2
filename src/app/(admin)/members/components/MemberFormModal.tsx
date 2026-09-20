@@ -1,12 +1,13 @@
 'use client';
 
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import type { MemberType, Track } from '@/api/auth/types';
 import { ApiError } from '@/api/client';
 import { createMember, updateMemberProfile } from '@/api/member/api';
 import { memberKeys } from '@/api/member/queries';
 import type { AcademicStatus, MemberDirectoryItem } from '@/api/member/types';
+import { positionQueries } from '@/api/position/queries';
 import { Button } from '@/components/ui/button';
 import { Field, INPUT_CLASS_COMPACT } from '@/components/ui/field';
 import { Modal } from '@/components/ui/modal';
@@ -18,7 +19,6 @@ import {
   DEFAULT_UNIVERSITY,
   DEPARTMENT_OPTIONS,
   MEMBER_TYPE_OPTIONS,
-  POSITION_OPTIONS,
   TRACK_OPTIONS,
 } from './options';
 
@@ -32,7 +32,7 @@ interface FormValues {
   department: string;
   academicStatus: AcademicStatus;
   active: boolean;
-  position: string;
+  positionCodes: string[];
   birthDate: string;
   duesRequired: boolean;
   email: string;
@@ -51,7 +51,7 @@ function toForm(member: MemberDirectoryItem | null): FormValues {
     department: member?.department ?? DEFAULT_DEPARTMENT,
     academicStatus: member?.academicStatus ?? 'ENROLLED',
     active: member?.active ?? true,
-    position: member?.position ?? '',
+    positionCodes: member?.positionCodes ?? [],
     birthDate: member?.birthDate ?? '',
     duesRequired: member?.duesRequired ?? true,
     email: member?.email ?? '',
@@ -119,6 +119,7 @@ export function MemberFormModal({
 }) {
   const queryClient = useQueryClient();
   const isNew = member === null;
+  const { data: positions = [] } = useQuery(positionQueries.list());
 
   const [form, setForm] = useState<FormValues>(() => toForm(member));
   const [errors, setErrors] = useState<Partial<Record<keyof FormValues, string>>>({});
@@ -153,7 +154,7 @@ export function MemberFormModal({
         generation: form.generation.trim(),
         university: form.university.trim(),
         department: form.department.trim(),
-        position: optional(form.position),
+        positionCodes: form.positionCodes,
         birthDate: optional(form.birthDate),
         duesRequired: form.duesRequired,
         email: form.email.trim(),
@@ -315,12 +316,11 @@ export function MemberFormModal({
           <>
             <FormField label="보직">
               <Select
-                value={form.position}
-                onValueChange={(v) => update({ position: v })}
-                options={[
-                  { value: '', label: '— 없음' },
-                  ...POSITION_OPTIONS.map((position) => ({ value: position, label: position })),
-                ]}
+                multiple
+                value={form.positionCodes}
+                onValueChange={(v) => update({ positionCodes: v })}
+                options={positions.map((position) => ({ value: position.code, label: position.name }))}
+                placeholder="— 없음"
                 className={INPUT_CLASS_COMPACT}
               />
             </FormField>

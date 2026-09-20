@@ -12,7 +12,7 @@ export interface MemberDirectoryItem {
   academicStatus: AcademicStatus;
   university: string;
   department: string;
-  position: string | null;
+  positionCodes: string[];
   birthDate: string | null;
   duesRequired: boolean;
   studentNumber: string;
@@ -111,7 +111,7 @@ export interface MemberProfileUpdateRequest {
   generation: string;
   university: string;
   department: string;
-  position: string | null;
+  positionCodes: string[];
   birthDate: string | null;
   duesRequired: boolean;
   email: string;
