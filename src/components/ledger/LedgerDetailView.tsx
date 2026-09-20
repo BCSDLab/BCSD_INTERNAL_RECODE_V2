@@ -2,9 +2,11 @@
 
 import { useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
-import { DUES_LINK_OPTIONS, REFUND_LINK_OPTIONS } from '@/components/ledger/initial-data';
+import { useAppData } from '@/components/app-data/AppDataProvider';
+import { LIVE_SEMESTER_ID } from '@/components/dues/derive';
+import type { MemberDues } from '@/components/dues/types';
 import { Button, Input, ModalFrame, Panel, Select } from '@/components/ledger/LedgerUi';
-import type { Evidence, LedgerCategory, LedgerEntry } from '@/components/ledger/types';
+import type { DuesLink, Evidence, LedgerCategory, LedgerEntry } from '@/components/ledger/types';
 import { LEDGER_CATEGORIES, MAX_EVIDENCE_COUNT } from '@/components/ledger/types';
 import { entryTypeLabel, formatOccurredAt, formatWon } from '@/components/ledger/utils';
 
@@ -33,10 +35,25 @@ function readAsDataUrl(file: File) {
   });
 }
 
-function paymentStatus(entry: LedgerEntry, allEntries: LedgerEntry[]): PaymentStatus {
+function toDuesLink(member: MemberDues, semester: string, kind: 'deposit' | 'refund'): DuesLink {
+  return {
+    memberId: member.id,
+    memberName: member.name,
+    studentNumber: member.studentNumber,
+    track: member.track,
+    semester,
+    requiredAmount: member.assessedAmount ?? 0,
+    refundReason: kind === 'refund' ? member.refundReason : undefined,
+    refundAmount: kind === 'refund' ? member.refundAmount : undefined,
+  };
+}
+
+function paymentStatus(entry: LedgerEntry, allEntries: LedgerEntry[], members: MemberDues[]): PaymentStatus {
   const duesLink = entry.duesLink;
   if (!duesLink || entry.linkStatus !== 'confirmed') return '확인필요';
   if (entry.category === '회비 반환') return '완료';
+
+  const requiredAmount = members.find((member) => member.id === duesLink.memberId)?.assessedAmount ?? duesLink.requiredAmount;
 
   const paidAmount = allEntries
     .filter(
@@ -49,8 +66,8 @@ function paymentStatus(entry: LedgerEntry, allEntries: LedgerEntry[]): PaymentSt
     )
     .reduce((total, candidate) => total + candidate.amount, 0);
 
-  if (paidAmount > duesLink.requiredAmount) return '확인필요';
-  return paidAmount >= duesLink.requiredAmount ? '완료' : '미납';
+  if (paidAmount > requiredAmount) return '확인필요';
+  return paidAmount >= requiredAmount ? '완료' : '미납';
 }
 
 function StatusBadge({ status }: { status: PaymentStatus }) {
@@ -76,6 +93,11 @@ function StatusBadge({ status }: { status: PaymentStatus }) {
 }
 
 export function LedgerDetailView({ entry, allEntries, onClose, onSave, onOpenEvidence }: LedgerDetailViewProps) {
+  const { getSemesterDuesMembers } = useAppData();
+  const liveMembers = getSemesterDuesMembers(LIVE_SEMESTER_ID);
+  const depositCandidates = liveMembers.filter((member) => member.assessedAmount !== null);
+  const refundCandidates = liveMembers.filter((member) => member.refundStatus === 'needed' || member.refundStatus === 'partial');
+
   const evidenceInput = useRef<HTMLInputElement>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [counterparty, setCounterparty] = useState(entry.counterparty);
@@ -83,14 +105,16 @@ export function LedgerDetailView({ entry, allEntries, onClose, onSave, onOpenEvi
   const [description, setDescription] = useState(entry.description);
   const [note, setNote] = useState(entry.note);
   const [evidences, setEvidences] = useState<Evidence[]>(entry.evidences);
-  const initialLinkOptions = entry.category === '회비 반환' ? REFUND_LINK_OPTIONS : DUES_LINK_OPTIONS;
-  const initialLink = entry.duesLink ?? initialLinkOptions[0];
+  const initialCandidates = entry.category === '회비 반환' ? refundCandidates : depositCandidates;
+  const initialLink =
+    entry.duesLink ?? (initialCandidates[0] ? toDuesLink(initialCandidates[0], SEMESTER_OPTIONS[0], entry.category === '회비 반환' ? 'refund' : 'deposit') : undefined);
   const [selectedTrack, setSelectedTrack] = useState(initialLink?.track ?? '');
   const [selectedMemberId, setSelectedMemberId] = useState(initialLink?.memberId ?? '');
   const [semester, setSemester] = useState(entry.duesLink?.semester ?? SEMESTER_OPTIONS[0]);
   const [error, setError] = useState('');
 
-  const baseLinkOptions = category === '회비 반환' ? REFUND_LINK_OPTIONS : DUES_LINK_OPTIONS;
+  const baseCandidates = category === '회비 반환' ? refundCandidates : depositCandidates;
+  const baseLinkOptions = baseCandidates.map((member) => toDuesLink(member, semester, category === '회비 반환' ? 'refund' : 'deposit'));
   const linkOptions =
     !entry.duesLink || baseLinkOptions.some((option) => option.memberId === entry.duesLink?.memberId)
       ? baseLinkOptions
@@ -98,11 +122,11 @@ export function LedgerDetailView({ entry, allEntries, onClose, onSave, onOpenEvi
   const trackOptions = [...new Set(linkOptions.map((option) => option.track))];
   const memberOptions = linkOptions.filter((option) => option.track === selectedTrack);
   const displayedEvidences = isEditing ? evidences : entry.evidences;
-  const status = paymentStatus(entry, allEntries);
+  const status = paymentStatus(entry, allEntries, liveMembers);
 
   function resetDraft() {
-    const options = entry.category === '회비 반환' ? REFUND_LINK_OPTIONS : DUES_LINK_OPTIONS;
-    const currentLink = entry.duesLink ?? options[0];
+    const options = entry.category === '회비 반환' ? refundCandidates : depositCandidates;
+    const currentLink = entry.duesLink ?? (options[0] ? toDuesLink(options[0], SEMESTER_OPTIONS[0], entry.category === '회비 반환' ? 'refund' : 'deposit') : undefined);
     setCounterparty(entry.counterparty);
     setCategory(entry.category);
     setDescription(entry.description);
@@ -129,11 +153,11 @@ export function LedgerDetailView({ entry, allEntries, onClose, onSave, onOpenEvi
     setError('');
     if (!isDuesCategory(nextCategory)) return;
 
-    const options = nextCategory === '회비 반환' ? REFUND_LINK_OPTIONS : DUES_LINK_OPTIONS;
-    const nextLink = options.find((option) => option.memberId === entry.duesLink?.memberId) ?? options[0];
-    setSelectedTrack(nextLink?.track ?? '');
-    setSelectedMemberId(nextLink?.memberId ?? '');
-    setSemester(nextLink?.semester ?? SEMESTER_OPTIONS[0]);
+    const candidates = nextCategory === '회비 반환' ? refundCandidates : depositCandidates;
+    const nextMember = candidates.find((member) => member.id === entry.duesLink?.memberId) ?? candidates[0];
+    setSelectedTrack(nextMember?.track ?? '');
+    setSelectedMemberId(nextMember?.id ?? '');
+    setSemester(entry.duesLink?.semester ?? SEMESTER_OPTIONS[0]);
   }
 
   function changeTrack(track: string) {

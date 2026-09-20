@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useAppData } from '@/components/app-data/AppDataProvider';
 import { EvidenceViewer } from '@/components/ledger/EvidenceViewer';
-import { INITIAL_LEDGER_ENTRIES, EMPTY_LEDGER_FILTERS } from '@/components/ledger/initial-data';
+import { EMPTY_LEDGER_FILTERS } from '@/components/ledger/initial-data';
 import { LedgerDetailView } from '@/components/ledger/LedgerDetailView';
 import { LedgerListView } from '@/components/ledger/LedgerListView';
 import { Toast } from '@/components/ledger/LedgerUi';
@@ -16,16 +17,8 @@ import { isCompleteLedgerDate } from '@/components/ledger/utils';
 
 type EvidenceState = { entryId: string; evidenceId: string } | null;
 
-function freshInitialEntries() {
-  return INITIAL_LEDGER_ENTRIES.map((entry) => ({
-    ...entry,
-    duesLink: entry.duesLink ? { ...entry.duesLink } : undefined,
-    evidences: entry.evidences.map((evidence) => ({ ...evidence })),
-  }));
-}
-
 export function LedgerPageClient() {
-  const [entries, setEntries] = useState<LedgerEntry[]>(freshInitialEntries);
+  const { ledgerEntries: entries, setLedgerEntries: setEntries } = useAppData();
   const [filters, setFilters] = useState<LedgerFilters>(EMPTY_LEDGER_FILTERS);
   const [screen, setScreen] = useState<LedgerScreen>({ name: 'list' });
   const [evidenceState, setEvidenceState] = useState<EvidenceState>(null);
