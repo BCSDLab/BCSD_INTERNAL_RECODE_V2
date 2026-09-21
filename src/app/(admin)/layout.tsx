@@ -6,9 +6,11 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { activityQueries } from '@/api/activity/queries';
 import { logout } from '@/api/auth/api';
+import { authQueries } from '@/api/auth/queries';
 import { gameQueries } from '@/api/game/queries';
 import { memberQueries } from '@/api/member/queries';
 import { trackQueries } from '@/api/track/queries';
+import { Avatar } from '@/components/ui/avatar';
 import { useAuthGuard } from '@/hooks/useAuthGuard';
 import { setSession } from '@/lib/auth/session-store';
 import { MEMBER_TYPE_LABELS, TRACK_LABELS } from '@/lib/member-labels';
@@ -43,6 +45,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     ...memberQueries.total(session?.member.role === 'ADMIN'),
     enabled: isAuthenticated,
   });
+
+  const { data: me } = useQuery({ ...authQueries.me(session?.accessToken ?? ''), enabled: isAuthenticated });
 
   if (!isAuthenticated) {
     // 세션 부트스트랩 중이거나 로그인으로 리다이렉트되는 동안 빈 화면을 보인다.
@@ -102,7 +106,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </nav>
 
         <div className="border-line mt-auto flex items-center gap-2.5 border-t pt-3.5">
-          <div className="bg-primary h-7 w-7 flex-none rounded-full" />
+          <Avatar src={me?.photoUrl} name={session.member.name} size="nav" />
           <div className="flex min-w-0 flex-col gap-0.5">
             <div className="text-xs font-medium whitespace-nowrap">{session.member.name}</div>
             <div className="text-faint text-[11px] whitespace-nowrap">

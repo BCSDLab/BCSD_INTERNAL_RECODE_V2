@@ -4,14 +4,15 @@
  * 인명부 메인 테이블(MemberTable)만 이름 첫 글자를 보여줘서 그 화면만 사진 없는 회원을
  * 구분할 수 있었다. 전부 이니셜 방식으로 통일한다.
  *
- * size: sm(22px, 명부 검색 후보 행) / md(26px, 참여 멤버·멘토 행) / lg(34px, 인명부 테이블) /
- * xl(64px, 내 정보 수정 프로필 카드)
+ * size: sm(22px, 명부 검색 후보 행) / md(26px, 참여 멤버·멘토 행) / nav(28px, 사이드바 하단
+ * 프로필) / lg(34px, 인명부 테이블) / xl(64px, 내 정보 수정 프로필 카드)
  */
-type AvatarSize = 'sm' | 'md' | 'lg' | 'xl';
+type AvatarSize = 'sm' | 'md' | 'nav' | 'lg' | 'xl';
 
 const SIZE_CLASS: Record<AvatarSize, string> = {
   sm: 'h-[22px] w-[22px] text-[10px]',
   md: 'h-[26px] w-[26px] text-[11px]',
+  nav: 'h-7 w-7 text-[11px]',
   lg: 'h-[34px] w-[34px] text-xs',
   xl: 'h-16 w-16 text-lg',
 };
