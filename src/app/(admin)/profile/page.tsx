@@ -206,7 +206,7 @@ export default function ProfilePage() {
           <div className="flex min-w-0 flex-col gap-1">
             <div className="text-[15px] font-semibold whitespace-nowrap">{detail.name}</div>
             <div className="text-faint text-[12px] whitespace-nowrap">
-              {detail.studentNumber} · {TRACK_LABELS[detail.track]} · {detail.generation}기
+              {detail.studentNumber} · {TRACK_LABELS[detail.track]} · {detail.generation}
             </div>
             {photoError && <div className="text-danger text-[11px]">{photoError}</div>}
           </div>
