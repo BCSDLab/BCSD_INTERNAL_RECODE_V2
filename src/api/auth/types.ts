@@ -34,6 +34,7 @@ export interface MemberDetail extends MemberSummary {
   phoneNumber: string;
   githubId: string | null;
   status: MemberStatus;
+  photoUrl: string | null;
 }
 
 export interface LoginRequest {

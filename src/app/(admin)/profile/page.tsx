@@ -1,11 +1,13 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useRef, useState, type ChangeEvent } from 'react';
-import { changeMyPassword, updateMyContact } from '@/api/auth/api';
+import { useEffect, useRef, useState, type ChangeEvent } from 'react';
+import { changeMyPassword, updateMyContact, uploadMyPhoto } from '@/api/auth/api';
 import { authKeys, authQueries } from '@/api/auth/queries';
 import type { MemberContactUpdateRequest, PasswordChangeRequest } from '@/api/auth/types';
+import { validateMemberPhoto } from '@/api/member/api';
 import { ApiError } from '@/api/client';
+import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Field, INPUT_CLASS } from '@/components/ui/field';
 import { PageHeader } from '@/components/ui/page-header';
@@ -40,6 +42,8 @@ export default function ProfilePage() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [pickedPhoto, setPickedPhoto] = useState<{ file: File; previewUrl: string } | null>(null);
+  const [photoError, setPhotoError] = useState<string | null>(null);
 
   // 데이터가 처음 도착했을 때만 편집 상태를 초기값으로 맞춘다(React 공식 패턴 —
   // "조건부로 렌더 중 state를 조정"; effect로 하면 여분의 렌더가 한 번 더 생긴다).
@@ -64,6 +68,37 @@ export default function ProfilePage() {
   const passwordMutation = useMutation({
     mutationFn: (body: PasswordChangeRequest) => changeMyPassword(body),
   });
+
+  const photoMutation = useMutation({
+    mutationFn: (file: File) => uploadMyPhoto(file),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: authKeys.me() });
+      setPickedPhoto(null);
+    },
+    onError: (e) => setPhotoError(e instanceof Error ? e.message : '사진 업로드에 실패했습니다.'),
+  });
+
+  // 미리보기 blob URL 해제만 맡는다 — 생성은 파일을 고른 순간에 한다(MemberPhotoModal과 같은 패턴).
+  useEffect(() => {
+    if (!pickedPhoto) {
+      return;
+    }
+    const { previewUrl } = pickedPhoto;
+    return () => URL.revokeObjectURL(previewUrl);
+  }, [pickedPhoto]);
+
+  function handlePickPhoto(file: File) {
+    const validationError = validateMemberPhoto(file);
+    if (validationError) {
+      setPickedPhoto(null);
+      setPhotoError(validationError);
+      return;
+    }
+    setPhotoError(null);
+    const picked = { file, previewUrl: URL.createObjectURL(file) };
+    setPickedPhoto(picked);
+    photoMutation.mutate(file);
+  }
 
   function handlePhoneChange(e: ChangeEvent<HTMLInputElement>) {
     const input = e.target;
@@ -149,14 +184,31 @@ export default function ProfilePage() {
 
       <div className="mx-auto flex w-full max-w-[640px] flex-col gap-5 px-8 pt-7 pb-[100px]">
         <div className="border-line bg-panel flex items-center gap-[18px] rounded-2xl border p-[22px]">
-          <div className="bg-primary text-on-primary flex h-16 w-16 flex-none items-center justify-center rounded-full text-lg font-bold">
-            {detail.name.slice(0, 1)}
-          </div>
+          <label className="group relative flex-none cursor-pointer">
+            <Avatar src={pickedPhoto?.previewUrl ?? detail.photoUrl} name={detail.name} size="xl" />
+            <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/0 text-[10px] font-medium text-transparent transition-colors group-hover:bg-black/40 group-hover:text-white">
+              {photoMutation.isPending ? '업로드 중…' : '변경'}
+            </span>
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              className="hidden"
+              disabled={photoMutation.isPending}
+              onChange={(e) => {
+                const selected = e.target.files?.[0];
+                if (selected) {
+                  handlePickPhoto(selected);
+                }
+                e.target.value = '';
+              }}
+            />
+          </label>
           <div className="flex min-w-0 flex-col gap-1">
             <div className="text-[15px] font-semibold whitespace-nowrap">{detail.name}</div>
             <div className="text-faint text-[12px] whitespace-nowrap">
               {detail.studentNumber} · {TRACK_LABELS[detail.track]} · {detail.generation}기
             </div>
+            {photoError && <div className="text-danger text-[11px]">{photoError}</div>}
           </div>
         </div>
 

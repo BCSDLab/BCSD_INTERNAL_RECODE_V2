@@ -1,3 +1,5 @@
+import { validateMemberPhoto } from '@/api/member/api';
+import type { PhotoPresignedUrlResponse } from '@/api/member/types';
 import { apiClient, reissueAccessToken } from '@/api/client';
 import type {
   InitialSetupRequest,
@@ -44,6 +46,44 @@ export function validateResetToken(token: string) {
 
 export function confirmPasswordReset(token: string, newPassword: string, newPasswordConfirm: string) {
   return apiClient.post<void>('/v1/auth/password/reset', { token, newPassword, newPasswordConfirm });
+}
+
+function issueMyPhotoPresignedUrl(body: { fileName: string; contentType: string; byteSize: number }) {
+  return apiClient.post<PhotoPresignedUrlResponse>('/v1/members/me/photo/presigned-url', body);
+}
+
+function updateMyPhotoUrl(photoUrl: string) {
+  return apiClient.patch<void>('/v1/members/me/photo', { photoUrl });
+}
+
+/**
+ * presigned URL 발급 → S3 PUT → photoUrl 저장까지 한 번에 처리한다.
+ * S3 PUT만 apiClient가 아니라 순수 fetch를 쓴다 — 우리 API가 아니라 서명된 URL이라
+ * Authorization·credentials를 붙이면 서명 검증이 깨진다(uploadMemberPhoto와 같은 이유).
+ */
+export async function uploadMyPhoto(file: File): Promise<string> {
+  const validationError = validateMemberPhoto(file);
+  if (validationError) {
+    throw new Error(validationError);
+  }
+
+  const presigned = await issueMyPhotoPresignedUrl({
+    fileName: file.name,
+    contentType: file.type,
+    byteSize: file.size,
+  });
+
+  const putResponse = await fetch(presigned.uploadUrl, {
+    method: 'PUT',
+    headers: { 'Content-Type': file.type },
+    body: file,
+  });
+  if (!putResponse.ok) {
+    throw new Error('사진 업로드에 실패했습니다.');
+  }
+
+  await updateMyPhotoUrl(presigned.publicUrl);
+  return presigned.publicUrl;
 }
 
 export function getInitialSetupInfo(accessToken: string) {
