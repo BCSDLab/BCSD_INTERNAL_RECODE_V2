@@ -1,6 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { activityQueries } from '@/api/activity/queries';
@@ -70,8 +71,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <div className="bg-bg text-text flex min-h-screen">
       <aside className="border-line bg-sidebar sticky top-0 flex h-screen w-[250px] flex-none flex-col border-r px-4 pt-[22px] pb-[18px]">
         <div className="flex items-center gap-[11px] px-1.5 pb-5">
-          <div className="border-primary-line flex h-[30px] w-[30px] flex-none items-center justify-center rounded-full border">
-            <div className="bg-primary h-2.5 w-2.5 rounded-full" />
+          <div className="flex h-[30px] w-[30px] flex-none items-center justify-center rounded-full bg-white">
+            <Image src="/bcsd-logo.svg" alt="BCSD" width={20} height={16} />
           </div>
           <div className="flex flex-col gap-0.5">
             <div className="text-[15px] font-semibold tracking-[-.01em] whitespace-nowrap">BCSD Internal</div>
