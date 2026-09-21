@@ -29,7 +29,7 @@ export function Avatar({
   className?: string;
 }) {
   return (
-    <span className={`flex-none overflow-hidden rounded-full ${SIZE_CLASS[size]} ${className}`}>
+    <span className={`inline-flex flex-none overflow-hidden rounded-full ${SIZE_CLASS[size]} ${className}`}>
       {src ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={src} alt="" className="h-full w-full object-cover" />
