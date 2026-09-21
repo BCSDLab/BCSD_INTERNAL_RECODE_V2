@@ -322,7 +322,7 @@ function MemberAvatar({
   onChangePhoto: (member: MemberDirectoryItem) => void;
 }) {
   if (!isAdmin) {
-    return <Avatar src={member.photoUrl} name={member.name} size="lg" />;
+    return <Avatar name={member.name} size="lg" />;
   }
 
   return (
@@ -332,7 +332,7 @@ function MemberAvatar({
       title="사진 변경"
       className="hover:ring-primary-line block flex-none cursor-pointer rounded-full transition-shadow hover:ring-2"
     >
-      <Avatar src={member.photoUrl} name={member.name} size="lg" />
+      <Avatar name={member.name} size="lg" />
     </button>
   );
 }
