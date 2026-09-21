@@ -4,7 +4,6 @@ import { useQuery } from '@tanstack/react-query';
 import type { Track } from '@/api/auth/types';
 import type { MemberDirectoryItem, MemberSortKey, SortDirection } from '@/api/member/types';
 import { positionQueries } from '@/api/position/queries';
-import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/chip';
 import { Switch } from '@/components/ui/switch';
 import { formatPhoneNumber } from '@/lib/format-phone';
@@ -21,7 +20,6 @@ const CELL_CLASS = 'px-2.5 py-2.5 text-[13px] whitespace-nowrap';
 
 export interface MemberRowActions {
   onEditProfile: (member: MemberDirectoryItem) => void;
-  onChangePhoto: (member: MemberDirectoryItem) => void;
   onChangeAcademicStatus: (member: MemberDirectoryItem) => void;
   onChangeRole: (member: MemberDirectoryItem) => void;
   onToggleActive: (member: MemberDirectoryItem) => void;
@@ -29,7 +27,7 @@ export interface MemberRowActions {
 }
 
 /**
- * 인명부 표. 열이 18개라 항상 가로로 스크롤된다(감싼 div가 overflow-x-auto).
+ * 인명부 표. 열이 17개라 항상 가로로 스크롤된다(감싼 div가 overflow-x-auto).
  * 관리자가 아니면 편집 수단을 아예 렌더하지 않는다 — 변경 API가 모두 관리자 전용이라
  * 일반 권한에는 보여 줄 의미가 없다.
  */
@@ -56,7 +54,7 @@ export function MemberTable({
   actions: MemberRowActions;
   onResetFilters: () => void;
 }) {
-  const columnCount = isAdmin ? 18 : 17;
+  const columnCount = isAdmin ? 17 : 16;
   const { data: positions = [] } = useQuery(positionQueries.list());
   const positionLabels = new Map(positions.map((position) => [position.code, position.name]));
 
@@ -65,7 +63,6 @@ export function MemberTable({
       <table className="w-full min-w-[1720px] border-collapse">
         <thead className="bg-panel2">
           <tr className="border-line border-b">
-            <th className={HEAD_CLASS}>사진</th>
             <SortableHead label="기수" sortKey="generation" sort={sort} direction={direction} onSort={onSortChange} />
             <th className={HEAD_CLASS}>트랙</th>
             <th className={HEAD_CLASS}>구분</th>
@@ -181,9 +178,6 @@ function MemberTableRow({
         isPending ? 'opacity-60' : ''
       }`}
     >
-      <td className={CELL_CLASS}>
-        <MemberAvatar member={member} isAdmin={isAdmin} onChangePhoto={actions.onChangePhoto} />
-      </td>
       <td className={`${CELL_CLASS} font-medium tabular-nums`}>{member.generation}</td>
       <td className={CELL_CLASS}>
         <TrackChip track={member.track} />
@@ -308,31 +302,6 @@ function CellButton({ onClick, children }: { onClick: () => void; children: Reac
     >
       {children}
       <span className="text-muted text-[10px] leading-none">▾</span>
-    </button>
-  );
-}
-
-function MemberAvatar({
-  member,
-  isAdmin,
-  onChangePhoto,
-}: {
-  member: MemberDirectoryItem;
-  isAdmin: boolean;
-  onChangePhoto: (member: MemberDirectoryItem) => void;
-}) {
-  if (!isAdmin) {
-    return <Avatar name={member.name} size="lg" />;
-  }
-
-  return (
-    <button
-      type="button"
-      onClick={() => onChangePhoto(member)}
-      title="사진 변경"
-      className="hover:ring-primary-line block flex-none cursor-pointer rounded-full transition-shadow hover:ring-2"
-    >
-      <Avatar name={member.name} size="lg" />
     </button>
   );
 }

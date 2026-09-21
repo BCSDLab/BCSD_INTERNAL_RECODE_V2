@@ -19,7 +19,6 @@ import { AcademicStatusModal } from './components/AcademicStatusModal';
 import { MemberFilterSidebar } from './components/MemberFilterSidebar';
 import { MemberFormModal } from './components/MemberFormModal';
 import { MemberPagination } from './components/MemberPagination';
-import { MemberPhotoModal } from './components/MemberPhotoModal';
 import { MemberRoleModal } from './components/MemberRoleModal';
 import { MemberStats } from './components/MemberStats';
 import { MemberTable } from './components/MemberTable';
@@ -31,7 +30,7 @@ const EMPTY_MEMBERS: MemberDirectoryItem[] = [];
 /** 열려 있는 모달. 'create'만 대상 부원이 없다. */
 type ModalState =
   | { kind: 'create' }
-  | { kind: 'edit' | 'photo' | 'role' | 'academic-status' | 'withdrawal'; member: MemberDirectoryItem };
+  | { kind: 'edit' | 'role' | 'academic-status' | 'withdrawal'; member: MemberDirectoryItem };
 
 function countActiveFilters(filters: MemberDirectoryFilters): number {
   return (
@@ -154,7 +153,6 @@ export default function MembersPage() {
               onResetFilters={resetFilters}
               actions={{
                 onEditProfile: (member) => setModal({ kind: 'edit', member }),
-                onChangePhoto: (member) => setModal({ kind: 'photo', member }),
                 onChangeAcademicStatus: (member) => setModal({ kind: 'academic-status', member }),
                 onChangeRole: (member) => setModal({ kind: 'role', member }),
                 onToggleActive: (member) =>
@@ -171,7 +169,6 @@ export default function MembersPage() {
 
       {modal?.kind === 'create' && <MemberFormModal member={null} onClose={() => setModal(null)} />}
       {modal?.kind === 'edit' && <MemberFormModal member={modal.member} onClose={() => setModal(null)} />}
-      {modal?.kind === 'photo' && <MemberPhotoModal member={modal.member} onClose={() => setModal(null)} />}
       {modal?.kind === 'role' && <MemberRoleModal member={modal.member} onClose={() => setModal(null)} />}
       {modal?.kind === 'academic-status' && (
         <AcademicStatusModal member={modal.member} onClose={() => setModal(null)} />
