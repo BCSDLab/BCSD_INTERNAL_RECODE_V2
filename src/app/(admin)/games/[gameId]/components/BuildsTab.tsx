@@ -29,7 +29,7 @@ const UPLOADABLE_STATUSES: GameBuildStatus[] = ['PENDING', 'PROCESSING', 'FAILED
  * 빌드 버전을 등록하고, 등록된 빌드에 ZIP을 업로드한다(ADR-024). 업로드는
  * 인터널 API를 경유하지 않는다 — 토큰만 발급받고 홈페이지 서버에 직접 올린다.
  */
-export function BuildsTab({ gameId }: { gameId: number }) {
+export function BuildsTab({ gameId, canManage }: { gameId: number; canManage: boolean }) {
   const queryClient = useQueryClient();
   const [version, setVersion] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -57,22 +57,24 @@ export function BuildsTab({ gameId }: { gameId: number }) {
 
   return (
     <SectionCard title="빌드" caption={`보관 ${builds?.length ?? 0}개`}>
-      <div className="flex gap-2 pb-3.5">
-        <input
-          value={version}
-          onChange={(e) => setVersion(e.target.value)}
-          placeholder="예: 1.2.0"
-          maxLength={30}
-          className={`${INPUT_CLASS_COMPACT} flex-1`}
-        />
-        <Button
-          variant="primary"
-          onClick={() => version.trim() && createMutation.mutate()}
-          disabled={!version.trim() || createMutation.isPending}
-        >
-          + 버전 등록
-        </Button>
-      </div>
+      {canManage && (
+        <div className="flex gap-2 pb-3.5">
+          <input
+            value={version}
+            onChange={(e) => setVersion(e.target.value)}
+            placeholder="예: 1.2.0"
+            maxLength={30}
+            className={`${INPUT_CLASS_COMPACT} flex-1`}
+          />
+          <Button
+            variant="primary"
+            onClick={() => version.trim() && createMutation.mutate()}
+            disabled={!version.trim() || createMutation.isPending}
+          >
+            + 버전 등록
+          </Button>
+        </div>
+      )}
 
       {isLoading ? (
         <p className="text-faint m-0 text-[13px]">불러오는 중…</p>
@@ -85,6 +87,7 @@ export function BuildsTab({ gameId }: { gameId: number }) {
               key={build.id}
               gameId={gameId}
               build={build}
+              canManage={canManage}
               onDelete={() => deleteMutation.mutate(build.id)}
               onUploadStart={() => setError(null)}
               onUploaded={invalidate}
@@ -106,6 +109,7 @@ export function BuildsTab({ gameId }: { gameId: number }) {
 function BuildRow({
   gameId,
   build,
+  canManage,
   onDelete,
   onUploadStart,
   onUploaded,
@@ -113,6 +117,7 @@ function BuildRow({
 }: {
   gameId: number;
   build: AdminGameBuildResponse;
+  canManage: boolean;
   onDelete: () => void;
   onUploadStart: () => void;
   onUploaded: () => void;
@@ -130,7 +135,7 @@ function BuildRow({
     onError: (e) => onError(e instanceof ApiError ? e.message : '빌드 업로드에 실패했습니다.'),
   });
 
-  const canUpload = UPLOADABLE_STATUSES.includes(build.status);
+  const canUpload = canManage && UPLOADABLE_STATUSES.includes(build.status);
 
   return (
     <div className="border-line bg-panel2 flex flex-col gap-1.5 rounded-[10px] border px-3.5 py-2.5">
@@ -171,13 +176,15 @@ function BuildRow({
             </button>
           </>
         )}
-        <button
-          type="button"
-          onClick={onDelete}
-          className="text-faint hover:text-danger flex-none cursor-pointer text-xs"
-        >
-          삭제
-        </button>
+        {canManage && (
+          <button
+            type="button"
+            onClick={onDelete}
+            className="text-faint hover:text-danger flex-none cursor-pointer text-xs"
+          >
+            삭제
+          </button>
+        )}
       </div>
       {build.status === 'FAILED' && build.failureReason && (
         <p className="text-danger m-0 text-[11px]">{build.failureReason}</p>

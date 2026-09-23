@@ -17,6 +17,8 @@ import { Modal } from '@/components/ui/modal';
 import { PageHeader } from '@/components/ui/page-header';
 import { Select } from '@/components/ui/select';
 import { useSortableList } from '@/hooks/useSortableList';
+import { useSession } from '@/lib/auth/use-session';
+import { canManageGames } from '@/lib/permissions';
 
 const EMPTY: AdminGameSummaryResponse[] = [];
 
@@ -29,18 +31,29 @@ const EMPTY: AdminGameSummaryResponse[] = [];
 export default function GamesPage() {
   const queryClient = useQueryClient();
   const router = useRouter();
+  const { session } = useSession();
+  const canManage = canManageGames(session?.member);
   const [keyword, setKeyword] = useState('');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const { data: games, isLoading } = useQuery(gameQueries.games());
 
   const reorderMutation = useMutation({
     mutationFn: reorderGames,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: gameKeys.games() }),
+    onSuccess: () => {
+      setError(null);
+      queryClient.invalidateQueries({ queryKey: gameKeys.games() });
+    },
+    onError: (e) => setError(e instanceof ApiError ? e.message : '순서 변경에 실패했습니다.'),
   });
   const publishMutation = useMutation({
     mutationFn: ({ id, isPublished }: { id: number; isPublished: boolean }) => publishGame(id, isPublished),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: gameKeys.games() }),
+    onSuccess: () => {
+      setError(null);
+      queryClient.invalidateQueries({ queryKey: gameKeys.games() });
+    },
+    onError: (e) => setError(e instanceof ApiError ? e.message : '공개 여부 변경에 실패했습니다.'),
   });
 
   const { items, sensors, handleDragEnd } = useSortableList(games ?? EMPTY, (ids) => reorderMutation.mutateAsync(ids));
@@ -67,9 +80,11 @@ export default function GamesPage() {
             placeholder="게임명 검색"
             className={`${INPUT_CLASS_COMPACT} ml-auto w-[220px] flex-none`}
           />
-          <Button variant="primary" onClick={() => setIsCreateOpen(true)}>
-            + 게임 추가
-          </Button>
+          {canManage && (
+            <Button variant="primary" onClick={() => setIsCreateOpen(true)}>
+              + 게임 추가
+            </Button>
+          )}
         </div>
 
         <div className="border-line bg-panel overflow-hidden rounded-2xl border">
@@ -88,12 +103,17 @@ export default function GamesPage() {
               {keyword ? '검색 결과가 없습니다.' : '게임이 없습니다. 위의 "+ 게임 추가"로 시작하세요.'}
             </p>
           ) : (
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={canManage ? handleDragEnd : undefined}
+            >
               <SortableContext items={shown.map((game) => game.id)} strategy={verticalListSortingStrategy}>
                 {shown.map((game) => (
                   <GameRow
                     key={game.id}
                     game={game}
+                    canManage={canManage}
                     onOpen={() => router.push(`/games/${game.id}`)}
                     onTogglePublish={() => publishMutation.mutate({ id: game.id, isPublished: !game.isPublished })}
                   />
@@ -102,6 +122,8 @@ export default function GamesPage() {
             </DndContext>
           )}
         </div>
+
+        {error && <p className="text-danger m-0 pt-3 text-[11px]">{error}</p>}
       </div>
 
       {isCreateOpen && (
@@ -120,10 +142,12 @@ export default function GamesPage() {
 
 function GameRow({
   game,
+  canManage,
   onOpen,
   onTogglePublish,
 }: {
   game: AdminGameSummaryResponse;
+  canManage: boolean;
   onOpen: () => void;
   onTogglePublish: () => void;
 }) {
@@ -134,7 +158,7 @@ function GameRow({
       style={{ transform: CSS.Transform.toString(transform), transition }}
       className="border-line hover:bg-panel2 grid grid-cols-[28px_1fr_140px_100px_72px] items-center gap-3 border-b px-4 py-3 text-[13px] transition-colors last:border-b-0"
     >
-      <DragHandle {...attributes} {...listeners} />
+      {canManage ? <DragHandle {...attributes} {...listeners} /> : <span />}
       <button
         type="button"
         onClick={onOpen}
@@ -143,15 +167,25 @@ function GameRow({
         <span className="truncate font-medium">{game.name}</span>
         <span className="text-faint truncate text-[11px]">/games/{game.slug}</span>
       </button>
-      <button
-        type="button"
-        onClick={onTogglePublish}
-        className={`flex w-fit cursor-pointer items-center gap-[7px] rounded-full border px-2.5 py-1 text-[11px] whitespace-nowrap ${
-          game.isPublished ? 'border-primary-line bg-primary-soft text-primary-text' : 'border-line2 text-muted'
-        }`}
-      >
-        {game.isPublished ? '공개' : '비공개'}
-      </button>
+      {canManage ? (
+        <button
+          type="button"
+          onClick={onTogglePublish}
+          className={`flex w-fit cursor-pointer items-center gap-[7px] rounded-full border px-2.5 py-1 text-[11px] whitespace-nowrap ${
+            game.isPublished ? 'border-primary-line bg-primary-soft text-primary-text' : 'border-line2 text-muted'
+          }`}
+        >
+          {game.isPublished ? '공개' : '비공개'}
+        </button>
+      ) : (
+        <span
+          className={`flex w-fit items-center gap-[7px] rounded-full border px-2.5 py-1 text-[11px] whitespace-nowrap ${
+            game.isPublished ? 'border-primary-line bg-primary-soft text-primary-text' : 'border-line2 text-muted'
+          }`}
+        >
+          {game.isPublished ? '공개' : '비공개'}
+        </span>
+      )}
       <span className="text-faint text-[11px]">{game.displayOrder + 1}번째</span>
       <button
         type="button"

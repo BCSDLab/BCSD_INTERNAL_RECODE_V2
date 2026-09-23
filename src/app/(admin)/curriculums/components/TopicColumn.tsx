@@ -32,10 +32,12 @@ export function TopicColumn({
   curriculumId,
   week,
   onWeekDeleted,
+  canManage,
 }: {
   curriculumId: number;
   week: CurriculumWeekNode | null;
   onWeekDeleted: () => void;
+  canManage: boolean;
 }) {
   const queryClient = useQueryClient();
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
@@ -145,6 +147,7 @@ export function TopicColumn({
               setLabelDraft(e.target.value);
               saveLabel(e.target.value);
             }}
+            readOnly={!canManage}
             className="text-text w-[70px] border-none bg-transparent text-sm outline-none"
           />
         </div>
@@ -154,15 +157,19 @@ export function TopicColumn({
         <Button className="ml-auto" onClick={() => setExpanded(new Set())}>
           모두 접기
         </Button>
-        <Button variant="danger" onClick={() => setIsDeleteWeekOpen(true)}>
-          주차 삭제
-        </Button>
-        <Button variant="primary" onClick={() => createTopicMutation.mutate()}>
-          + 토픽
-        </Button>
+        {canManage && (
+          <>
+            <Button variant="danger" onClick={() => setIsDeleteWeekOpen(true)}>
+              주차 삭제
+            </Button>
+            <Button variant="primary" onClick={() => createTopicMutation.mutate()}>
+              + 토픽
+            </Button>
+          </>
+        )}
       </div>
 
-      <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <DndContext collisionDetection={closestCenter} onDragEnd={canManage ? handleDragEnd : undefined}>
         <SortableContext items={week.topics.map((topic) => topic.id)} strategy={verticalListSortingStrategy}>
           <div className="flex flex-col gap-2.5">
             {week.topics.map((topic, index) => (
@@ -171,6 +178,7 @@ export function TopicColumn({
                 topic={topic}
                 index={index}
                 isExpanded={expanded.has(topic.id)}
+                canManage={canManage}
                 onToggle={() =>
                   setExpanded((prev) => {
                     const next = new Set(prev);
@@ -186,13 +194,15 @@ export function TopicColumn({
                 onSaved={invalidate}
               />
             ))}
-            <Button
-              variant="dashed"
-              onClick={() => createTopicMutation.mutate()}
-              className="rounded-[13px] p-[13px] text-[13px]"
-            >
-              + 토픽 추가
-            </Button>
+            {canManage && (
+              <Button
+                variant="dashed"
+                onClick={() => createTopicMutation.mutate()}
+                className="rounded-[13px] p-[13px] text-[13px]"
+              >
+                + 토픽 추가
+              </Button>
+            )}
           </div>
         </SortableContext>
       </DndContext>
@@ -229,6 +239,7 @@ function TopicCard({
   topic,
   index,
   isExpanded,
+  canManage,
   onToggle,
   onDelete,
   onSaved,
@@ -236,6 +247,7 @@ function TopicCard({
   topic: CurriculumTopicNode;
   index: number;
   isExpanded: boolean;
+  canManage: boolean;
   onToggle: () => void;
   onDelete: () => void;
   onSaved: () => void;
@@ -269,7 +281,7 @@ function TopicCard({
         style={style}
         className="border-line bg-panel hover:border-line2 flex items-center gap-3 rounded-[13px] border px-4 py-[13px] transition-colors"
       >
-        <DragHandle {...attributes} {...listeners} className="text-xs" />
+        {canManage && <DragHandle {...attributes} {...listeners} className="text-xs" />}
         <span className="border-line2 text-muted flex h-[22px] w-[22px] flex-none items-center justify-center rounded-md border text-[11px]">
           {index + 1}
         </span>
@@ -293,7 +305,7 @@ function TopicCard({
       className="border-primary-line bg-primary-sunken flex flex-col gap-3 rounded-[14px] border p-4"
     >
       <div className="flex items-center gap-3">
-        <DragHandle {...attributes} {...listeners} className="text-xs" />
+        {canManage && <DragHandle {...attributes} {...listeners} className="text-xs" />}
         <span className="border-primary-line text-primary-text flex h-[22px] w-[22px] flex-none items-center justify-center rounded-md border text-[11px]">
           {index + 1}
         </span>
@@ -303,6 +315,7 @@ function TopicCard({
             setTitle(e.target.value);
             saveTitle(e.target.value);
           }}
+          readOnly={!canManage}
           className="border-primary-line text-text min-w-0 flex-1 border-0 border-b bg-transparent pb-1.5 text-[15px] font-medium outline-none"
         />
         <button
@@ -312,13 +325,15 @@ function TopicCard({
         >
           ⌃
         </button>
-        <button
-          type="button"
-          onClick={onDelete}
-          className="text-danger flex-none cursor-pointer text-xs whitespace-nowrap hover:underline"
-        >
-          삭제
-        </button>
+        {canManage && (
+          <button
+            type="button"
+            onClick={onDelete}
+            className="text-danger flex-none cursor-pointer text-xs whitespace-nowrap hover:underline"
+          >
+            삭제
+          </button>
+        )}
       </div>
 
       <div className="text-faint flex items-center gap-2 text-[11px] whitespace-nowrap">
@@ -340,31 +355,36 @@ function TopicCard({
                 setDetails(next);
                 detailsMutation.mutate(next);
               }}
+              readOnly={!canManage}
               className="text-text min-w-0 flex-1 border-none bg-transparent text-[13px] outline-none"
             />
-            <button
-              type="button"
-              onClick={() => persistDetails(details.filter((_, i) => i !== detailIndex))}
-              className="text-faint hover:text-danger flex-none cursor-pointer"
-            >
-              ✕
-            </button>
+            {canManage && (
+              <button
+                type="button"
+                onClick={() => persistDetails(details.filter((_, i) => i !== detailIndex))}
+                className="text-faint hover:text-danger flex-none cursor-pointer"
+              >
+                ✕
+              </button>
+            )}
           </div>
         ))}
 
-        <input
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && draft.trim()) {
-              e.preventDefault();
-              persistDetails([...details, draft.trim()]);
-              setDraft('');
-            }
-          }}
-          placeholder="+ 세부 항목 · Enter로 연속 입력"
-          className="border-primary-line text-primary-text placeholder:text-primary-text rounded-[10px] border border-dashed bg-transparent px-3 py-[9px] text-[13px] outline-none"
-        />
+        {canManage && (
+          <input
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && draft.trim()) {
+                e.preventDefault();
+                persistDetails([...details, draft.trim()]);
+                setDraft('');
+              }
+            }}
+            placeholder="+ 세부 항목 · Enter로 연속 입력"
+            className="border-primary-line text-primary-text placeholder:text-primary-text rounded-[10px] border border-dashed bg-transparent px-3 py-[9px] text-[13px] outline-none"
+          />
+        )}
       </div>
     </div>
   );

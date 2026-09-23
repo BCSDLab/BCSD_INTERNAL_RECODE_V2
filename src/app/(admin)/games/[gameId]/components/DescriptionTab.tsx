@@ -16,7 +16,15 @@ import { useDebouncedSave } from '@/hooks/useDebouncedSave';
  * 나머지 필드는 detail의 최신 값을 그대로 실어 보낸다 — BasicInfoTab과 이 탭은
  * 동시에 마운트되지 않으므로(탭 전환 시 언마운트) 서로 덮어쓸 일이 없다.
  */
-export function DescriptionTab({ gameId, detail }: { gameId: number; detail: AdminGameDetailResponse }) {
+export function DescriptionTab({
+  gameId,
+  detail,
+  canManage,
+}: {
+  gameId: number;
+  detail: AdminGameDetailResponse;
+  canManage: boolean;
+}) {
   const queryClient = useQueryClient();
   const [content, setContent] = useState(detail.description ?? '');
   const [initializedId, setInitializedId] = useState(detail.id);
@@ -43,15 +51,18 @@ export function DescriptionTab({ gameId, detail }: { gameId: number; detail: Adm
 
   return (
     <SectionCard title="상세 설명" caption="홈페이지 게임 상세에 그대로 노출됩니다">
-      <RichTextEditor
-        content={content}
-        imagePurpose="GAME_CONTENT"
-        footerNote="본문은 게임 상세 페이지에 그대로 노출됩니다"
-        onChange={(html) => {
-          setContent(html);
-          save(html);
-        }}
-      />
+      <div className={canManage ? undefined : 'pointer-events-none opacity-60'}>
+        <RichTextEditor
+          content={content}
+          imagePurpose="GAME_CONTENT"
+          footerNote="본문은 게임 상세 페이지에 그대로 노출됩니다"
+          onChange={(html) => {
+            if (!canManage) return;
+            setContent(html);
+            save(html);
+          }}
+        />
+      </div>
       {error && <p className="text-danger m-0 pt-2.5 text-[11px]">{error}</p>}
     </SectionCard>
   );

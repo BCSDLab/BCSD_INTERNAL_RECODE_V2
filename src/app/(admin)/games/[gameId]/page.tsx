@@ -7,6 +7,8 @@ import { useState } from 'react';
 import { gameQueries } from '@/api/game/queries';
 import { PageHeader } from '@/components/ui/page-header';
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@/components/ui/tabs';
+import { useSession } from '@/lib/auth/use-session';
+import { canManageGames } from '@/lib/permissions';
 import { BasicInfoTab } from './components/BasicInfoTab';
 import { BuildsTab } from './components/BuildsTab';
 import { DescriptionTab } from './components/DescriptionTab';
@@ -26,6 +28,8 @@ export default function GameEditPage() {
   const params = useParams<{ gameId: string }>();
   const gameId = Number(params.gameId);
   const [tab, setTab] = useState<Tab>('기본정보');
+  const { session } = useSession();
+  const canManage = canManageGames(session?.member);
 
   const { data: detail, isLoading } = useQuery(gameQueries.game(gameId));
 
@@ -58,19 +62,19 @@ export default function GameEditPage() {
             </TabsList>
 
             <TabsPanel value="기본정보">
-              <BasicInfoTab gameId={gameId} detail={detail} />
+              <BasicInfoTab gameId={gameId} detail={detail} canManage={canManage} />
             </TabsPanel>
             <TabsPanel value="상세설명">
-              <DescriptionTab gameId={gameId} detail={detail} />
+              <DescriptionTab gameId={gameId} detail={detail} canManage={canManage} />
             </TabsPanel>
             <TabsPanel value="스크린샷">
-              <ScreenshotsTab gameId={gameId} detail={detail} />
+              <ScreenshotsTab gameId={gameId} detail={detail} canManage={canManage} />
             </TabsPanel>
             <TabsPanel value="등급정보">
-              <RatingTab gameId={gameId} detail={detail} />
+              <RatingTab gameId={gameId} detail={detail} canManage={canManage} />
             </TabsPanel>
             <TabsPanel value="빌드">
-              <BuildsTab gameId={gameId} />
+              <BuildsTab gameId={gameId} canManage={canManage} />
             </TabsPanel>
           </Tabs>
         )}

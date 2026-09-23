@@ -26,7 +26,15 @@ import { TRACK_OPTIONS } from '@/app/(admin)/members/components/options';
  * 등급 필터 칩(전체/REGULAR/MENTOR…) 아래로 280px 최소폭 auto-fill 그리드다.
  * 숨김 멤버는 배경 없이 opacity .5 + 점선 "숨김" 뱃지로 보인다.
  */
-export function MembersSection({ trackPageId, detail }: { trackPageId: number; detail: TrackPageDetailResponse }) {
+export function MembersSection({
+  trackPageId,
+  detail,
+  canManage,
+}: {
+  trackPageId: number;
+  detail: TrackPageDetailResponse;
+  canManage: boolean;
+}) {
   const queryClient = useQueryClient();
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
   const [isAssignOpen, setIsAssignOpen] = useState(false);
@@ -98,26 +106,29 @@ export function MembersSection({ trackPageId, detail }: { trackPageId: number; d
         ))}
       </div>
 
-      <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <DndContext collisionDetection={closestCenter} onDragEnd={canManage ? handleDragEnd : undefined}>
         <SortableContext items={detail.members.map((member) => member.id)} strategy={rectSortingStrategy}>
           <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-2">
             {shown.map((member) => (
               <MemberRow
                 key={member.id}
                 member={member}
+                canManage={canManage}
                 onToggleVisible={() =>
                   visibilityMutation.mutate({ memberId: member.memberId, isVisible: !member.isVisible })
                 }
                 onDetach={() => detachMutation.mutate(member.memberId)}
               />
             ))}
-            <button
-              type="button"
-              onClick={() => setIsAssignOpen(true)}
-              className="border-dash text-muted hover:border-primary-line hover:text-primary-text col-[1/-1] cursor-pointer rounded-[11px] border border-dashed p-2.5 text-center text-xs whitespace-nowrap transition-colors"
-            >
-              + 부원 배정 · 명부 검색
-            </button>
+            {canManage && (
+              <button
+                type="button"
+                onClick={() => setIsAssignOpen(true)}
+                className="border-dash text-muted hover:border-primary-line hover:text-primary-text col-[1/-1] cursor-pointer rounded-[11px] border border-dashed p-2.5 text-center text-xs whitespace-nowrap transition-colors"
+              >
+                + 부원 배정 · 명부 검색
+              </button>
+            )}
           </div>
         </SortableContext>
       </DndContext>
@@ -145,10 +156,12 @@ export function MembersSection({ trackPageId, detail }: { trackPageId: number; d
 
 function MemberRow({
   member,
+  canManage,
   onToggleVisible,
   onDetach,
 }: {
   member: TrackPageMemberResponse;
+  canManage: boolean;
   onToggleVisible: () => void;
   onDetach: () => void;
 }) {
@@ -161,24 +174,30 @@ function MemberRow({
         member.isVisible ? 'bg-panel2 hover:border-line2' : 'opacity-50'
       }`}
     >
-      <DragHandle {...attributes} {...listeners} className="text-xs" />
+      {canManage && <DragHandle {...attributes} {...listeners} className="text-xs" />}
       <Avatar src={member.profileImageUrl} name={member.name} size="md" />
       <span className="truncate text-[13px]">{member.name}</span>
-      <button
-        type="button"
-        onClick={onToggleVisible}
-        title={member.isVisible ? '숨기기' : '공개하기'}
-        className="flex-none cursor-pointer"
-      >
+      {canManage ? (
+        <button
+          type="button"
+          onClick={onToggleVisible}
+          title={member.isVisible ? '숨기기' : '공개하기'}
+          className="flex-none cursor-pointer"
+        >
+          <Badge dashed={!member.isVisible}>{member.isVisible ? member.memberType : '숨김'}</Badge>
+        </button>
+      ) : (
         <Badge dashed={!member.isVisible}>{member.isVisible ? member.memberType : '숨김'}</Badge>
-      </button>
-      <button
-        type="button"
-        onClick={onDetach}
-        className="text-faint hover:text-danger ml-auto flex-none cursor-pointer text-xs"
-      >
-        ✕
-      </button>
+      )}
+      {canManage && (
+        <button
+          type="button"
+          onClick={onDetach}
+          className="text-faint hover:text-danger ml-auto flex-none cursor-pointer text-xs"
+        >
+          ✕
+        </button>
+      )}
     </div>
   );
 }

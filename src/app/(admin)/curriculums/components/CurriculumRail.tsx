@@ -34,6 +34,7 @@ export function CurriculumRail({
   tree,
   selectedWeekId,
   onSelectWeek,
+  canManage,
 }: {
   trackPages: TrackPageSummaryResponse[];
   trackPageId: number | '';
@@ -44,6 +45,7 @@ export function CurriculumRail({
   tree: CurriculumTreeResponse | undefined;
   selectedWeekId: number | null;
   onSelectWeek: (id: number | null) => void;
+  canManage: boolean;
 }) {
   const queryClient = useQueryClient();
   const [isAddWeekOpen, setIsAddWeekOpen] = useState(false);
@@ -130,19 +132,21 @@ export function CurriculumRail({
               className={INPUT_CLASS}
             />
           </Field>
-          <div className="flex flex-wrap gap-2">
-            <Button variant="dashed" onClick={() => setIsAddSetOpen(true)} className="flex-1">
-              + 세트 추가
-            </Button>
-            {selectedCurriculum && !selectedCurriculum.isPublished && (
-              <Button onClick={() => publishMutation.mutate(true)}>공개로 지정</Button>
-            )}
-            {selectedCurriculum && (
-              <Button variant="danger" onClick={() => setIsDeleteSetOpen(true)}>
-                세트 삭제
+          {canManage && (
+            <div className="flex flex-wrap gap-2">
+              <Button variant="dashed" onClick={() => setIsAddSetOpen(true)} className="flex-1">
+                + 세트 추가
               </Button>
-            )}
-          </div>
+              {selectedCurriculum && !selectedCurriculum.isPublished && (
+                <Button onClick={() => publishMutation.mutate(true)}>공개로 지정</Button>
+              )}
+              {selectedCurriculum && (
+                <Button variant="danger" onClick={() => setIsDeleteSetOpen(true)}>
+                  세트 삭제
+                </Button>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -153,22 +157,25 @@ export function CurriculumRail({
             <span className="text-faint ml-auto flex-none text-[11px] whitespace-nowrap">드래그로 순서</span>
           </div>
 
-          <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <DndContext collisionDetection={closestCenter} onDragEnd={canManage ? handleDragEnd : undefined}>
             <SortableContext items={weeks.map((week) => week.id)} strategy={verticalListSortingStrategy}>
               {weeks.map((week) => (
                 <WeekRow
                   key={week.id}
                   week={week}
                   isSelected={week.id === selectedWeekId}
+                  canManage={canManage}
                   onSelect={() => onSelectWeek(week.id)}
                 />
               ))}
             </SortableContext>
           </DndContext>
 
-          <Button variant="dashed" onClick={() => setIsAddWeekOpen(true)}>
-            + 주차 추가
-          </Button>
+          {canManage && (
+            <Button variant="dashed" onClick={() => setIsAddWeekOpen(true)}>
+              + 주차 추가
+            </Button>
+          )}
 
           {error && <p className="text-danger m-0 pt-1 text-[11px]">{error}</p>}
 
@@ -219,10 +226,12 @@ export function CurriculumRail({
 function WeekRow({
   week,
   isSelected,
+  canManage,
   onSelect,
 }: {
   week: CurriculumWeekNode;
   isSelected: boolean;
+  canManage: boolean;
   onSelect: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: week.id });
@@ -238,7 +247,7 @@ function WeekRow({
           : 'border-line text-muted hover:border-line2 hover:text-text border'
       }`}
     >
-      <DragHandle {...attributes} {...listeners} className={`text-xs ${isSelected ? 'opacity-70' : ''}`} />
+      {canManage && <DragHandle {...attributes} {...listeners} className={`text-xs ${isSelected ? 'opacity-70' : ''}`} />}
       <button type="button" onClick={onSelect} className="flex-1 cursor-pointer text-left whitespace-nowrap">
         {formatWeekLabel(week)}
       </button>

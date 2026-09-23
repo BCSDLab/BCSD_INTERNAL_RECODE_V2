@@ -10,6 +10,8 @@ import { TrackChipBar } from '@/app/(admin)/tracks/components/TrackChipBar';
 import type { HeaderFormValues } from '@/app/(admin)/tracks/header-form';
 import { PageHeader } from '@/components/ui/page-header';
 import { useDebouncedSave } from '@/hooks/useDebouncedSave';
+import { useSession } from '@/lib/auth/use-session';
+import { canManageTrack } from '@/lib/permissions';
 import { HeaderSection } from './components/HeaderSection';
 import { MembersSection } from './components/MembersSection';
 import { StudyPointsSection } from './components/StudyPointsSection';
@@ -26,8 +28,10 @@ import { TechStacksSection } from './components/TechStacksSection';
 export default function TrackPageEditPage() {
   const params = useParams<{ trackPageId: string }>();
   const trackPageId = Number(params.trackPageId);
+  const { session } = useSession();
 
   const { data: detail, isLoading } = useQuery(trackQueries.trackPage(trackPageId));
+  const canManage = canManageTrack(session?.member, detail?.trackCode);
 
   const [form, setForm] = useState<HeaderFormValues | null>(null);
   const [initializedId, setInitializedId] = useState<number | null>(null);
@@ -74,10 +78,16 @@ export default function TrackPageEditPage() {
         ) : (
           <div className="flex min-w-0 flex-col gap-5">
             {headerError && <p className="text-danger m-0 text-[11px]">{headerError}</p>}
-            <HeaderSection trackPageId={trackPageId} detail={detail} form={form} updateForm={updateForm} />
-            <StudyPointsSection trackPageId={trackPageId} detail={detail} />
-            <TechStacksSection trackPageId={trackPageId} detail={detail} />
-            <MembersSection trackPageId={trackPageId} detail={detail} />
+            <HeaderSection
+              trackPageId={trackPageId}
+              detail={detail}
+              form={form}
+              updateForm={updateForm}
+              canManage={canManage}
+            />
+            <StudyPointsSection trackPageId={trackPageId} detail={detail} canManage={canManage} />
+            <TechStacksSection trackPageId={trackPageId} detail={detail} canManage={canManage} />
+            <MembersSection trackPageId={trackPageId} detail={detail} canManage={canManage} />
           </div>
         )}
       </div>

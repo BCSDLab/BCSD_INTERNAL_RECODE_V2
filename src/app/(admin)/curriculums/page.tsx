@@ -7,6 +7,8 @@ import type { CurriculumSummaryResponse } from '@/api/curriculum/types';
 import { trackQueries } from '@/api/track/queries';
 import type { TrackPageSummaryResponse } from '@/api/track/types';
 import { PageHeader } from '@/components/ui/page-header';
+import { useSession } from '@/lib/auth/use-session';
+import { canManageTrack } from '@/lib/permissions';
 import { CurriculumRail } from './components/CurriculumRail';
 import { TopicColumn } from './components/TopicColumn';
 
@@ -18,11 +20,18 @@ const EMPTY_SETS: CurriculumSummaryResponse[] = [];
  * "280px 레일 + 나머지" 2단 그리드가 남은 높이를 채운다.
  */
 export default function CurriculumsPage() {
+  const { session } = useSession();
   const [trackPageId, setTrackPageId] = useState<number | ''>('');
   const [curriculumId, setCurriculumId] = useState<number | ''>('');
   const [selectedWeekId, setSelectedWeekId] = useState<number | null>(null);
 
   const { data: trackPages } = useQuery(trackQueries.trackPages());
+
+  const { data: trackPageDetail } = useQuery({
+    ...trackQueries.trackPage(trackPageId === '' ? -1 : trackPageId),
+    enabled: trackPageId !== '',
+  });
+  const canManage = canManageTrack(session?.member, trackPageDetail?.trackCode);
 
   const { data: curriculums } = useQuery({ ...curriculumQueries.list(trackPageId), enabled: trackPageId !== '' });
 
@@ -65,9 +74,15 @@ export default function CurriculumsPage() {
           tree={tree}
           selectedWeekId={selectedWeekId}
           onSelectWeek={setSelectedWeekId}
+          canManage={canManage}
         />
         {curriculumId !== '' ? (
-          <TopicColumn curriculumId={curriculumId} week={selectedWeek} onWeekDeleted={() => setSelectedWeekId(null)} />
+          <TopicColumn
+            curriculumId={curriculumId}
+            week={selectedWeek}
+            onWeekDeleted={() => setSelectedWeekId(null)}
+            canManage={canManage}
+          />
         ) : (
           <div className="text-faint px-8 pt-6 pb-10 text-[13px]">왼쪽에서 트랙과 세트를 선택하세요.</div>
         )}
