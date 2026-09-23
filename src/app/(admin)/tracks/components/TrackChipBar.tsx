@@ -16,6 +16,7 @@ import { Field, INPUT_CLASS } from '@/components/ui/field';
 import { Modal } from '@/components/ui/modal';
 import { Select } from '@/components/ui/select';
 import { useSortableList } from '@/hooks/useSortableList';
+import { useSession } from '@/lib/auth/use-session';
 
 // useSortableList는 매 렌더마다 참조가 바뀌지 않는 배열을 기대한다 — `data ?? []`처럼
 // 매번 새 배열 리터럴을 만들면 로딩 중(data === undefined) 매 렌더가 "서버 데이터가
@@ -26,6 +27,8 @@ const EMPTY: TrackPageSummaryResponse[] = [];
 export function TrackChipBar({ selectedId }: { selectedId: number | null }) {
   const queryClient = useQueryClient();
   const router = useRouter();
+  const { session } = useSession();
+  const isAdmin = session?.member.role === 'ADMIN';
   const [isCreateOpen, setIsCreateOpen] = useState(false);
 
   const { data: trackPages } = useQuery(trackQueries.trackPages());
@@ -45,14 +48,14 @@ export function TrackChipBar({ selectedId }: { selectedId: number | null }) {
         <div className="text-faint w-full pb-1 text-[11px] tracking-[.14em] whitespace-nowrap uppercase">
           Tracks · 드래그로 랜딩 순서
         </div>
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={isAdmin ? handleDragEnd : undefined}>
           <SortableContext items={items.map((item) => item.id)} strategy={horizontalListSortingStrategy}>
             {items.map((item) => (
-              <TrackChip key={item.id} item={item} isSelected={item.id === selectedId} />
+              <TrackChip key={item.id} item={item} isSelected={item.id === selectedId} draggable={isAdmin} />
             ))}
           </SortableContext>
         </DndContext>
-        <DashedChip onClick={() => setIsCreateOpen(true)}>+ 트랙 추가</DashedChip>
+        {isAdmin && <DashedChip onClick={() => setIsCreateOpen(true)}>+ 트랙 추가</DashedChip>}
       </div>
 
       {isCreateOpen && (
@@ -69,7 +72,15 @@ export function TrackChipBar({ selectedId }: { selectedId: number | null }) {
   );
 }
 
-function TrackChip({ item, isSelected }: { item: TrackPageSummaryResponse; isSelected: boolean }) {
+function TrackChip({
+  item,
+  isSelected,
+  draggable,
+}: {
+  item: TrackPageSummaryResponse;
+  isSelected: boolean;
+  draggable: boolean;
+}) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: item.id });
   const router = useRouter();
 
@@ -78,8 +89,8 @@ function TrackChip({ item, isSelected }: { item: TrackPageSummaryResponse; isSel
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
       onClick={() => router.push(`/tracks/${item.id}`)}
-      {...attributes}
-      {...listeners}
+      {...(draggable ? attributes : {})}
+      {...(draggable ? listeners : {})}
       className={`inline-flex flex-none cursor-pointer items-center gap-[7px] rounded-full px-3.5 py-2 text-[13px] whitespace-nowrap transition-colors ${
         isSelected
           ? 'border-primary-line bg-primary-soft text-primary-text border font-medium'

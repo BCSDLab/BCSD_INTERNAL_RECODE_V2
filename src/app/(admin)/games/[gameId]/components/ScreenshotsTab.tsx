@@ -17,7 +17,15 @@ import { useImageUpload } from '@/hooks/useImageUpload';
  * "썸네일 강조 없이 균일한 그리드"다(와이어프레임에 썸네일 배지가 없다) — 대신
  * 첫 장이 곧 game.thumbnailUrl로 동기화된다는 안내만 보인다.
  */
-export function ScreenshotsTab({ gameId, detail }: { gameId: number; detail: AdminGameDetailResponse }) {
+export function ScreenshotsTab({
+  gameId,
+  detail,
+  canManage,
+}: {
+  gameId: number;
+  detail: AdminGameDetailResponse;
+  canManage: boolean;
+}) {
   const queryClient = useQueryClient();
   const [urls, setUrls] = useState(detail.screenshots.map((s) => s.imageUrl));
   const [initializedId, setInitializedId] = useState(detail.id);
@@ -61,7 +69,7 @@ export function ScreenshotsTab({ gameId, detail }: { gameId: number; detail: Adm
 
   return (
     <SectionCard title="스크린샷" caption={`${urls.length}장 · 첫 장이 게임 썸네일로 쓰입니다`}>
-      <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <DndContext collisionDetection={closestCenter} onDragEnd={canManage ? handleDragEnd : undefined}>
         <SortableContext items={urls.map((_, i) => String(i))} strategy={rectSortingStrategy}>
           <div className="grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-2.5">
             {urls.map((url, index) => (
@@ -70,23 +78,26 @@ export function ScreenshotsTab({ gameId, detail }: { gameId: number; detail: Adm
                 id={String(index)}
                 url={url}
                 isThumbnail={index === 0}
+                canManage={canManage}
                 onRemove={() => commit(urls.filter((_, i) => i !== index))}
               />
             ))}
-            <label className="border-dash text-faint hover:border-primary-line hover:text-primary-text flex aspect-video cursor-pointer items-center justify-center rounded-[11px] border border-dashed text-xs whitespace-nowrap transition-colors">
-              {isUploading ? '업로드…' : '+ 스크린샷 추가'}
-              <input
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) {
-                    addImage(file);
-                  }
-                }}
-              />
-            </label>
+            {canManage && (
+              <label className="border-dash text-faint hover:border-primary-line hover:text-primary-text flex aspect-video cursor-pointer items-center justify-center rounded-[11px] border border-dashed text-xs whitespace-nowrap transition-colors">
+                {isUploading ? '업로드…' : '+ 스크린샷 추가'}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      addImage(file);
+                    }
+                  }}
+                />
+              </label>
+            )}
           </div>
         </SortableContext>
       </DndContext>
@@ -103,11 +114,13 @@ function ScreenshotThumb({
   id,
   url,
   isThumbnail,
+  canManage,
   onRemove,
 }: {
   id: string;
   url: string;
   isThumbnail: boolean;
+  canManage: boolean;
   onRemove: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
@@ -115,9 +128,9 @@ function ScreenshotThumb({
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      {...attributes}
-      {...listeners}
-      className="border-line relative aspect-video cursor-grab overflow-hidden rounded-[11px] border"
+      {...(canManage ? attributes : {})}
+      {...(canManage ? listeners : {})}
+      className={`border-line relative aspect-video overflow-hidden rounded-[11px] border ${canManage ? 'cursor-grab' : ''}`}
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={url} alt="" className="h-full w-full object-cover" />
@@ -126,16 +139,18 @@ function ScreenshotThumb({
           썸네일
         </span>
       )}
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          onRemove();
-        }}
-        className="absolute top-1 right-1 cursor-pointer rounded-full bg-[rgba(10,8,16,.6)] px-1 text-[11px] text-white"
-      >
-        ✕
-      </button>
+      {canManage && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onRemove();
+          }}
+          className="absolute top-1 right-1 cursor-pointer rounded-full bg-[rgba(10,8,16,.6)] px-1 text-[11px] text-white"
+        >
+          ✕
+        </button>
+      )}
     </div>
   );
 }

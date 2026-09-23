@@ -49,7 +49,15 @@ const EMPTY_FORM: FormValues = {
 
 /** 등급정보는 선택 입력이다(FR-7.5) — 없으면 "+ 등급정보 추가"만 보이고, 있으면
  * 게임 상세 하단에 등급 표시로 노출된다. */
-export function RatingTab({ gameId, detail }: { gameId: number; detail: AdminGameDetailResponse }) {
+export function RatingTab({
+  gameId,
+  detail,
+  canManage,
+}: {
+  gameId: number;
+  detail: AdminGameDetailResponse;
+  canManage: boolean;
+}) {
   const queryClient = useQueryClient();
   const [isEditing, setIsEditing] = useState(detail.rating !== null);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
@@ -107,13 +115,17 @@ export function RatingTab({ gameId, detail }: { gameId: number; detail: AdminGam
   if (!isEditing) {
     return (
       <SectionCard title="등급정보" caption="선택 입력 · 게임 상세 하단에 등급 표시로 노출">
-        <button
-          type="button"
-          onClick={() => setIsEditing(true)}
-          className="border-dash text-muted hover:border-primary-line hover:text-primary-text w-full cursor-pointer rounded-[11px] border border-dashed p-3 text-center text-xs whitespace-nowrap transition-colors"
-        >
-          + 등급정보 추가
-        </button>
+        {canManage ? (
+          <button
+            type="button"
+            onClick={() => setIsEditing(true)}
+            className="border-dash text-muted hover:border-primary-line hover:text-primary-text w-full cursor-pointer rounded-[11px] border border-dashed p-3 text-center text-xs whitespace-nowrap transition-colors"
+          >
+            + 등급정보 추가
+          </button>
+        ) : (
+          <p className="text-faint m-0 text-[13px]">등급정보가 없습니다.</p>
+        )}
       </SectionCard>
     );
   }
@@ -123,17 +135,19 @@ export function RatingTab({ gameId, detail }: { gameId: number; detail: AdminGam
       title="등급정보"
       caption="게임 상세 하단에 등급 표시로 노출"
       action={
-        <div className="flex items-center gap-2">
-          <Button variant="danger" onClick={() => setIsDeleteOpen(true)}>
-            등급정보 삭제
-          </Button>
-          <Button variant="primary" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
-            저장
-          </Button>
-        </div>
+        canManage && (
+          <div className="flex items-center gap-2">
+            <Button variant="danger" onClick={() => setIsDeleteOpen(true)}>
+              등급정보 삭제
+            </Button>
+            <Button variant="primary" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
+              저장
+            </Button>
+          </div>
+        )
       }
     >
-      <div className="flex flex-col gap-3.5">
+      <div className={`flex flex-col gap-3.5 ${canManage ? '' : 'pointer-events-none opacity-60'}`}>
         <Field label="표시 등급">
           <div className="flex flex-wrap gap-2">
             {(Object.keys(RATING_LABELS) as GameRatingLevel[]).map((level) => (

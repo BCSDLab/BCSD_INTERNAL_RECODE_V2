@@ -26,7 +26,15 @@ interface Draft extends StudyPointResponse {
  *         밑줄만 있는 제목 입력(15px 500), 설명 textarea(13px, 높이 56), 오른쪽 아래 "삭제"
  * - 접힘: line 테두리, 38px 아이콘 사각형, 14px 제목, 오른쪽 "펼치기 ⌄"
  */
-export function StudyPointsSection({ trackPageId, detail }: { trackPageId: number; detail: TrackPageDetailResponse }) {
+export function StudyPointsSection({
+  trackPageId,
+  detail,
+  canManage,
+}: {
+  trackPageId: number;
+  detail: TrackPageDetailResponse;
+  canManage: boolean;
+}) {
   const [items, setItems] = useState<Draft[]>(() =>
     detail.studyPoints.map((point, index) => ({ ...point, key: index })),
   );
@@ -97,12 +105,14 @@ export function StudyPointsSection({ trackPageId, detail }: { trackPageId: numbe
       title="What we study"
       caption="랜딩에 카드로 노출"
       action={
-        <Button onClick={addItem} disabled={items.length >= MAX_STUDY_POINTS}>
-          + 항목
-        </Button>
+        canManage && (
+          <Button onClick={addItem} disabled={items.length >= MAX_STUDY_POINTS}>
+            + 항목
+          </Button>
+        )
       }
     >
-      <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <DndContext collisionDetection={closestCenter} onDragEnd={canManage ? handleDragEnd : undefined}>
         <SortableContext items={items.map((item) => item.key)} strategy={verticalListSortingStrategy}>
           <div className="flex flex-col gap-2.5">
             {items.map((item) => (
@@ -110,6 +120,7 @@ export function StudyPointsSection({ trackPageId, detail }: { trackPageId: numbe
                 key={item.key}
                 item={item}
                 isExpanded={expanded.has(item.key)}
+                canManage={canManage}
                 onToggle={() => toggleExpanded(item.key)}
                 onChange={(patch) => updateItem(item.key, patch)}
                 onRemove={() => persist(items.filter((other) => other.key !== item.key))}
@@ -127,12 +138,14 @@ export function StudyPointsSection({ trackPageId, detail }: { trackPageId: numbe
 function StudyPointCard({
   item,
   isExpanded,
+  canManage,
   onToggle,
   onChange,
   onRemove,
 }: {
   item: Draft;
   isExpanded: boolean;
+  canManage: boolean;
   onToggle: () => void;
   onChange: (patch: Partial<StudyPointResponse>) => void;
   onRemove: () => void;
@@ -156,7 +169,7 @@ function StudyPointCard({
         style={style}
         className="border-line hover:border-line2 flex items-center gap-3.5 rounded-[14px] border px-4 py-3.5 transition-colors"
       >
-        <DragHandle {...attributes} {...listeners} />
+        {canManage && <DragHandle {...attributes} {...listeners} />}
         {item.iconImageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={item.iconImageUrl} alt="" className="h-[38px] w-[38px] flex-none rounded-[10px] object-cover" />
@@ -181,9 +194,11 @@ function StudyPointCard({
       style={style}
       className="border-primary-line bg-primary-sunken flex gap-3.5 rounded-[14px] border p-4"
     >
-      <DragHandle {...attributes} {...listeners} className="pt-[3px]" />
+      {canManage && <DragHandle {...attributes} {...listeners} className="pt-[3px]" />}
 
-      <label className="border-primary-line text-primary-text flex h-[52px] w-[52px] flex-none cursor-pointer items-center justify-center rounded-xl border border-dashed text-center text-[10px] leading-[1.3]">
+      <label
+        className={`border-primary-line text-primary-text flex h-[52px] w-[52px] flex-none items-center justify-center rounded-xl border border-dashed text-center text-[10px] leading-[1.3] ${canManage ? 'cursor-pointer' : 'cursor-default'}`}
+      >
         {item.iconImageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={item.iconImageUrl} alt="" className="h-full w-full rounded-xl object-cover" />
@@ -196,17 +211,19 @@ function StudyPointCard({
             SVG
           </>
         )}
-        <input
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) {
-              handleIconUpload(file);
-            }
-          }}
-        />
+        {canManage && (
+          <input
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) {
+                handleIconUpload(file);
+              }
+            }}
+          />
+        )}
       </label>
 
       <div className="flex min-w-0 flex-1 flex-col gap-[9px]">
@@ -215,6 +232,7 @@ function StudyPointCard({
           maxLength={60}
           placeholder="제목"
           onChange={(e) => onChange({ title: e.target.value })}
+          readOnly={!canManage}
           className="border-primary-line text-text min-w-0 border-0 border-b bg-transparent pb-[7px] text-[15px] font-medium outline-none"
         />
         <textarea
@@ -222,6 +240,7 @@ function StudyPointCard({
           maxLength={200}
           placeholder="설명"
           onChange={(e) => onChange({ description: e.target.value })}
+          readOnly={!canManage}
           className="border-line bg-panel text-muted h-14 min-w-0 resize-none rounded-[10px] border px-3 py-2.5 text-[13px] leading-[1.6] outline-none"
         />
         <div className="text-faint flex items-center gap-2 text-[11px]">
@@ -232,13 +251,15 @@ function StudyPointCard({
           >
             접기 ⌃
           </button>
-          <button
-            type="button"
-            onClick={onRemove}
-            className="text-danger ml-auto flex-none cursor-pointer whitespace-nowrap hover:underline"
-          >
-            삭제
-          </button>
+          {canManage && (
+            <button
+              type="button"
+              onClick={onRemove}
+              className="text-danger ml-auto flex-none cursor-pointer whitespace-nowrap hover:underline"
+            >
+              삭제
+            </button>
+          )}
         </div>
       </div>
     </div>

@@ -14,13 +14,22 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Field, INPUT_CLASS } from '@/components/ui/field';
 import { Modal } from '@/components/ui/modal';
 import { SectionCard } from '@/components/ui/section-card';
+import { useSession } from '@/lib/auth/use-session';
 
 /**
  * 시안의 TECH STACK 섹션. 스택은 panel2 배경의 알약(16px 아이콘 + 이름 + ✕)이고,
  * 줄 끝의 "+ 스택 선택"은 점선 **primary-line** 알약이다(회색 dash가 아니다).
  * 섹션 헤더에는 액션 버튼이 없다.
  */
-export function TechStacksSection({ trackPageId, detail }: { trackPageId: number; detail: TrackPageDetailResponse }) {
+export function TechStacksSection({
+  trackPageId,
+  detail,
+  canManage,
+}: {
+  trackPageId: number;
+  detail: TrackPageDetailResponse;
+  canManage: boolean;
+}) {
   const queryClient = useQueryClient();
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -49,13 +58,14 @@ export function TechStacksSection({ trackPageId, detail }: { trackPageId: number
 
   return (
     <SectionCard title="Tech stack" caption="마스터에서 선택 · 표시 순서 드래그">
-      <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <DndContext collisionDetection={closestCenter} onDragEnd={canManage ? handleDragEnd : undefined}>
         <SortableContext items={detail.techStacks.map((stack) => stack.id)} strategy={horizontalListSortingStrategy}>
           <div className="flex flex-wrap gap-[9px]">
             {detail.techStacks.map((stack) => (
               <TechStackPill
                 key={stack.id}
                 stack={stack}
+                canManage={canManage}
                 onRemove={() =>
                   replaceMutation.mutate(
                     detail.techStacks.filter((other) => other.id !== stack.id).map((other) => other.id),
@@ -63,13 +73,15 @@ export function TechStacksSection({ trackPageId, detail }: { trackPageId: number
                 }
               />
             ))}
-            <button
-              type="button"
-              onClick={() => setIsPickerOpen(true)}
-              className="border-primary-line text-primary-text hover:bg-primary-soft inline-flex flex-none cursor-pointer items-center rounded-full border border-dashed px-[13px] py-2 text-[13px] whitespace-nowrap transition-colors"
-            >
-              + 스택 선택
-            </button>
+            {canManage && (
+              <button
+                type="button"
+                onClick={() => setIsPickerOpen(true)}
+                className="border-primary-line text-primary-text hover:bg-primary-soft inline-flex flex-none cursor-pointer items-center rounded-full border border-dashed px-[13px] py-2 text-[13px] whitespace-nowrap transition-colors"
+              >
+                + 스택 선택
+              </button>
+            )}
           </div>
         </SortableContext>
       </DndContext>
@@ -89,7 +101,15 @@ export function TechStacksSection({ trackPageId, detail }: { trackPageId: number
   );
 }
 
-function TechStackPill({ stack, onRemove }: { stack: TechStackResponse; onRemove: () => void }) {
+function TechStackPill({
+  stack,
+  canManage,
+  onRemove,
+}: {
+  stack: TechStackResponse;
+  canManage: boolean;
+  onRemove: () => void;
+}) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: stack.id });
   return (
     <span
@@ -97,7 +117,7 @@ function TechStackPill({ stack, onRemove }: { stack: TechStackResponse; onRemove
       style={{ transform: CSS.Transform.toString(transform), transition }}
       className="border-line bg-panel2 inline-flex flex-none items-center gap-[9px] rounded-full border px-[13px] py-2 text-[13px] whitespace-nowrap"
     >
-      <span {...attributes} {...listeners} className="flex-none cursor-grab">
+      <span {...(canManage ? attributes : {})} {...(canManage ? listeners : {})} className="flex-none cursor-grab">
         {stack.iconUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={stack.iconUrl} alt="" className="h-4 w-4 rounded-[4px] object-cover" />
@@ -106,9 +126,11 @@ function TechStackPill({ stack, onRemove }: { stack: TechStackResponse; onRemove
         )}
       </span>
       {stack.name}
-      <button type="button" onClick={onRemove} className="text-faint hover:text-danger cursor-pointer">
-        ✕
-      </button>
+      {canManage && (
+        <button type="button" onClick={onRemove} className="text-faint hover:text-danger cursor-pointer">
+          ✕
+        </button>
+      )}
     </span>
   );
 }
@@ -123,6 +145,8 @@ function TechStackPickerModal({
   onConfirm: (ids: number[]) => void;
 }) {
   const queryClient = useQueryClient();
+  const { session } = useSession();
+  const isAdmin = session?.member.role === 'ADMIN';
   const { data: master } = useQuery(trackQueries.techStacks());
   const [selected, setSelected] = useState<Set<number>>(new Set(selectedIds));
   const [query, setQuery] = useState('');
@@ -193,25 +217,27 @@ function TechStackPickerModal({
           {filtered.length === 0 && <li className="text-faint text-[11px]">일치하는 기술스택이 없습니다.</li>}
         </ul>
 
-        <div className="border-line flex flex-col gap-2.5 rounded-[10px] border p-3">
-          <p className="text-faint m-0 text-[11px]">목록에 없으면 새로 등록합니다.</p>
-          <div className="flex gap-2">
-            <Field label="이름" className="flex-1">
-              <input value={newName} onChange={(e) => setNewName(e.target.value)} className={INPUT_CLASS} />
-            </Field>
-            <Field label="아이콘 URL" className="flex-1">
-              <input value={newIconUrl} onChange={(e) => setNewIconUrl(e.target.value)} className={INPUT_CLASS} />
-            </Field>
+        {isAdmin && (
+          <div className="border-line flex flex-col gap-2.5 rounded-[10px] border p-3">
+            <p className="text-faint m-0 text-[11px]">목록에 없으면 새로 등록합니다.</p>
+            <div className="flex gap-2">
+              <Field label="이름" className="flex-1">
+                <input value={newName} onChange={(e) => setNewName(e.target.value)} className={INPUT_CLASS} />
+              </Field>
+              <Field label="아이콘 URL" className="flex-1">
+                <input value={newIconUrl} onChange={(e) => setNewIconUrl(e.target.value)} className={INPUT_CLASS} />
+              </Field>
+            </div>
+            <Button
+              onClick={() => createMutation.mutate()}
+              disabled={!newName.trim() || !newIconUrl.trim() || createMutation.isPending}
+              className="self-start"
+            >
+              등록
+            </Button>
+            {createError && <p className="text-danger m-0 text-[11px]">{createError}</p>}
           </div>
-          <Button
-            onClick={() => createMutation.mutate()}
-            disabled={!newName.trim() || !newIconUrl.trim() || createMutation.isPending}
-            className="self-start"
-          >
-            등록
-          </Button>
-          {createError && <p className="text-danger m-0 text-[11px]">{createError}</p>}
-        </div>
+        )}
       </div>
     </Modal>
   );

@@ -7,10 +7,12 @@ import { deleteTrackPage, publishTrackPage } from '@/api/track/api';
 import { trackKeys } from '@/api/track/queries';
 import type { TrackPageDetailResponse } from '@/api/track/types';
 import type { HeaderFormValues } from '@/app/(admin)/tracks/header-form';
+import { ApiError } from '@/api/client';
 import { Button } from '@/components/ui/button';
 import { Field, INPUT_CLASS } from '@/components/ui/field';
 import { ConfirmModal } from '@/components/ui/modal';
 import { SectionCard } from '@/components/ui/section-card';
+import { useSession } from '@/lib/auth/use-session';
 
 /**
  * 시안의 HEADER 섹션: 트랙명(+ 주소 자동 생성 안내) · 한 줄 소개 · 오른쪽 "트랙 삭제".
@@ -25,22 +27,29 @@ export function HeaderSection({
   detail,
   form,
   updateForm,
+  canManage,
 }: {
   trackPageId: number;
   detail: TrackPageDetailResponse;
   form: HeaderFormValues;
   updateForm: (patch: Partial<HeaderFormValues>) => void;
+  canManage: boolean;
 }) {
   const queryClient = useQueryClient();
   const router = useRouter();
+  const { session } = useSession();
+  const isAdmin = session?.member.role === 'ADMIN';
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const publishMutation = useMutation({
     mutationFn: (isPublished: boolean) => publishTrackPage(trackPageId, isPublished),
     onSuccess: () => {
+      setError(null);
       queryClient.invalidateQueries({ queryKey: trackKeys.trackPage(trackPageId) });
       queryClient.invalidateQueries({ queryKey: trackKeys.trackPages() });
     },
+    onError: (e) => setError(e instanceof ApiError ? e.message : '공개 여부 변경에 실패했습니다.'),
   });
 
   const deleteMutation = useMutation({
@@ -49,6 +58,7 @@ export function HeaderSection({
       queryClient.invalidateQueries({ queryKey: trackKeys.trackPages() });
       router.replace('/tracks');
     },
+    onError: (e) => setError(e instanceof ApiError ? e.message : '삭제에 실패했습니다.'),
   });
 
   return (
@@ -57,12 +67,16 @@ export function HeaderSection({
       caption="트랙 페이지 상단 · 제목 영역"
       action={
         <div className="flex items-center gap-2">
-          <Button onClick={() => publishMutation.mutate(!detail.isPublished)}>
-            {detail.isPublished ? '트랙 숨기기' : '트랙 공개하기'}
-          </Button>
-          <Button variant="danger" onClick={() => setIsDeleteOpen(true)}>
-            트랙 삭제
-          </Button>
+          {canManage && (
+            <Button onClick={() => publishMutation.mutate(!detail.isPublished)}>
+              {detail.isPublished ? '트랙 숨기기' : '트랙 공개하기'}
+            </Button>
+          )}
+          {isAdmin && (
+            <Button variant="danger" onClick={() => setIsDeleteOpen(true)}>
+              트랙 삭제
+            </Button>
+          )}
         </div>
       }
     >
@@ -70,6 +84,7 @@ export function HeaderSection({
         <input
           value={form.displayName}
           onChange={(e) => updateForm({ displayName: e.target.value })}
+          readOnly={!canManage}
           className={INPUT_CLASS}
         />
       </Field>
@@ -79,9 +94,12 @@ export function HeaderSection({
           value={form.tagline}
           maxLength={60}
           onChange={(e) => updateForm({ tagline: e.target.value })}
+          readOnly={!canManage}
           className={INPUT_CLASS}
         />
       </Field>
+
+      {error && <p className="text-danger m-0 pt-2 text-[11px]">{error}</p>}
 
       {isDeleteOpen && (
         <ConfirmModal

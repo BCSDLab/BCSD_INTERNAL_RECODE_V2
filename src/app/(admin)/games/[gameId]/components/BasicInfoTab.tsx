@@ -43,7 +43,15 @@ function toForm(detail: AdminGameDetailResponse): FormValues {
   };
 }
 
-export function BasicInfoTab({ gameId, detail }: { gameId: number; detail: AdminGameDetailResponse }) {
+export function BasicInfoTab({
+  gameId,
+  detail,
+  canManage,
+}: {
+  gameId: number;
+  detail: AdminGameDetailResponse;
+  canManage: boolean;
+}) {
   const queryClient = useQueryClient();
   const router = useRouter();
   const { data: tracks } = useQuery(trackQueries.tracks());
@@ -139,14 +147,16 @@ export function BasicInfoTab({ gameId, detail }: { gameId: number; detail: Admin
         title="기본 정보"
         caption="홈페이지 게임 목록·상세 상단"
         action={
-          <div className="flex items-center gap-2">
-            <Button onClick={() => publishMutation.mutate(!detail.isPublished)}>
-              {detail.isPublished ? '숨기기' : '공개하기'}
-            </Button>
-            <Button variant="danger" onClick={() => setIsDeleteOpen(true)}>
-              게임 삭제
-            </Button>
-          </div>
+          canManage && (
+            <div className="flex items-center gap-2">
+              <Button onClick={() => publishMutation.mutate(!detail.isPublished)}>
+                {detail.isPublished ? '숨기기' : '공개하기'}
+              </Button>
+              <Button variant="danger" onClick={() => setIsDeleteOpen(true)}>
+                게임 삭제
+              </Button>
+            </div>
+          )
         }
       >
         <div className="flex flex-col gap-3.5">
@@ -156,6 +166,7 @@ export function BasicInfoTab({ gameId, detail }: { gameId: number; detail: Admin
                 value={form.name}
                 maxLength={100}
                 onChange={(e) => updateForm({ name: e.target.value })}
+                readOnly={!canManage}
                 className={INPUT_CLASS}
               />
             </Field>
@@ -173,6 +184,7 @@ export function BasicInfoTab({ gameId, detail }: { gameId: number; detail: Admin
               value={form.oneLiner}
               maxLength={500}
               onChange={(e) => updateForm({ oneLiner: e.target.value })}
+              readOnly={!canManage}
               className={INPUT_CLASS}
             />
           </Field>
@@ -186,6 +198,7 @@ export function BasicInfoTab({ gameId, detail }: { gameId: number; detail: Admin
                   { value: '', label: '선택 안 함' },
                   ...(tracks ?? []).map((track) => ({ value: String(track.id), label: `${track.name} (${track.code})` })),
                 ]}
+                disabled={!canManage}
                 className={INPUT_CLASS}
               />
             </Field>
@@ -194,6 +207,7 @@ export function BasicInfoTab({ gameId, detail }: { gameId: number; detail: Admin
                 value={form.teamLabel}
                 maxLength={30}
                 onChange={(e) => updateForm({ teamLabel: e.target.value })}
+                readOnly={!canManage}
                 className={INPUT_CLASS}
               />
             </Field>
@@ -206,23 +220,26 @@ export function BasicInfoTab({ gameId, detail }: { gameId: number; detail: Admin
         caption="인명부에서 선택 · 이름·사진·트랙은 명부가 원본입니다"
         action={<span className="text-faint text-[11px] whitespace-nowrap">{detail.members.length}명</span>}
       >
-        <DndContext collisionDetection={closestCenter} onDragEnd={handleMemberDragEnd}>
+        <DndContext collisionDetection={closestCenter} onDragEnd={canManage ? handleMemberDragEnd : undefined}>
           <SortableContext items={detail.members.map((member) => member.id)} strategy={rectSortingStrategy}>
             <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-2">
               {detail.members.map((member) => (
                 <ParticipantRow
                   key={member.id}
                   member={member}
+                  canManage={canManage}
                   onRemove={() => detachMutation.mutate(member.memberId)}
                 />
               ))}
-              <button
-                type="button"
-                onClick={() => setIsAssignOpen(true)}
-                className="border-dash text-muted hover:border-primary-line hover:text-primary-text col-[1/-1] cursor-pointer rounded-[11px] border border-dashed p-2.5 text-center text-xs whitespace-nowrap transition-colors"
-              >
-                + 멤버 · 명부 검색
-              </button>
+              {canManage && (
+                <button
+                  type="button"
+                  onClick={() => setIsAssignOpen(true)}
+                  className="border-dash text-muted hover:border-primary-line hover:text-primary-text col-[1/-1] cursor-pointer rounded-[11px] border border-dashed p-2.5 text-center text-xs whitespace-nowrap transition-colors"
+                >
+                  + 멤버 · 명부 검색
+                </button>
+              )}
             </div>
           </SortableContext>
         </DndContext>
@@ -255,7 +272,15 @@ export function BasicInfoTab({ gameId, detail }: { gameId: number; detail: Admin
   );
 }
 
-function ParticipantRow({ member, onRemove }: { member: AdminGameMemberResponse; onRemove: () => void }) {
+function ParticipantRow({
+  member,
+  canManage,
+  onRemove,
+}: {
+  member: AdminGameMemberResponse;
+  canManage: boolean;
+  onRemove: () => void;
+}) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: member.id });
   return (
     <div
@@ -263,18 +288,22 @@ function ParticipantRow({ member, onRemove }: { member: AdminGameMemberResponse;
       style={{ transform: CSS.Transform.toString(transform), transition }}
       className="border-line bg-panel2 hover:border-line2 flex items-center gap-2.5 rounded-[11px] border px-[11px] py-[9px] transition-colors"
     >
-      <span {...attributes} {...listeners} className="text-faint flex-none cursor-grab text-xs select-none">
-        ⠿
-      </span>
+      {canManage && (
+        <span {...attributes} {...listeners} className="text-faint flex-none cursor-grab text-xs select-none">
+          ⠿
+        </span>
+      )}
       <Avatar src={member.profileImageUrl} name={member.name} size="md" />
       <span className="truncate text-[13px]">{member.name}</span>
-      <button
-        type="button"
-        onClick={onRemove}
-        className="text-faint hover:text-danger ml-auto flex-none cursor-pointer text-xs"
-      >
-        ✕
-      </button>
+      {canManage && (
+        <button
+          type="button"
+          onClick={onRemove}
+          className="text-faint hover:text-danger ml-auto flex-none cursor-pointer text-xs"
+        >
+          ✕
+        </button>
+      )}
     </div>
   );
 }
