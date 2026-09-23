@@ -100,8 +100,15 @@ function ImpactBody({ before, after }: { before: MemberDues; after: MemberDues }
 }
 
 export function ExemptionManagementView() {
-  const { exemptions, setExemptions, exemptionReasons, setExemptionReasons, ledgerEntries, getSemesterDuesMembers } =
-    useAppData();
+  const {
+    exemptions,
+    setExemptions,
+    exemptionReasons,
+    setExemptionReasons,
+    ledgerEntries,
+    getSemesterDuesMembers,
+    startRefundFlow,
+  } = useAppData();
   const [flow, setFlow] = useState<Flow>(null);
   const [notice, setNotice] = useState('');
   const members = getSemesterDuesMembers('2026-2');
@@ -229,12 +236,16 @@ export function ExemptionManagementView() {
                       </td>
                       <td className="px-2.5 py-2.5 text-xs">
                         {refundNeeded ? (
-                          <span className="border-danger-line bg-danger-soft text-danger rounded-full border px-2 py-1 font-semibold">
+                          <button
+                            type="button"
+                            onClick={() => startRefundFlow(member.id, 'exemptions')}
+                            className="border-danger-line bg-danger-soft text-danger hover:border-danger cursor-pointer rounded-full border px-2 py-1 font-semibold transition-colors"
+                          >
                             반환 필요 {won(member.refundAmount ?? 0)}
-                          </span>
+                          </button>
                         ) : refundCompleted ? (
                           <span className="border-success-line bg-success-soft rounded-full border px-2 py-1 font-semibold">
-                            반환 완료
+                            반환 완료 {won(member.refundedAmount ?? 0)}
                           </span>
                         ) : (
                           <span className="text-faint">0원</span>

@@ -84,6 +84,7 @@ function deriveMemberDues(member: MemberDues, entries: LedgerEntry[], exemptions
     excessAmount: remainingExcess > 0 ? remainingExcess : undefined,
     refundStatus,
     refundAmount: remainingExcess > 0 ? remainingExcess : undefined,
+    refundedAmount: refundedAmount > 0 ? refundedAmount : undefined,
     refundReason:
       remainingExcess > 0
         ? hasWithdrawalExemption

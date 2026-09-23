@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
+import { useAppData } from '@/components/app-data/AppDataProvider';
 import { DUES_MONTHS, SEMESTER_DUES_SUMMARIES } from '@/components/dues/initial-data';
 import type {
   MemberDues,
@@ -183,11 +184,15 @@ function StatusChip({ status }: { status: SemesterDuesStatus }) {
   );
 }
 
-function RefundChip({ status }: { status: ActionableRefundStatus }) {
+function RefundChip({ status, onClick }: { status: ActionableRefundStatus; onClick: () => void }) {
   return (
-    <span className="border-danger-line bg-danger-soft text-danger inline-flex rounded-full border px-2.5 py-[3px] text-[10.5px] font-semibold whitespace-nowrap">
+    <button
+      type="button"
+      onClick={onClick}
+      className="border-danger-line bg-danger-soft text-danger hover:border-danger inline-flex cursor-pointer rounded-full border px-2.5 py-[3px] text-[10.5px] font-semibold whitespace-nowrap transition-colors"
+    >
       {REFUND_LABELS[status]}
-    </span>
+    </button>
   );
 }
 
@@ -211,6 +216,7 @@ export function SemesterDuesDetailView({
   semester: SemesterDuesSummary;
   members: MemberDues[];
 }) {
+  const { startRefundFlow } = useAppData();
   const [openFilter, setOpenFilter] = useState<FilterKey | null>(null);
   const [nameQuery, setNameQuery] = useState('');
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
@@ -445,7 +451,15 @@ export function SemesterDuesDetailView({
                         <div className="flex flex-wrap justify-end gap-1">
                           <StatusChip status={member.status} />
                           {(member.refundStatus === 'needed' || member.refundStatus === 'partial') && (
-                            <RefundChip status={member.refundStatus} />
+                            <RefundChip
+                              status={member.refundStatus}
+                              onClick={() => startRefundFlow(member.id, 'dues')}
+                            />
+                          )}
+                          {member.refundStatus === 'completed' && member.refundedAmount && (
+                            <span className="border-success-line bg-success-soft inline-flex rounded-full border px-2.5 py-[3px] text-[10.5px] font-semibold whitespace-nowrap">
+                              반환 완료 {formatAmount(member.refundedAmount)}
+                            </span>
                           )}
                         </div>
                       </td>

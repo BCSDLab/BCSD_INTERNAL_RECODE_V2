@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
+import { RefundFlowAssistant } from '@/components/dues/RefundFlowAssistant';
 
 export function DuesShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -40,6 +41,7 @@ export function DuesShell({ children }: { children: ReactNode }) {
         </div>
       </header>
       {children}
+      <RefundFlowAssistant />
     </div>
   );
 }

@@ -23,6 +23,7 @@ export interface MemberDues {
   refundStatus: RefundStatus;
   refundAmount?: number;
   refundReason?: string;
+  refundedAmount?: number;
 }
 
 export interface SemesterDuesSummary {

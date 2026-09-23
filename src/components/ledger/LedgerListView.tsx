@@ -13,6 +13,10 @@ interface LedgerListViewProps {
   onResetFilters: () => void;
   onOpenEntry: (entryId: string) => void;
   onOpenImport: () => void;
+  refundSelection?: {
+    isEligible: (entry: LedgerEntry) => boolean;
+    onSelect: (entryId: string) => void;
+  };
 }
 
 type FilterKey = 'occurredAt' | 'type' | 'category' | 'linkStatus' | 'counterparty' | 'description' | 'amount';
@@ -149,6 +153,7 @@ export function LedgerListView({
   onResetFilters,
   onOpenEntry,
   onOpenImport,
+  refundSelection,
 }: LedgerListViewProps) {
   const [openFilter, setOpenFilter] = useState<FilterKey | null>(null);
   const counterpartyOptions = useMemo(
@@ -222,6 +227,9 @@ export function LedgerListView({
           <table className="w-full min-w-[980px] border-collapse text-left">
             <thead className="bg-panel2">
               <tr className="border-line border-b">
+                {refundSelection && (
+                  <th className="text-muted w-[72px] px-3 py-2.5 text-center text-[10.5px] font-bold">반환 연결</th>
+                )}
                 <HeaderFilter
                   label="거래 일시"
                   active={filters.from !== '' || filters.to !== ''}
@@ -390,6 +398,24 @@ export function LedgerListView({
                     }}
                     className="border-line hover:bg-primary-sunken focus:bg-primary-sunken cursor-pointer border-b last:border-b-0 focus:outline-none"
                   >
+                    {refundSelection && (
+                      <td className="px-3 py-2 text-center">
+                        {refundSelection.isEligible(entry) ? (
+                          <Button
+                            compact
+                            tone="primary"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              refundSelection.onSelect(entry.id);
+                            }}
+                          >
+                            선택
+                          </Button>
+                        ) : (
+                          <span className="text-faint text-[11px]">—</span>
+                        )}
+                      </td>
+                    )}
                     <td className="text-primary-text px-3 py-3 text-xs font-medium whitespace-nowrap">
                       {formatOccurredAt(entry.occurredAt)}
                     </td>
@@ -415,7 +441,7 @@ export function LedgerListView({
                 ))
               ) : (
                 <tr>
-                  <td colSpan={8} className="p-8">
+                  <td colSpan={refundSelection ? 9 : 8} className="p-8">
                     <div className="border-dash mx-auto flex max-w-[430px] flex-col items-center justify-center rounded-[13px] border border-dashed px-8 py-6 text-center">
                       <strong className="text-text text-[14px]">조건에 맞는 장부 기록이 없습니다.</strong>
                       <button
