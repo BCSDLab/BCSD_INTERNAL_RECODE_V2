@@ -20,6 +20,7 @@ import {
   POSITION_OPTIONS,
   TRACK_OPTIONS,
 } from './options';
+import { setMockSlackId } from './slack-id-mock';
 
 interface FormValues {
   name: string;
@@ -37,6 +38,7 @@ interface FormValues {
   email: string;
   phoneNumber: string;
   githubId: string;
+  slackId: string;
 }
 
 function toForm(member: MemberDirectoryItem | null): FormValues {
@@ -56,6 +58,7 @@ function toForm(member: MemberDirectoryItem | null): FormValues {
     email: member?.email ?? '',
     phoneNumber: member?.phoneNumber ?? '',
     githubId: member?.githubId ?? '',
+    slackId: member?.slackId ?? '',
   };
 }
 
@@ -161,6 +164,10 @@ export function MemberFormModal({
       });
     },
     onSuccess: () => {
+      // Slack ID는 API가 아직 받지 않아 mock 저장소에만 반영한다.
+      if (!isNew) {
+        setMockSlackId(member.id, form.slackId);
+      }
       queryClient.invalidateQueries({ queryKey: memberKeys.all() });
       onClose();
     },
@@ -330,6 +337,15 @@ export function MemberFormModal({
 
         {!isNew && (
           <>
+            <FormField label="Slack ID" hint="회비 알림 멘션에 쓰입니다 · 예: U0123ABCD">
+              <input
+                value={form.slackId}
+                onChange={(e) => update({ slackId: e.target.value })}
+                placeholder="U0123ABCD"
+                className={INPUT_CLASS_COMPACT}
+              />
+            </FormField>
+
             <FormField label="보직">
               <select
                 value={form.position}

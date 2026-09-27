@@ -1,5 +1,16 @@
 import type { MemberRole } from '@/api/auth/types';
 import { apiClient } from '@/api/client';
+import { isPreviewSession } from '@/lib/auth/ledger-preview';
+import {
+  mockCreateMember,
+  mockGetMemberDirectory,
+  mockUpdateMemberAcademicStatus,
+  mockUpdateMemberActive,
+  mockUpdateMemberProfile,
+  mockUpdateMemberRole,
+  mockUpdateMemberWithdrawal,
+  mockUploadMemberPhoto,
+} from './mock';
 import type {
   AcademicStatus,
   MemberCreateRequest,
@@ -18,6 +29,9 @@ const DIRECTORY_BASE = '/v1/members/directory';
  * 빈 배열·빈 문자열·null은 apiClient의 buildQuery가 알아서 빼므로 조건을 보내지 않는 것과 같다.
  */
 export function getMemberDirectory(params: MemberDirectoryParams) {
+  if (isPreviewSession()) {
+    return mockGetMemberDirectory(params);
+  }
   return apiClient.get<MemberDirectoryResponse>(params.isAdmin ? ADMIN_BASE : DIRECTORY_BASE, {
     params: {
       keyword: params.keyword.trim() || undefined,
@@ -33,26 +47,44 @@ export function getMemberDirectory(params: MemberDirectoryParams) {
 }
 
 export function createMember(body: MemberCreateRequest) {
+  if (isPreviewSession()) {
+    return mockCreateMember(body);
+  }
   return apiClient.post<MemberCreateResponse>(ADMIN_BASE, body);
 }
 
 export function updateMemberProfile(memberId: number, body: MemberProfileUpdateRequest) {
+  if (isPreviewSession()) {
+    return mockUpdateMemberProfile(memberId, body);
+  }
   return apiClient.patch<void>(`${ADMIN_BASE}/${memberId}`, body);
 }
 
 export function updateMemberAcademicStatus(memberId: number, academicStatus: AcademicStatus) {
+  if (isPreviewSession()) {
+    return mockUpdateMemberAcademicStatus(memberId, academicStatus);
+  }
   return apiClient.patch<void>(`${ADMIN_BASE}/${memberId}/academic-status`, { academicStatus });
 }
 
 export function updateMemberActive(memberId: number, active: boolean) {
+  if (isPreviewSession()) {
+    return mockUpdateMemberActive(memberId, active);
+  }
   return apiClient.patch<void>(`${ADMIN_BASE}/${memberId}/active`, { active });
 }
 
 export function updateMemberRole(memberId: number, role: MemberRole) {
+  if (isPreviewSession()) {
+    return mockUpdateMemberRole(memberId, role);
+  }
   return apiClient.patch<void>(`${ADMIN_BASE}/${memberId}/role`, { role });
 }
 
 export function updateMemberWithdrawal(memberId: number, withdrawn: boolean) {
+  if (isPreviewSession()) {
+    return mockUpdateMemberWithdrawal(memberId);
+  }
   return apiClient.patch<void>(`${ADMIN_BASE}/${memberId}/withdrawal`, { withdrawn });
 }
 
@@ -95,6 +127,9 @@ export async function uploadMemberPhoto(memberId: number, file: File): Promise<s
   const validationError = validateMemberPhoto(file);
   if (validationError) {
     throw new Error(validationError);
+  }
+  if (isPreviewSession()) {
+    return mockUploadMemberPhoto(memberId, file);
   }
 
   const presigned = await issueMemberPhotoPresignedUrl(memberId, {

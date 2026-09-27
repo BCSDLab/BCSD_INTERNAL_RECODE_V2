@@ -25,6 +25,7 @@ import { MemberStats } from './components/MemberStats';
 import { MemberTable } from './components/MemberTable';
 import { MemberToolbar } from './components/MemberToolbar';
 import { MemberWithdrawalModal } from './components/MemberWithdrawalModal';
+import { useMockSlackIds } from './components/slack-id-mock';
 
 const EMPTY_MEMBERS: MemberDirectoryItem[] = [];
 
@@ -115,7 +116,7 @@ export default function MembersPage() {
     setPage(0);
   }
 
-  const members = data?.members ?? EMPTY_MEMBERS;
+  const members = useMockSlackIds(data?.members ?? EMPTY_MEMBERS);
 
   return (
     <>
