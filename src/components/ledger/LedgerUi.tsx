@@ -140,7 +140,7 @@ export function LinkStatusBadge({ status }: { status: 'confirmed' | 'pending' | 
   return <span className="text-faint text-[11px]">—</span>;
 }
 
-export function Toast({ message }: { message: string }) {
+export function Toast({ message, tone = 'success' }: { message: string; tone?: 'success' | 'neutral' }) {
   return (
     <div
       role="status"
@@ -150,9 +150,11 @@ export function Toast({ message }: { message: string }) {
     >
       <span
         aria-hidden="true"
-        className="bg-primary-soft text-primary-text flex h-5 w-5 flex-none items-center justify-center rounded-full text-[11px] font-bold"
+        className={`flex h-5 w-5 flex-none items-center justify-center rounded-full text-[11px] font-bold ${
+          tone === 'success' ? 'bg-primary-soft text-primary-text' : 'bg-sunken text-muted'
+        }`}
       >
-        ✓
+        {tone === 'success' ? '✓' : 'i'}
       </span>
       <span>{message}</span>
     </div>

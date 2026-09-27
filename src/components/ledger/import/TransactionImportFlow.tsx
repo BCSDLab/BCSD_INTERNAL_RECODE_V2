@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ledger/LedgerUi';
-import { IMPORT_DUES_MATCHES, createInitialImportTransactions } from '@/components/ledger/import/initial-data';
+import { createInitialImportTransactions } from '@/components/ledger/import/initial-data';
 import type { ImportStep, ImportTransaction } from '@/components/ledger/import/types';
 import type { Evidence } from '@/components/ledger/types';
 import { MAX_EVIDENCE_COUNT } from '@/components/ledger/types';
@@ -17,16 +17,11 @@ const STEPS: Array<{ id: ImportStep; number: number; label: string }> = [
   { id: 'upload', number: 1, label: 'Excel 업로드' },
   { id: 'review', number: 2, label: '신규 내역' },
   { id: 'evidence', number: 3, label: '출금 증빙' },
-  { id: 'confirm', number: 4, label: '최종 확인' },
 ];
 
 function displayTime(value: string) {
   const [, month, day, hour, minute] = value.match(/^\d{4}-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/) ?? [];
   return month ? `${month}.${day} ${hour}:${minute}` : value;
-}
-
-function matchFor(transaction: ImportTransaction) {
-  return IMPORT_DUES_MATCHES.find((match) => match.memberId === transaction.duesMatchId);
 }
 
 function readAsDataUrl(file: File) {
@@ -154,12 +149,7 @@ export function TransactionImportFlow({ onCancel, onSave }: TransactionImportFlo
   );
 
   const selectedTransactions = transactions.filter((transaction) => transaction.selected);
-  const canReview =
-    selectedTransactions.length > 0 &&
-    selectedTransactions.every((transaction) => {
-      const needsMatch = transaction.category === '회비' || transaction.category === '회비 반환';
-      return !needsMatch || transaction.duesMatchId !== null;
-    });
+  const canReview = selectedTransactions.length > 0;
   const missingEvidenceCount = selectedTransactions.filter(
     (transaction) => transaction.type === 'withdrawal' && transaction.evidences.length === 0,
   ).length;
@@ -312,21 +302,18 @@ export function TransactionImportFlow({ onCancel, onSave }: TransactionImportFlo
             <div className="px-[22px] pt-4 pb-5">
               <div className="border-line overflow-x-auto rounded-[13px] border">
                 <table className="w-full min-w-[704px] table-fixed border-collapse text-center">
-                  <ProportionalColumns minimums={[44, 82, 56, 68, 82, 96, 156, 132]} />
+                  <ProportionalColumns minimums={[44, 82, 56, 68, 82, 96, 132]} />
                   <thead className="bg-panel2 text-faint text-[11px] font-bold">
                     <tr className="border-line border-b">
-                      {['추가', '거래 일시', '입출금', '거래내역', '금액', '종류', '일치하는 회비', '비고'].map(
-                        (label) => (
-                          <th key={label} className="p-2 text-center">
-                            {label}
-                          </th>
-                        ),
-                      )}
+                      {['추가', '거래 일시', '입출금', '거래내역', '금액', '종류', '비고'].map((label) => (
+                        <th key={label} className="p-2 text-center">
+                          {label}
+                        </th>
+                      ))}
                     </tr>
                   </thead>
                   <tbody>
                     {transactions.map((transaction) => {
-                      const needsMatch = transaction.category === '회비' || transaction.category === '회비 반환';
                       return (
                         <tr key={transaction.id} className="border-line border-b last:border-b-0">
                           <td className="p-2 align-middle">
@@ -361,13 +348,7 @@ export function TransactionImportFlow({ onCancel, onSave }: TransactionImportFlo
                                 updateTransaction(transaction.id, (current) => ({
                                   ...current,
                                   category: event.target.value as ImportTransaction['category'],
-                                  duesMatchId:
-                                    event.target.value === '기타'
-                                      ? null
-                                      : (current.duesMatchId ??
-                                        IMPORT_DUES_MATCHES.find((match) => match.memberName === current.counterparty)
-                                          ?.memberId ??
-                                        null),
+                                  duesMatchId: null,
                                 }))
                               }
                               className="border-line2 bg-panel h-7 w-full rounded-[7px] border px-1.5 text-center text-xs outline-none disabled:opacity-45"
@@ -376,29 +357,6 @@ export function TransactionImportFlow({ onCancel, onSave }: TransactionImportFlo
                               <option>회비 반환</option>
                               <option>기타</option>
                             </select>
-                          </td>
-                          <td className="p-2">
-                            {needsMatch && (
-                              <select
-                                aria-label={`${transaction.counterparty} 연결 회원과 학기`}
-                                value={transaction.duesMatchId ?? ''}
-                                disabled={!transaction.selected}
-                                onChange={(event) =>
-                                  updateTransaction(transaction.id, (current) => ({
-                                    ...current,
-                                    duesMatchId: event.target.value || null,
-                                  }))
-                                }
-                                className="border-line2 bg-panel h-7 w-full rounded-[7px] border px-2 text-center text-xs outline-none disabled:opacity-45"
-                              >
-                                <option value="">선택</option>
-                                {IMPORT_DUES_MATCHES.map((match) => (
-                                  <option key={match.memberId} value={match.memberId}>
-                                    {match.memberName} {match.semester}
-                                  </option>
-                                ))}
-                              </select>
-                            )}
                           </td>
                           <td className="p-2">
                             <input
@@ -531,80 +489,9 @@ export function TransactionImportFlow({ onCancel, onSave }: TransactionImportFlo
             <ImportFooter
               previousLabel="이전"
               onPrevious={() => setStep('review')}
-              nextLabel="다음"
-              onNext={() => setStep('confirm')}
-              nextDisabled={missingEvidenceCount > 0}
-            />
-          </>
-        )}
-
-        {step === 'confirm' && !isSaving && (
-          <>
-            <div className="px-[22px] pt-4 pb-5">
-              <div className="border-line overflow-x-auto rounded-[13px] border">
-                <table className="w-full min-w-[860px] table-fixed border-collapse text-center">
-                  <ProportionalColumns minimums={[76, 52, 68, 80, 104, 156, 190, 150]} />
-                  <thead className="bg-panel2 text-faint text-[11px] font-bold">
-                    <tr className="border-line border-b">
-                      {['거래 일시', '입출금', '거래내역', '금액', '종류', '일치하는 회비', '증빙', '비고'].map(
-                        (label) => (
-                          <th key={label} className="p-2 text-center">
-                            {label}
-                          </th>
-                        ),
-                      )}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {selectedTransactions.map((transaction) => {
-                      const match = matchFor(transaction);
-                      return (
-                        <tr key={transaction.id} className="border-line border-b align-top last:border-b-0">
-                          <td className="p-2.5 text-xs whitespace-nowrap">{displayTime(transaction.occurredAt)}</td>
-                          <td className="p-2.5 text-xs">{transaction.type === 'deposit' ? '입금' : '출금'}</td>
-                          <td className="p-2.5 text-xs">{transaction.counterparty}</td>
-                          <td className="p-2.5 text-xs whitespace-nowrap">
-                            {transaction.type === 'withdrawal' ? '-' : ''}
-                            {formatWon(transaction.amount)}
-                          </td>
-                          <td className="p-2.5 text-xs whitespace-nowrap">{transaction.category}</td>
-                          <td className={`p-2.5 text-xs ${match ? 'text-text' : 'text-faint'}`}>
-                            {match ? `${match.memberName} ${match.semester}` : '-'}
-                          </td>
-                          <td className="overflow-hidden p-2.5 text-left">
-                            {transaction.evidences.length > 0 ? (
-                              <div className="flex min-w-0 flex-wrap gap-1.5">
-                                {transaction.evidences.map((evidence) => (
-                                  <button
-                                    key={evidence.id}
-                                    type="button"
-                                    title={evidence.name}
-                                    onClick={() => openEvidenceInNewTab(evidence)}
-                                    className="border-line2 max-w-full min-w-0 cursor-pointer overflow-hidden rounded-full border px-2 py-1 text-[11px] text-ellipsis whitespace-nowrap"
-                                  >
-                                    {evidence.name}
-                                  </button>
-                                ))}
-                              </div>
-                            ) : (
-                              <span className="text-faint text-[11.5px]">-</span>
-                            )}
-                          </td>
-                          <td className="text-muted overflow-hidden p-2.5 text-xs [overflow-wrap:anywhere]">
-                            {transaction.note}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-            <ImportFooter
-              previousLabel="이전"
-              onPrevious={() => setStep('evidence')}
               nextLabel="저장"
               onNext={saveTransactions}
+              nextDisabled={missingEvidenceCount > 0}
             />
           </>
         )}

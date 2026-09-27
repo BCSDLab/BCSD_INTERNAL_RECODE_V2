@@ -113,11 +113,11 @@ export const CURRENT_SEMESTER_MEMBERS: MemberDues[] = [
     name: '이하늘',
     studentNumber: '2023174011',
     track: 'Frontend',
-    months: [paid(), paid(), unpaid('부족 납부 5,000원(10,000원 중)'), paid(), paid(), paid()],
+    months: [paid(), paid(), paid(), paid(), paid(), unpaid('부족 납부 5,000원(10,000원 중)')],
     status: 'partial',
     assessedAmount: 60000,
     paidAmount: 55000,
-    unpaidAmount: 10000,
+    unpaidAmount: 5000,
     refundStatus: 'none',
   },
   {

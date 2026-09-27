@@ -1,12 +1,13 @@
 'use client';
 
+import Link from 'next/link';
 import { useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import { useAppData } from '@/components/app-data/AppDataProvider';
 import { LIVE_SEMESTER_ID } from '@/components/dues/derive';
 import type { MemberDues } from '@/components/dues/types';
 import { Button, Input, ModalFrame, Panel, Select } from '@/components/ledger/LedgerUi';
-import type { DuesLink, Evidence, LedgerCategory, LedgerEntry } from '@/components/ledger/types';
+import type { Evidence, LedgerCategory, LedgerEntry } from '@/components/ledger/types';
 import { LEDGER_CATEGORIES, MAX_EVIDENCE_COUNT } from '@/components/ledger/types';
 import { entryTypeLabel, formatOccurredAt, formatWon } from '@/components/ledger/utils';
 
@@ -20,10 +21,15 @@ interface LedgerDetailViewProps {
 
 type PaymentStatus = '완료' | '미납' | '확인필요';
 
-const SEMESTER_OPTIONS = ['2026년 2학기', '2026년 1학기'];
-
 function isDuesCategory(category: LedgerCategory) {
   return category === '회비' || category === '회비 반환';
+}
+
+function duesHref(semester: string) {
+  const matched = semester.match(/^(\d{4})년\s*(\d)학기$/);
+  if (!matched) return '/ledger/dues';
+  const semesterId = `${matched[1]}-${matched[2]}`;
+  return semesterId === LIVE_SEMESTER_ID ? '/ledger/dues' : `/ledger/dues/${semesterId}`;
 }
 
 function readAsDataUrl(file: File) {
@@ -35,25 +41,13 @@ function readAsDataUrl(file: File) {
   });
 }
 
-function toDuesLink(member: MemberDues, semester: string, kind: 'deposit' | 'refund'): DuesLink {
-  return {
-    memberId: member.id,
-    memberName: member.name,
-    studentNumber: member.studentNumber,
-    track: member.track,
-    semester,
-    requiredAmount: member.assessedAmount ?? 0,
-    refundReason: kind === 'refund' ? member.refundReason : undefined,
-    refundAmount: kind === 'refund' ? member.refundAmount : undefined,
-  };
-}
-
 function paymentStatus(entry: LedgerEntry, allEntries: LedgerEntry[], members: MemberDues[]): PaymentStatus {
   const duesLink = entry.duesLink;
   if (!duesLink || entry.linkStatus !== 'confirmed') return '확인필요';
   if (entry.category === '회비 반환') return '완료';
 
-  const requiredAmount = members.find((member) => member.id === duesLink.memberId)?.assessedAmount ?? duesLink.requiredAmount;
+  const requiredAmount =
+    members.find((member) => member.id === duesLink.memberId)?.assessedAmount ?? duesLink.requiredAmount;
 
   const paidAmount = allEntries
     .filter(
@@ -95,8 +89,6 @@ function StatusBadge({ status }: { status: PaymentStatus }) {
 export function LedgerDetailView({ entry, allEntries, onClose, onSave, onOpenEvidence }: LedgerDetailViewProps) {
   const { getSemesterDuesMembers } = useAppData();
   const liveMembers = getSemesterDuesMembers(LIVE_SEMESTER_ID);
-  const depositCandidates = liveMembers.filter((member) => member.assessedAmount !== null);
-  const refundCandidates = liveMembers.filter((member) => member.refundStatus === 'needed' || member.refundStatus === 'partial');
 
   const evidenceInput = useRef<HTMLInputElement>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -105,36 +97,17 @@ export function LedgerDetailView({ entry, allEntries, onClose, onSave, onOpenEvi
   const [description, setDescription] = useState(entry.description);
   const [note, setNote] = useState(entry.note);
   const [evidences, setEvidences] = useState<Evidence[]>(entry.evidences);
-  const initialCandidates = entry.category === '회비 반환' ? refundCandidates : depositCandidates;
-  const initialLink =
-    entry.duesLink ?? (initialCandidates[0] ? toDuesLink(initialCandidates[0], SEMESTER_OPTIONS[0], entry.category === '회비 반환' ? 'refund' : 'deposit') : undefined);
-  const [selectedTrack, setSelectedTrack] = useState(initialLink?.track ?? '');
-  const [selectedMemberId, setSelectedMemberId] = useState(initialLink?.memberId ?? '');
-  const [semester, setSemester] = useState(entry.duesLink?.semester ?? SEMESTER_OPTIONS[0]);
   const [error, setError] = useState('');
 
-  const baseCandidates = category === '회비 반환' ? refundCandidates : depositCandidates;
-  const baseLinkOptions = baseCandidates.map((member) => toDuesLink(member, semester, category === '회비 반환' ? 'refund' : 'deposit'));
-  const linkOptions =
-    !entry.duesLink || baseLinkOptions.some((option) => option.memberId === entry.duesLink?.memberId)
-      ? baseLinkOptions
-      : [...baseLinkOptions, entry.duesLink];
-  const trackOptions = [...new Set(linkOptions.map((option) => option.track))];
-  const memberOptions = linkOptions.filter((option) => option.track === selectedTrack);
   const displayedEvidences = isEditing ? evidences : entry.evidences;
   const status = paymentStatus(entry, allEntries, liveMembers);
 
   function resetDraft() {
-    const options = entry.category === '회비 반환' ? refundCandidates : depositCandidates;
-    const currentLink = entry.duesLink ?? (options[0] ? toDuesLink(options[0], SEMESTER_OPTIONS[0], entry.category === '회비 반환' ? 'refund' : 'deposit') : undefined);
     setCounterparty(entry.counterparty);
     setCategory(entry.category);
     setDescription(entry.description);
     setNote(entry.note);
     setEvidences(entry.evidences);
-    setSelectedTrack(currentLink?.track ?? '');
-    setSelectedMemberId(currentLink?.memberId ?? '');
-    setSemester(entry.duesLink?.semester ?? SEMESTER_OPTIONS[0]);
     setError('');
   }
 
@@ -151,19 +124,6 @@ export function LedgerDetailView({ entry, allEntries, onClose, onSave, onOpenEvi
   function changeCategory(nextCategory: LedgerCategory) {
     setCategory(nextCategory);
     setError('');
-    if (!isDuesCategory(nextCategory)) return;
-
-    const candidates = nextCategory === '회비 반환' ? refundCandidates : depositCandidates;
-    const nextMember = candidates.find((member) => member.id === entry.duesLink?.memberId) ?? candidates[0];
-    setSelectedTrack(nextMember?.track ?? '');
-    setSelectedMemberId(nextMember?.id ?? '');
-    setSemester(entry.duesLink?.semester ?? SEMESTER_OPTIONS[0]);
-  }
-
-  function changeTrack(track: string) {
-    const nextMember = linkOptions.find((option) => option.track === track);
-    setSelectedTrack(track);
-    setSelectedMemberId(nextMember?.memberId ?? '');
   }
 
   async function uploadEvidence(event: ChangeEvent<HTMLInputElement>) {
@@ -211,13 +171,6 @@ export function LedgerDetailView({ entry, allEntries, onClose, onSave, onOpenEvi
       return;
     }
 
-    const duesTarget = isDuesCategory(category);
-    const selectedLink = duesTarget ? linkOptions.find((option) => option.memberId === selectedMemberId) : undefined;
-    if (duesTarget && !selectedLink) {
-      setError('연결할 회비 정보를 선택해주세요.');
-      return;
-    }
-
     onSave({
       ...entry,
       counterparty: counterparty.trim(),
@@ -225,8 +178,8 @@ export function LedgerDetailView({ entry, allEntries, onClose, onSave, onOpenEvi
       description: description.trim(),
       note: note.trim(),
       evidences,
-      linkStatus: duesTarget ? 'confirmed' : 'none',
-      duesLink: selectedLink ? { ...selectedLink, semester } : undefined,
+      linkStatus: entry.linkStatus,
+      duesLink: entry.duesLink,
     });
     setIsEditing(false);
   }
@@ -353,62 +306,34 @@ export function LedgerDetailView({ entry, allEntries, onClose, onSave, onOpenEvi
             </dl>
           </Panel>
 
-          {(isEditing ? isDuesCategory(category) : isDuesCategory(entry.category)) && (
-            <Panel title="관련 회비">
-              {isEditing ? (
-                <div className="grid grid-cols-3 gap-2">
-                  <label className="text-muted flex flex-col gap-1.5 text-[10.5px] font-bold">
-                    트랙
-                    <Select value={selectedTrack} onChange={(event) => changeTrack(event.target.value)}>
-                      {trackOptions.map((track) => (
-                        <option key={track}>{track}</option>
-                      ))}
-                    </Select>
-                  </label>
-                  <label className="text-muted flex flex-col gap-1.5 text-[10.5px] font-bold">
-                    학번 (이름)
-                    <Select value={selectedMemberId} onChange={(event) => setSelectedMemberId(event.target.value)}>
-                      {memberOptions.map((option) => (
-                        <option key={option.memberId} value={option.memberId}>
-                          {option.studentNumber} ({option.memberName})
-                        </option>
-                      ))}
-                    </Select>
-                  </label>
-                  <label className="text-muted flex flex-col gap-1.5 text-[10.5px] font-bold">
-                    학기 (회비 이름)
-                    <Select value={semester} onChange={(event) => setSemester(event.target.value)}>
-                      {SEMESTER_OPTIONS.map((option) => (
-                        <option key={option} value={option}>
-                          {option.replace(/^20/, '')} 회비
-                        </option>
-                      ))}
-                    </Select>
-                  </label>
-                </div>
-              ) : entry.duesLink ? (
-                <div className="border-line bg-panel2 flex items-center gap-4 rounded-[10px] border px-4 py-3">
-                  <div>
-                    <div className="text-text text-[13px] font-bold">{entry.duesLink.memberName}</div>
-                    <div className="text-muted mt-1 text-[11px]">
-                      {entry.duesLink.track} · {entry.duesLink.studentNumber} · {entry.duesLink.semester}
-                    </div>
-                  </div>
-                  <div className="ml-auto text-right">
-                    <div className="text-faint mb-1.5 text-[10px] font-semibold">
-                      {entry.category === '회비 반환' ? '반환 상태' : '납부 상태'}
-                    </div>
-                    <StatusBadge status={status} />
+          {(entry.duesLink || isDuesCategory(isEditing ? category : entry.category)) &&
+            (entry.duesLink ? (
+              <Link
+                href={duesHref(entry.duesLink.semester)}
+                className="border-line bg-panel2 hover:border-primary-line flex items-center gap-4 rounded-[10px] border px-4 py-3 transition-colors"
+              >
+                <div>
+                  <div className="text-text text-[13px] font-bold">{entry.duesLink.memberName}</div>
+                  <div className="text-muted mt-1 text-[11px]">
+                    {entry.duesLink.track} · {entry.duesLink.studentNumber} · {entry.duesLink.semester}
                   </div>
                 </div>
-              ) : (
-                <div className="border-danger bg-danger-soft flex items-center justify-between rounded-[10px] border border-dashed px-4 py-3">
-                  <span className="text-danger text-xs font-semibold">연결된 회비 정보가 없습니다.</span>
-                  <StatusBadge status="확인필요" />
+                <div className="ml-auto text-right">
+                  <div className="text-faint mb-1.5 text-[10px] font-semibold">
+                    {entry.category === '회비 반환' ? '반환 상태' : '납부 상태'}
+                  </div>
+                  <StatusBadge status={status} />
                 </div>
-              )}
-            </Panel>
-          )}
+                <span aria-hidden="true" className="text-faint text-sm">
+                  →
+                </span>
+              </Link>
+            ) : (
+              <div className="border-danger bg-danger-soft flex items-center justify-between rounded-[10px] border border-dashed px-4 py-3">
+                <span className="text-danger text-xs font-semibold">회비 관리에서 출납기록을 연결해주세요.</span>
+                <StatusBadge status="확인필요" />
+              </div>
+            ))}
         </div>
 
         {error && (

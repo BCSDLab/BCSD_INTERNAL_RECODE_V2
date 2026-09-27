@@ -24,4 +24,4 @@ export interface ImportTransaction {
   evidences: Evidence[];
 }
 
-export type ImportStep = 'upload' | 'review' | 'evidence' | 'confirm';
+export type ImportStep = 'upload' | 'review' | 'evidence';

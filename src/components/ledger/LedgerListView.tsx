@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import { Button, Input, LinkStatusBadge } from '@/components/ledger/LedgerUi';
-import type { EntryType, LedgerCategory, LedgerEntry, LedgerFilters, LinkStatus } from '@/components/ledger/types';
+import { Button, Input } from '@/components/ledger/LedgerUi';
+import type { EntryType, LedgerCategory, LedgerEntry, LedgerFilters } from '@/components/ledger/types';
 import { LEDGER_CATEGORIES } from '@/components/ledger/types';
 import { formatLedgerDateInput, formatOccurredAt, formatWon, signedAmount } from '@/components/ledger/utils';
 
@@ -19,7 +19,7 @@ interface LedgerListViewProps {
   };
 }
 
-type FilterKey = 'occurredAt' | 'type' | 'category' | 'linkStatus' | 'counterparty' | 'description' | 'amount';
+type FilterKey = 'occurredAt' | 'type' | 'category' | 'counterparty' | 'description' | 'amount';
 
 interface FilterOption<T extends string | number> {
   value: T;
@@ -29,12 +29,6 @@ interface FilterOption<T extends string | number> {
 const TYPE_FILTER_OPTIONS: FilterOption<EntryType>[] = [
   { value: 'deposit', label: '입금' },
   { value: 'withdrawal', label: '출금' },
-];
-
-const LINK_FILTER_OPTIONS: FilterOption<LinkStatus>[] = [
-  { value: 'confirmed', label: '확정' },
-  { value: 'pending', label: '미정' },
-  { value: 'none', label: '연결 대상 아님' },
 ];
 
 const CATEGORY_FILTER_OPTIONS: FilterOption<LedgerCategory>[] = LEDGER_CATEGORIES.map((value) => ({
@@ -215,7 +209,7 @@ export function LedgerListView({
         <div>
           <div className="text-faint mb-1.5 text-[10.5px] font-bold tracking-[0.16em]">장부 · 회비 관리</div>
           <h1 className="text-[25px] font-extrabold tracking-[-0.02em]">장부 관리</h1>
-          <p className="text-muted mt-1.5 text-xs">계좌 입·출금 내역과 회비 연결 상태를 한곳에서 관리합니다.</p>
+          <p className="text-muted mt-1.5 text-xs">계좌 입·출금 내역을 한곳에서 관리합니다.</p>
         </div>
         <Button tone="primary" onClick={onOpenImport} className="ml-auto">
           거래내역 가져오기
@@ -293,18 +287,6 @@ export function LedgerListView({
                   />
                 </HeaderFilter>
                 <HeaderFilter
-                  label="회비 연결"
-                  active={filters.linkStatuses.length > 0}
-                  open={openFilter === 'linkStatus'}
-                  onToggle={() => toggleFilter('linkStatus')}
-                >
-                  <MultiSelectFilter
-                    options={LINK_FILTER_OPTIONS}
-                    selected={filters.linkStatuses}
-                    onChange={(value) => update('linkStatuses', value)}
-                  />
-                </HeaderFilter>
-                <HeaderFilter
                   label="이름"
                   active={filters.counterparties.length > 0}
                   open={openFilter === 'counterparty'}
@@ -318,7 +300,7 @@ export function LedgerListView({
                   />
                 </HeaderFilter>
                 <HeaderFilter
-                  label="내용"
+                  label="비고"
                   active={filters.descriptions.length > 0}
                   open={openFilter === 'description'}
                   onToggle={() => toggleFilter('description')}
@@ -423,9 +405,6 @@ export function LedgerListView({
                       {entry.type === 'deposit' ? '입금' : '출금'}
                     </td>
                     <td className="text-text px-3 py-3 text-xs whitespace-nowrap">{entry.category}</td>
-                    <td className="px-3 py-3">
-                      <LinkStatusBadge status={entry.linkStatus} />
-                    </td>
                     <td className="text-text px-3 py-3 text-xs whitespace-nowrap">{entry.counterparty || '—'}</td>
                     <td className="text-muted max-w-[320px] truncate px-3 py-3 text-xs">{entry.description}</td>
                     <td
@@ -441,7 +420,7 @@ export function LedgerListView({
                 ))
               ) : (
                 <tr>
-                  <td colSpan={refundSelection ? 9 : 8} className="p-8">
+                  <td colSpan={refundSelection ? 8 : 7} className="p-8">
                     <div className="border-dash mx-auto flex max-w-[430px] flex-col items-center justify-center rounded-[13px] border border-dashed px-8 py-6 text-center">
                       <strong className="text-text text-[14px]">조건에 맞는 장부 기록이 없습니다.</strong>
                       <button

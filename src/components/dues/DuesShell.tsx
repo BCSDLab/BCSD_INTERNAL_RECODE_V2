@@ -12,7 +12,7 @@ export function DuesShell({ children }: { children: ReactNode }) {
   const isExemptions = pathname.startsWith('/ledger/exemptions');
 
   return (
-    <div className="bg-bg text-text min-h-screen">
+    <div className="bg-bg text-text min-h-screen w-full min-w-0">
       <header className="border-line bg-panel/90 sticky top-0 z-30 flex h-16 items-center border-b px-8 backdrop-blur-[14px]">
         <nav aria-label="장부 및 회비 메뉴" className="flex h-full items-center gap-7">
           <Link href="/ledger" className="text-muted hover:text-primary-text text-[13px] font-medium transition-colors">

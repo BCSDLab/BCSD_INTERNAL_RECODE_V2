@@ -9,7 +9,6 @@ import { EMPTY_LEDGER_FILTERS } from '@/components/ledger/initial-data';
 import { LedgerDetailView } from '@/components/ledger/LedgerDetailView';
 import { LedgerListView } from '@/components/ledger/LedgerListView';
 import { Toast } from '@/components/ledger/LedgerUi';
-import { IMPORT_DUES_MATCHES } from '@/components/ledger/import/initial-data';
 import { TransactionImportFlow } from '@/components/ledger/import/TransactionImportFlow';
 import type { ImportTransaction } from '@/components/ledger/import/types';
 import type { LedgerEntry, LedgerFilters, LedgerScreen } from '@/components/ledger/types';
@@ -110,7 +109,7 @@ export function LedgerPageClient() {
       let balance = latestEntry?.balance ?? 0;
       const importedEntries: LedgerEntry[] = newTransactions.map((transaction) => {
         balance += transaction.type === 'deposit' ? transaction.amount : -transaction.amount;
-        const match = IMPORT_DUES_MATCHES.find((option) => option.memberId === transaction.duesMatchId);
+        const isDuesEntry = transaction.category === '회비' || transaction.category === '회비 반환';
 
         return {
           id: `imported-${transaction.id}`,
@@ -129,8 +128,8 @@ export function LedgerPageClient() {
           amount: transaction.amount,
           balance,
           source: fileName,
-          linkStatus: match ? 'confirmed' : 'none',
-          duesLink: match ? { ...match } : undefined,
+          linkStatus: isDuesEntry ? 'pending' : 'none',
+          duesLink: undefined,
           evidences: transaction.evidences.map((importedEvidence) => ({ ...importedEvidence })),
         };
       });

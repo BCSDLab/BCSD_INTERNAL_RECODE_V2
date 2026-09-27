@@ -51,6 +51,8 @@
   --success: #2ca86f;
   --success-line: rgba(44, 168, 111, 0.35);
   --success-soft: rgba(44, 168, 111, 0.08);
+  --dues-month-paid: #2ca86f;
+  --dues-month-unpaid: #d6455b;
   --stock-up: #d6455b;
   --stock-down: #2563eb;
 
@@ -110,6 +112,9 @@
   --success: #4ade9b;
   --success-line: rgba(74, 222, 155, 0.35);
   --success-soft: rgba(74, 222, 155, 0.1);
+  /* 회비 월별 상태는 넓은 면적을 채우므로 알림용 색상보다 어둡고 깊은 톤을 쓴다. */
+  --dues-month-paid: #28715a;
+  --dues-month-unpaid: #963848;
   --stock-up: #ff8a8a;
   --stock-down: #60a5fa;
 

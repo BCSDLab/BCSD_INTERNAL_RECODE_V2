@@ -1,40 +1,30 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
-import type { ReactNode } from 'react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAppData } from '@/components/app-data/AppDataProvider';
-import { DUES_MONTHS, SEMESTER_DUES_SUMMARIES } from '@/components/dues/initial-data';
-import type {
-  MemberDues,
-  MonthDuesStatus,
-  RefundStatus,
-  SemesterDuesStatus,
-  SemesterDuesSummary,
-} from '@/components/dues/types';
+import { DuesLedgerLinkModal } from '@/components/dues/DuesLedgerLinkModal';
+import { MemberDuesLedgerModal } from '@/components/dues/MemberDuesLedgerModal';
+import { LIVE_SEMESTER_ID } from '@/components/dues/derive';
+import { CheckboxFilter, HeaderFilter } from '@/components/dues/TableHeaderFilter';
+import type { FilterOption } from '@/components/dues/TableHeaderFilter';
+import type { MemberDues, MonthDuesStatus, SemesterDuesStatus, SemesterDuesSummary } from '@/components/dues/types';
+import { Toast } from '@/components/ledger/LedgerUi';
+import { Button } from '@/components/ui/button';
+import { Modal } from '@/components/ui/modal';
 
 type FilterKey = 'name' | 'track' | 'error' | 'status';
 type ErrorKind = 'surplus' | 'exact' | 'shortage' | 'not-applicable';
-type ActionableRefundStatus = Extract<RefundStatus, 'needed' | 'partial'>;
 type FilteredDuesStatus = Exclude<SemesterDuesStatus, 'partial'>;
-type StateFilter = `dues-${FilteredDuesStatus}` | 'refund-needed';
-
-interface FilterOption<T extends string> {
-  value: T;
-  label: string;
-}
+type StateFilter = `dues-${FilteredDuesStatus}`;
 
 const STATUS_LABELS: Record<SemesterDuesStatus, string> = {
   paid: '완료',
   partial: '미납',
   unpaid: '미납',
   exempt: '면제',
-  overpaid: '초과 납부',
-};
-
-const REFUND_LABELS: Record<ActionableRefundStatus, string> = {
-  needed: '반환 필요',
-  partial: '반환 필요',
+  overpaid: '초과납부',
 };
 
 const ERROR_OPTIONS: FilterOption<ErrorKind>[] = [
@@ -48,14 +38,13 @@ const STATE_OPTIONS: FilterOption<StateFilter>[] = [
   { value: 'dues-paid', label: '완료' },
   { value: 'dues-unpaid', label: '미납' },
   { value: 'dues-exempt', label: '면제' },
-  { value: 'dues-overpaid', label: '초과 납부' },
-  { value: 'refund-needed', label: '반환 필요' },
+  { value: 'dues-overpaid', label: '초과납부' },
 ];
 
 const MONTH_CLASSES: Record<MonthDuesStatus, string> = {
-  paid: 'bg-success',
-  exempt: 'bg-primary',
-  unpaid: 'bg-danger',
+  paid: 'bg-[var(--dues-month-paid)]',
+  exempt: 'bg-line2',
+  unpaid: 'bg-[var(--dues-month-unpaid)]',
   'not-applicable': 'bg-sunken border-x border-dashed border-dash',
 };
 
@@ -72,97 +61,32 @@ function errorKind(member: MemberDues): ErrorKind {
   return 'exact';
 }
 
-function stateKeys(member: MemberDues): StateFilter[] {
+function stateKey(member: MemberDues): StateFilter {
   const duesStatus = member.status === 'partial' ? 'unpaid' : member.status;
-  const keys: StateFilter[] = [`dues-${duesStatus}`];
-  if (member.refundStatus === 'needed' || member.refundStatus === 'partial') keys.push('refund-needed');
-  return keys;
+  return `dues-${duesStatus}`;
 }
 
 function formatAmount(amount: number | null) {
   return amount === null ? '—' : amount.toLocaleString('ko-KR');
 }
 
-function semesterHref(semesterId: string) {
-  return semesterId === SEMESTER_DUES_SUMMARIES[0].id ? '/ledger/dues' : `/ledger/dues/${semesterId}`;
+function semesterHref(semesterId: string, latestSemesterId: string) {
+  return semesterId === latestSemesterId ? '/ledger/dues' : `/ledger/dues/${semesterId}`;
 }
 
-function HeaderFilter({
-  label,
-  active,
-  open,
-  onToggle,
-  align = 'left',
-  children,
-}: {
-  label: string;
-  active: boolean;
-  open: boolean;
-  onToggle: () => void;
-  align?: 'left' | 'right';
-  children: ReactNode;
-}) {
-  return (
-    <th
-      data-dues-filter
-      className={`relative px-2.5 py-2 text-[10.5px] font-bold ${align === 'right' ? 'text-right' : ''}`}
-    >
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-expanded={open}
-        className={`hover:bg-panel inline-flex cursor-pointer items-center gap-1 rounded-md px-1.5 py-1 transition-colors ${
-          active ? 'bg-primary-soft text-primary-text' : 'text-muted'
-        }`}
-      >
-        {label}
-        <span aria-hidden="true" className="text-[9px]">
-          {open ? '▴' : '▾'}
-        </span>
-      </button>
-      {open && (
-        <div
-          className={`border-line bg-panel text-text absolute top-full z-50 mt-1 min-w-[220px] rounded-[10px] border p-3 text-left font-normal shadow-xl ${
-            align === 'right' ? 'right-2' : 'left-2'
-          }`}
-        >
-          {children}
-        </div>
-      )}
-    </th>
-  );
+function semesterMonthLabels(semesterId: string) {
+  const [, termText] = semesterId.split('-');
+  const term = Number(termText);
+  return term === 1 ? ['3월', '4월', '5월', '6월', '7월', '8월'] : ['9월', '10월', '11월', '12월', '1월', '2월'];
 }
 
-function CheckboxFilter<T extends string>({
-  options,
-  selected,
-  onChange,
-}: {
-  options: FilterOption<T>[];
-  selected: T[];
-  onChange: (values: T[]) => void;
-}) {
-  function toggle(value: T) {
-    onChange(selected.includes(value) ? selected.filter((item) => item !== value) : [...selected, value]);
-  }
-
-  return (
-    <div className="flex max-h-60 flex-col gap-1 overflow-y-auto">
-      <label className="hover:bg-panel2 flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs font-medium">
-        <input type="checkbox" checked={selected.length === 0} onChange={() => onChange([])} />
-        전체
-      </label>
-      {options.map((option) => (
-        <label
-          key={option.value}
-          className="hover:bg-panel2 flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs"
-        >
-          <input type="checkbox" checked={selected.includes(option.value)} onChange={() => toggle(option.value)} />
-          {option.label}
-        </label>
-      ))}
-    </div>
-  );
+function nextSemester(semesterId: string) {
+  const [yearText, termText] = semesterId.split('-');
+  const year = Number(yearText);
+  const term = Number(termText);
+  const nextYear = term === 1 ? year : year + 1;
+  const nextTerm = term === 1 ? 2 : 1;
+  return { id: `${nextYear}-${nextTerm}`, label: `${nextYear}년도 ${nextTerm}학기` };
 }
 
 function StatusChip({ status }: { status: SemesterDuesStatus }) {
@@ -181,18 +105,6 @@ function StatusChip({ status }: { status: SemesterDuesStatus }) {
     >
       {STATUS_LABELS[status]}
     </span>
-  );
-}
-
-function RefundChip({ status, onClick }: { status: ActionableRefundStatus; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="border-danger-line bg-danger-soft text-danger hover:border-danger inline-flex cursor-pointer rounded-full border px-2.5 py-[3px] text-[10.5px] font-semibold whitespace-nowrap transition-colors"
-    >
-      {REFUND_LABELS[status]}
-    </button>
   );
 }
 
@@ -216,32 +128,52 @@ export function SemesterDuesDetailView({
   semester: SemesterDuesSummary;
   members: MemberDues[];
 }) {
-  const { startRefundFlow } = useAppData();
+  const router = useRouter();
+  const { ledgerEntries, semesters, createNextSemester, pendingDuesToast, clearPendingDuesToast } = useAppData();
   const [openFilter, setOpenFilter] = useState<FilterKey | null>(null);
+  const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ message: string; tone: 'success' | 'neutral' } | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const monthLabels = semesterMonthLabels(semester.id);
+  const createTarget = nextSemester(LIVE_SEMESTER_ID);
+  const canCreateNextSemester = !semesters.some((item) => item.id === createTarget.id);
   const [nameQuery, setNameQuery] = useState('');
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [selectedTracks, setSelectedTracks] = useState<string[]>([]);
   const [selectedErrors, setSelectedErrors] = useState<ErrorKind[]>([]);
   const [selectedStates, setSelectedStates] = useState<StateFilter[]>([]);
+  const tableMembers = useMemo(
+    () => members.filter((member) => member.months.some((month) => month.status !== 'not-applicable')),
+    [members],
+  );
+  const unlinkedDuesCount = ledgerEntries.filter(
+    (entry) =>
+      (entry.category === '회비' || entry.category === '회비 반환') &&
+      (!entry.duesLink || entry.linkStatus !== 'confirmed'),
+  ).length;
+  const canLinkLedgerEntries = unlinkedDuesCount > 0 && (semester.unpaidMembers > 0 || semester.needsReview);
 
   const nameOptions = useMemo(
-    () => members.map((member) => ({ value: member.id, label: `${member.name} · ${member.studentNumber}` })),
-    [members],
+    () => tableMembers.map((member) => ({ value: member.id, label: `${member.name} · ${member.studentNumber}` })),
+    [tableMembers],
   );
   const visibleNameOptions = nameOptions.filter((option) =>
     option.label.toLocaleLowerCase('ko-KR').includes(nameQuery.trim().toLocaleLowerCase('ko-KR')),
   );
   const trackOptions = useMemo(
-    () => [...new Set(members.map((member) => member.track))].sort().map((track) => ({ value: track, label: track })),
-    [members],
+    () =>
+      [...new Set(tableMembers.map((member) => member.track))].sort().map((track) => ({ value: track, label: track })),
+    [tableMembers],
   );
-  const filteredMembers = members
+  const filteredMembers = tableMembers
     .filter(
       (member) =>
         (selectedMembers.length === 0 || selectedMembers.includes(member.id)) &&
         (selectedTracks.length === 0 || selectedTracks.includes(member.track)) &&
         (selectedErrors.length === 0 || selectedErrors.includes(errorKind(member))) &&
-        (selectedStates.length === 0 || stateKeys(member).some((state) => selectedStates.includes(state))),
+        (selectedStates.length === 0 || selectedStates.includes(stateKey(member))),
     )
     .sort(
       (first, second) =>
@@ -261,8 +193,36 @@ export function SemesterDuesDetailView({
     return () => {
       document.removeEventListener('pointerdown', closeFilter, true);
       document.removeEventListener('keydown', closeWithEscape);
+      if (toastTimer.current) clearTimeout(toastTimer.current);
     };
   }, []);
+
+  useEffect(() => {
+    if (pendingDuesToast?.semesterId !== semester.id) return;
+    flash(pendingDuesToast.message);
+    clearPendingDuesToast();
+  }, [clearPendingDuesToast, pendingDuesToast, semester.id]);
+
+  function flash(message: string, tone: 'success' | 'neutral' = 'success') {
+    setToast({ message, tone });
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(null), 2400);
+  }
+
+  function openLinkModal() {
+    if (!canLinkLedgerEntries) {
+      flash('이 학기에 연결 가능한 입출금 내역이 없습니다.', 'neutral');
+      return;
+    }
+    setIsLinkModalOpen(true);
+  }
+
+  function createSemester() {
+    const createdSemester = createNextSemester();
+    if (!createdSemester) return;
+    setIsCreateModalOpen(false);
+    router.push(`/ledger/dues/${createdSemester.id}`);
+  }
 
   function resetFilters() {
     setSelectedMembers([]);
@@ -275,19 +235,27 @@ export function SemesterDuesDetailView({
 
   return (
     <main className="mx-auto w-full max-w-[1480px] px-8 pt-6 pb-12">
-      <div className="text-faint mb-1.5 text-[10.5px] font-bold tracking-[0.16em]">장부 · 회비 관리</div>
-      <h1 className="text-[25px] font-extrabold tracking-[-0.02em]">회비 관리</h1>
-
-      <section aria-label="학기 회비 목록" className="mt-5">
-        <div className="text-muted mb-2 text-[11px] font-bold">학기별 회비</div>
+      <section aria-label="학기 회비 목록">
         <div className="overflow-x-auto pb-2">
           <div className="flex min-w-max gap-2.5">
-            {SEMESTER_DUES_SUMMARIES.map((item, index) => {
+            {canCreateNextSemester && (
+              <button
+                type="button"
+                onClick={() => setIsCreateModalOpen(true)}
+                className="border-line bg-panel text-muted hover:border-primary-line hover:text-primary-text flex w-[96px] cursor-pointer items-center justify-center gap-1 rounded-[12px] border px-2.5 py-3 text-[12px] font-semibold transition-colors"
+              >
+                <span aria-hidden="true" className="text-[16px] leading-none">
+                  +
+                </span>
+                회비 생성
+              </button>
+            )}
+            {semesters.map((item, index) => {
               const active = item.id === semester.id;
               return (
                 <Link
                   key={item.id}
-                  href={semesterHref(item.id)}
+                  href={semesterHref(item.id, semesters[0].id)}
                   aria-current={active ? 'page' : undefined}
                   className={`w-[236px] rounded-[12px] border p-3 transition-colors ${
                     active ? 'border-primary-line bg-primary-soft' : 'border-line bg-panel hover:border-primary-line'
@@ -302,16 +270,11 @@ export function SemesterDuesDetailView({
                         최신
                       </span>
                     )}
-                    {item.needsReview && (
+                    {(item.needsReview || item.unpaidMembers > 0) && (
                       <span className="border-danger-line bg-danger-soft text-danger ml-auto rounded-full border px-2 py-0.5 text-[9.5px] font-semibold">
                         확인 필요
                       </span>
                     )}
-                  </div>
-                  <div className="text-muted mt-2 flex gap-3 text-[10.5px]">
-                    <span>납부대상 {item.targetMembers}명</span>
-                    <span>완료 {item.completedMembers}명</span>
-                    <span>미납 {item.unpaidMembers}명</span>
                   </div>
                 </Link>
               );
@@ -320,9 +283,23 @@ export function SemesterDuesDetailView({
         </div>
       </section>
 
-      <div className="mt-5">
-        <h2 className="text-[21px] font-extrabold tracking-[-0.02em]">{semester.title}</h2>
-        <p className="text-muted mt-1 text-xs">회원별 부과액·납부액·오차와 상태를 한눈에 확인하세요.</p>
+      <div className="mt-5 flex items-start gap-4">
+        <div>
+          <h1 className="text-[21px] font-extrabold tracking-[-0.02em]">{semester.title}</h1>
+          <p className="text-muted mt-1 text-xs">회원별 부과액·납부액·오차와 상태를 한눈에 확인하세요.</p>
+        </div>
+        <Button
+          variant={canLinkLedgerEntries ? 'primary' : 'outline'}
+          aria-disabled={!canLinkLedgerEntries}
+          className={
+            canLinkLedgerEntries
+              ? 'ml-auto'
+              : 'border-line2 bg-panel2 text-faint hover:border-line2 hover:text-faint ml-auto cursor-not-allowed'
+          }
+          onClick={openLinkModal}
+        >
+          입출금 내역 연결
+        </Button>
       </div>
 
       <div className="mt-[18px] flex flex-wrap gap-3.5">
@@ -386,7 +363,7 @@ export function SemesterDuesDetailView({
                 >
                   <CheckboxFilter options={trackOptions} selected={selectedTracks} onChange={setSelectedTracks} />
                 </HeaderFilter>
-                {DUES_MONTHS.map((monthLabel) => (
+                {monthLabels.map((monthLabel) => (
                   <th key={monthLabel} className="text-muted w-[48px] px-1 py-2.5 text-center text-[10.5px] font-bold">
                     {monthLabel}
                   </th>
@@ -407,7 +384,7 @@ export function SemesterDuesDetailView({
                   active={selectedStates.length > 0}
                   open={openFilter === 'status'}
                   onToggle={() => setOpenFilter(openFilter === 'status' ? null : 'status')}
-                  align="right"
+                  align="center"
                 >
                   <CheckboxFilter options={STATE_OPTIONS} selected={selectedStates} onChange={setSelectedStates} />
                 </HeaderFilter>
@@ -418,20 +395,33 @@ export function SemesterDuesDetailView({
                 filteredMembers.map((member) => {
                   const error = memberError(member);
                   return (
-                    <tr key={member.id} className="border-line border-b last:border-b-0">
+                    <tr
+                      key={member.id}
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`${member.name} 회비 연결 출납내역 보기`}
+                      onClick={() => setSelectedMemberId(member.id)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          setSelectedMemberId(member.id);
+                        }
+                      }}
+                      className="border-line hover:bg-panel2 focus-visible:outline-primary cursor-pointer border-b transition-colors last:border-b-0 focus-visible:outline-2 focus-visible:outline-offset-[-2px]"
+                    >
                       <td className="px-2.5 py-2 text-[12.5px] font-medium" title={member.studentNumber}>
                         {member.name}
                       </td>
                       <td className="text-muted px-2.5 py-2 text-xs">{member.track}</td>
                       {member.months.map((month, index) => (
                         <td
-                          key={`${member.id}-${DUES_MONTHS[index]}`}
+                          key={`${member.id}-${monthLabels[index]}`}
                           className="p-0"
-                          title={`${DUES_MONTHS[index]} · ${month.description}`}
+                          title={`${monthLabels[index]} · ${month.description}`}
                         >
                           <span
                             role="img"
-                            aria-label={`${DUES_MONTHS[index]} ${month.description}`}
+                            aria-label={`${monthLabels[index]} ${month.description}`}
                             className={`${MONTH_CLASSES[month.status]} block min-h-10 w-full border-r border-white/10`}
                           />
                         </td>
@@ -448,19 +438,8 @@ export function SemesterDuesDetailView({
                             : error.toLocaleString('ko-KR')}
                       </td>
                       <td className="px-2.5 py-2">
-                        <div className="flex flex-wrap justify-end gap-1">
+                        <div className="flex justify-center">
                           <StatusChip status={member.status} />
-                          {(member.refundStatus === 'needed' || member.refundStatus === 'partial') && (
-                            <RefundChip
-                              status={member.refundStatus}
-                              onClick={() => startRefundFlow(member.id, 'dues')}
-                            />
-                          )}
-                          {member.refundStatus === 'completed' && member.refundedAmount && (
-                            <span className="border-success-line bg-success-soft inline-flex rounded-full border px-2.5 py-[3px] text-[10.5px] font-semibold whitespace-nowrap">
-                              반환 완료 {formatAmount(member.refundedAmount)}
-                            </span>
-                          )}
                         </div>
                       </td>
                     </tr>
@@ -486,6 +465,47 @@ export function SemesterDuesDetailView({
           </table>
         </div>
       </section>
+
+      {isLinkModalOpen && (
+        <DuesLedgerLinkModal
+          semester={semester}
+          members={tableMembers}
+          onClose={() => setIsLinkModalOpen(false)}
+          onLinked={(count) => {
+            setIsLinkModalOpen(false);
+            flash(`${count}건의 입출금 내역을 ${semester.title}에 연결했습니다.`);
+          }}
+        />
+      )}
+      {isCreateModalOpen && (
+        <Modal
+          title={`${createTarget.label} 회비를 생성할까요?`}
+          onClose={() => setIsCreateModalOpen(false)}
+          width="440px"
+          footer={
+            <>
+              <Button className="ml-auto" onClick={() => setIsCreateModalOpen(false)}>
+                취소
+              </Button>
+              <Button variant="primary" onClick={createSemester}>
+                생성
+              </Button>
+            </>
+          }
+        >
+          <p className="text-muted px-6 py-5 text-[13px] leading-[1.7]">
+            현재 회원을 기준으로 {createTarget.label} 회비를 생성합니다.
+          </p>
+        </Modal>
+      )}
+      {selectedMemberId && (
+        <MemberDuesLedgerModal
+          semester={semester}
+          member={tableMembers.find((member) => member.id === selectedMemberId)!}
+          onClose={() => setSelectedMemberId(null)}
+        />
+      )}
+      {toast && <Toast message={toast.message} tone={toast.tone} />}
     </main>
   );
 }

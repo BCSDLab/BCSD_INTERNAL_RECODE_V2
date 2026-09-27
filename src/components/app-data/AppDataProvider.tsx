@@ -31,7 +31,10 @@ interface AppDataValue {
   ledgerEntries: LedgerEntry[];
   setLedgerEntries: Dispatch<SetStateAction<LedgerEntry[]>>;
   semesters: SemesterDuesSummary[];
+  createNextSemester: () => SemesterDuesSummary | null;
   getSemesterDuesMembers: (semesterId: string) => MemberDues[];
+  pendingDuesToast: { semesterId: string; message: string } | null;
+  clearPendingDuesToast: () => void;
   exemptions: ExemptionPeriod[];
   setExemptions: Dispatch<SetStateAction<ExemptionPeriod[]>>;
   exemptionReasons: string[];
@@ -45,6 +48,51 @@ interface AppDataValue {
 
 const AppDataContext = createContext<AppDataValue | null>(null);
 
+function nextSemesterId(semesterId: string) {
+  const [yearText, termText] = semesterId.split('-');
+  const year = Number(yearText);
+  const term = Number(termText);
+  return term === 1 ? `${year}-2` : `${year + 1}-1`;
+}
+
+function semesterSummary(semesterId: string, memberCount: number): SemesterDuesSummary {
+  const [yearText, termText] = semesterId.split('-');
+  const year = Number(yearText);
+  const term = Number(termText);
+  const totalAmount = memberCount * 60000;
+
+  return {
+    id: semesterId,
+    shortLabel: `${String(year).slice(-2)}년 ${term}학기`,
+    title: `${year}년 ${term}학기 회비`,
+    totalMembers: memberCount,
+    exemptMembers: 0,
+    targetMembers: memberCount,
+    completedMembers: 0,
+    unpaidMembers: memberCount,
+    totalAmount,
+    paidAmount: 0,
+    unpaidAmount: totalAmount,
+    needsReview: memberCount > 0,
+  };
+}
+
+function semesterMembers(): MemberDues[] {
+  return CURRENT_SEMESTER_MEMBERS.map((member) => ({
+    ...member,
+    months: Array.from({ length: 6 }, () => ({ status: 'unpaid' as const, description: '연결된 기록 없음' })),
+    status: 'unpaid',
+    assessedAmount: 60000,
+    paidAmount: 0,
+    unpaidAmount: 60000,
+    excessAmount: undefined,
+    refundStatus: 'none',
+    refundAmount: undefined,
+    refundReason: undefined,
+    refundedAmount: undefined,
+  }));
+}
+
 export function AppDataProvider({ children }: { children: ReactNode }) {
   const [ledgerEntries, setLedgerEntries] = useState<LedgerEntry[]>(freshLedgerEntries);
   const [exemptions, setExemptions] = useState<ExemptionPeriod[]>(() =>
@@ -52,6 +100,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   );
   const [exemptionReasons, setExemptionReasons] = useState<string[]>(() => [...INITIAL_EXEMPTION_REASONS]);
   const [refundFlow, setRefundFlow] = useState<RefundFlowState | null>(null);
+  const [createdSemesters, setCreatedSemesters] = useState<SemesterDuesSummary[]>([]);
+  const [createdSemesterMembers, setCreatedSemesterMembers] = useState<Record<string, MemberDues[]>>({});
+  const [pendingDuesToast, setPendingDuesToast] = useState<{ semesterId: string; message: string } | null>(null);
 
   const liveMembers = useMemo(
     () => deriveSemesterMembers(CURRENT_SEMESTER_MEMBERS, ledgerEntries, exemptions),
@@ -60,7 +111,24 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
 
   const liveSummary = useMemo(() => deriveSemesterSummary(SEMESTER_DUES_SUMMARIES[0], liveMembers), [liveMembers]);
 
-  const semesters = useMemo(() => [liveSummary, ...SEMESTER_DUES_SUMMARIES.slice(1)], [liveSummary]);
+  const semesters = useMemo(
+    () => [...createdSemesters, liveSummary, ...SEMESTER_DUES_SUMMARIES.slice(1)],
+    [createdSemesters, liveSummary],
+  );
+
+  const createNextSemester = useCallback(() => {
+    const semesterId = nextSemesterId(LIVE_SEMESTER_ID);
+    if (createdSemesters.some((semester) => semester.id === semesterId)) return null;
+
+    const members = semesterMembers();
+    const summary = semesterSummary(semesterId, members.length);
+    setCreatedSemesterMembers((current) => ({ ...current, [semesterId]: members }));
+    setCreatedSemesters((current) => [summary, ...current]);
+    setPendingDuesToast({ semesterId, message: `${summary.title}를 생성했습니다.` });
+    return summary;
+  }, [createdSemesters]);
+
+  const clearPendingDuesToast = useCallback(() => setPendingDuesToast(null), []);
 
   const linkRefundEntry = useCallback(
     (entryId: string) => {
@@ -99,8 +167,12 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       ledgerEntries,
       setLedgerEntries,
       semesters,
+      createNextSemester,
       getSemesterDuesMembers: (semesterId: string) =>
-        semesterId === LIVE_SEMESTER_ID ? liveMembers : getSemesterMembers(semesterId),
+        createdSemesterMembers[semesterId] ??
+        (semesterId === LIVE_SEMESTER_ID ? liveMembers : getSemesterMembers(semesterId)),
+      pendingDuesToast,
+      clearPendingDuesToast,
       exemptions,
       setExemptions,
       exemptionReasons,
@@ -111,7 +183,19 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       cancelRefundFlow: () => setRefundFlow(null),
       linkRefundEntry,
     }),
-    [ledgerEntries, semesters, liveMembers, exemptions, exemptionReasons, refundFlow, linkRefundEntry],
+    [
+      ledgerEntries,
+      semesters,
+      createNextSemester,
+      createdSemesterMembers,
+      liveMembers,
+      pendingDuesToast,
+      clearPendingDuesToast,
+      exemptions,
+      exemptionReasons,
+      refundFlow,
+      linkRefundEntry,
+    ],
   );
 
   return <AppDataContext.Provider value={value}>{children}</AppDataContext.Provider>;
