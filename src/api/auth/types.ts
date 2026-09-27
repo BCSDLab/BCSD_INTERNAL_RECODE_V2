@@ -27,6 +27,7 @@ export interface MemberSummary {
   memberType: MemberType;
   university: string;
   role: MemberRole;
+  slackId?: string | null;
 }
 
 export interface MemberDetail extends MemberSummary {

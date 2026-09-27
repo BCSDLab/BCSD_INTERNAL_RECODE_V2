@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAppData } from '@/components/app-data/AppDataProvider';
 import { DuesLedgerLinkModal } from '@/components/dues/DuesLedgerLinkModal';
+import { DuesSlackNotificationModal } from '@/components/dues/DuesSlackNotificationModal';
 import { MemberDuesLedgerModal } from '@/components/dues/MemberDuesLedgerModal';
 import { LIVE_SEMESTER_ID } from '@/components/dues/derive';
 import { CheckboxFilter, HeaderFilter } from '@/components/dues/TableHeaderFilter';
@@ -132,6 +133,7 @@ export function SemesterDuesDetailView({
   const { ledgerEntries, semesters, createNextSemester, pendingDuesToast, clearPendingDuesToast } = useAppData();
   const [openFilter, setOpenFilter] = useState<FilterKey | null>(null);
   const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
+  const [isSlackModalOpen, setIsSlackModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; tone: 'success' | 'neutral' } | null>(null);
@@ -288,18 +290,21 @@ export function SemesterDuesDetailView({
           <h1 className="text-[21px] font-extrabold tracking-[-0.02em]">{semester.title}</h1>
           <p className="text-muted mt-1 text-xs">회원별 부과액·납부액·오차와 상태를 한눈에 확인하세요.</p>
         </div>
-        <Button
-          variant={canLinkLedgerEntries ? 'primary' : 'outline'}
-          aria-disabled={!canLinkLedgerEntries}
-          className={
-            canLinkLedgerEntries
-              ? 'ml-auto'
-              : 'border-line2 bg-panel2 text-faint hover:border-line2 hover:text-faint ml-auto cursor-not-allowed'
-          }
-          onClick={openLinkModal}
-        >
-          입출금 내역 연결
-        </Button>
+        <div className="ml-auto flex items-center gap-2.5">
+          <Button onClick={() => setIsSlackModalOpen(true)}>Slack 알림 전송</Button>
+          <Button
+            variant={canLinkLedgerEntries ? 'primary' : 'outline'}
+            aria-disabled={!canLinkLedgerEntries}
+            className={
+              canLinkLedgerEntries
+                ? ''
+                : 'border-line2 bg-panel2 text-faint hover:border-line2 hover:text-faint cursor-not-allowed'
+            }
+            onClick={openLinkModal}
+          >
+            입출금 내역 연결
+          </Button>
+        </div>
       </div>
 
       <div className="mt-[18px] flex flex-wrap gap-3.5">
@@ -475,6 +480,14 @@ export function SemesterDuesDetailView({
             setIsLinkModalOpen(false);
             flash(`${count}건의 입출금 내역을 ${semester.title}에 연결했습니다.`);
           }}
+        />
+      )}
+      {isSlackModalOpen && (
+        <DuesSlackNotificationModal
+          semester={semester}
+          members={tableMembers}
+          onClose={() => setIsSlackModalOpen(false)}
+          onResult={(message, tone) => flash(message, tone)}
         />
       )}
       {isCreateModalOpen && (

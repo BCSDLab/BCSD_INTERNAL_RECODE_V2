@@ -14,6 +14,7 @@ export interface MemberDues {
   name: string;
   studentNumber: string;
   track: string;
+  slackId?: string | null;
   months: MonthDues[];
   status: SemesterDuesStatus;
   assessedAmount: number | null;

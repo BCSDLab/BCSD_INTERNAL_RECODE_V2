@@ -14,6 +14,8 @@ export const LEDGER_PREVIEW_SESSION: Session = {
     memberType: 'REGULAR',
     university: '-',
     role: 'ADMIN',
+    phoneNumber: '010-1234-5678',
+    slackId: 'U_LEDGER_ADMIN',
   },
 };
 

@@ -19,6 +19,7 @@ export interface MemberDirectoryItem {
   email: string;
   phoneNumber: string | null;
   githubId: string | null;
+  slackId?: string | null;
   photoUrl: string | null;
   role: MemberRole;
   active: boolean;
