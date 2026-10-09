@@ -43,11 +43,16 @@ export function Button({
   return <ButtonPrimitive type={type} className={cn(buttonVariants({ variant }), className)} {...props} />;
 }
 
-/** 버튼과 같은 모양이 필요한 링크(랜딩에서 보기 ↗). Base UI의 render prop으로 <a>를 그린다. */
+/**
+ * 버튼과 같은 모양이 필요한 링크(랜딩에서 보기 ↗). Base UI Button에 render={<a/>}를 넘기면
+ * nativeButton 콘솔 오류가 나고, nativeButton={false}로 경고만 끄면 <a>에 role="button"이 붙어
+ * 링크 의미가 사라진다(테스트 "ButtonLink는 render prop으로 실제 <a>를 그린다"도 깨진다).
+ * 그래서 평범한 <a>에 버튼 스타일만 입힌다.
+ */
 export function ButtonLink({
   variant,
   className,
   ...props
 }: VariantProps<typeof buttonVariants> & React.AnchorHTMLAttributes<HTMLAnchorElement>) {
-  return <Button render={<a {...props} />} variant={variant} className={cn('inline-block', className)} />;
+  return <a className={cn(buttonVariants({ variant }), 'inline-block', className)} {...props} />;
 }
