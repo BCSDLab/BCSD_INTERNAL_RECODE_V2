@@ -180,7 +180,11 @@ export function MemberFormModal({
       queryClient.invalidateQueries({ queryKey: memberKeys.all() });
       onClose();
     },
-    onError: (e) => setError(e instanceof ApiError ? e.message : '저장에 실패했습니다.'),
+    onError: (e) => {
+      // 프로필은 저장되고 Slack ID만 실패(409 등)했을 수 있으니, 모달을 닫으면 바로 보이게 목록을 갱신한다.
+      queryClient.invalidateQueries({ queryKey: memberKeys.all() });
+      setError(e instanceof ApiError ? e.message : '저장에 실패했습니다.');
+    },
   });
 
   function handleSubmit() {

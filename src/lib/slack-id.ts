@@ -1,4 +1,4 @@
-/** BE(MemberSlackIdRequest)와 같은 형식 — U/W로 시작하는 영문 대문자·숫자 9~20자. */
+/** BE(SlackIdUpdateRequest)와 같은 형식 — U/W로 시작하는 영문 대문자·숫자 9~20자. */
 const SLACK_ID_PATTERN = /^[UW][A-Z0-9]{8,19}$/;
 
 export const SLACK_ID_ERROR_MESSAGE = 'U 또는 W로 시작하는 영문 대문자·숫자 Slack ID를 입력해 주세요.';
