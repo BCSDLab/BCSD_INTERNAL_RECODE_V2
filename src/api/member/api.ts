@@ -39,6 +39,11 @@ export function updateMemberProfile(memberId: number, body: MemberProfileUpdateR
   return apiClient.patch<void>(`${ADMIN_BASE}/${memberId}`, body);
 }
 
+/** 프로필 PATCH(전체 덮어쓰기)와 분리된 전용 엔드포인트 — 프로필 저장이 Slack ID를 지우지 않게. */
+export function updateMemberSlackId(memberId: number, slackId: string | null) {
+  return apiClient.patch<void>(`${ADMIN_BASE}/${memberId}/slack-id`, { slackId });
+}
+
 export function updateMemberAcademicStatus(memberId: number, academicStatus: AcademicStatus) {
   return apiClient.patch<void>(`${ADMIN_BASE}/${memberId}/academic-status`, { academicStatus });
 }

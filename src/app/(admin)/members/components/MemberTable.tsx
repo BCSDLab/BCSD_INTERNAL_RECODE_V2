@@ -27,7 +27,7 @@ export interface MemberRowActions {
 }
 
 /**
- * 인명부 표. 열이 17개라 항상 가로로 스크롤된다(감싼 div가 overflow-x-auto).
+ * 인명부 표. 열이 18개라 항상 가로로 스크롤된다(감싼 div가 overflow-x-auto).
  * 관리자가 아니면 편집 수단을 아예 렌더하지 않는다 — 변경 API가 모두 관리자 전용이라
  * 일반 권한에는 보여 줄 의미가 없다.
  */
@@ -54,13 +54,13 @@ export function MemberTable({
   actions: MemberRowActions;
   onResetFilters: () => void;
 }) {
-  const columnCount = isAdmin ? 17 : 16;
+  const columnCount = isAdmin ? 18 : 17;
   const { data: positions = [] } = useQuery(positionQueries.list());
   const positionLabels = new Map(positions.map((position) => [position.code, position.name]));
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[1720px] border-collapse">
+      <table className="w-full min-w-[1860px] border-collapse">
         <thead className="bg-panel2">
           <tr className="border-line border-b">
             <SortableHead label="기수" sortKey="generation" sort={sort} direction={direction} onSort={onSortChange} />
@@ -81,6 +81,7 @@ export function MemberTable({
             <th className={HEAD_CLASS}>이메일</th>
             <th className={HEAD_CLASS}>보직</th>
             <th className={HEAD_CLASS}>Github</th>
+            <th className={HEAD_CLASS}>Slack ID</th>
             <th className={HEAD_CLASS}>생일</th>
             <th className={HEAD_CLASS}>납부</th>
             <th className={HEAD_CLASS}>권한</th>
@@ -215,6 +216,7 @@ function MemberTableRow({
       <td className={`${CELL_CLASS} text-muted max-w-[160px] truncate`}>
         {member.githubId ? `@${member.githubId}` : <Empty />}
       </td>
+      <td className={`${CELL_CLASS} text-muted max-w-[160px] truncate`}>{member.slackId || <Empty />}</td>
       <td className={`${CELL_CLASS} text-muted tabular-nums`}>{member.birthDate ?? <Empty />}</td>
       <td className={`${CELL_CLASS} text-center font-semibold`}>
         {member.duesRequired ? <span className="text-primary-text">O</span> : <span className="text-faint">X</span>}
