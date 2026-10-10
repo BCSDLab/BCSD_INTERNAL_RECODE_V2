@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import type { MemberType, Track } from '@/api/auth/types';
 import { ApiError } from '@/api/client';
-import { createMember, updateMemberProfile } from '@/api/member/api';
+import { createMember, updateMemberProfile, updateMemberSlackId } from '@/api/member/api';
 import { memberKeys } from '@/api/member/queries';
 import type { AcademicStatus, MemberDirectoryItem } from '@/api/member/types';
 import { positionQueries } from '@/api/position/queries';
@@ -13,6 +13,7 @@ import { Field, INPUT_CLASS_COMPACT } from '@/components/ui/field';
 import { Modal } from '@/components/ui/modal';
 import { Select } from '@/components/ui/select';
 import { ACADEMIC_STATUS_LABELS, MEMBER_TYPE_LABELS, TRACK_LABELS } from '@/lib/member-labels';
+import { normalizeSlackId, slackIdError, toSlackIdInput } from '@/lib/slack-id';
 import {
   ACADEMIC_STATUS_OPTIONS,
   DEFAULT_DEPARTMENT,
@@ -38,6 +39,7 @@ interface FormValues {
   email: string;
   phoneNumber: string;
   githubId: string;
+  slackId: string;
 }
 
 function toForm(member: MemberDirectoryItem | null): FormValues {
@@ -57,6 +59,7 @@ function toForm(member: MemberDirectoryItem | null): FormValues {
     email: member?.email ?? '',
     phoneNumber: member?.phoneNumber ?? '',
     githubId: member?.githubId ?? '',
+    slackId: member?.slackId ?? '',
   };
 }
 
@@ -94,6 +97,12 @@ function validate(values: FormValues, isNew: boolean): Partial<Record<keyof Form
   if (!isNew && values.birthDate.trim() && !BIRTH_DATE_PATTERN.test(values.birthDate.trim())) {
     errors.birthDate = 'yyyy-mm-dd 형식으로 입력해 주세요.';
   }
+  if (!isNew) {
+    const slackIdMessage = slackIdError(values.slackId);
+    if (slackIdMessage) {
+      errors.slackId = slackIdMessage;
+    }
+  }
   return errors;
 }
 
@@ -130,7 +139,7 @@ export function MemberFormModal({
   }
 
   const mutation = useMutation({
-    mutationFn: () => {
+    mutationFn: async () => {
       if (isNew) {
         return createMember({
           name: form.name.trim(),
@@ -147,7 +156,7 @@ export function MemberFormModal({
           githubId: form.githubId.trim() || undefined,
         }).then(() => undefined);
       }
-      return updateMemberProfile(member.id, {
+      await updateMemberProfile(member.id, {
         name: form.name.trim(),
         track: form.track,
         memberType: form.memberType,
@@ -161,12 +170,27 @@ export function MemberFormModal({
         phoneNumber: optional(form.phoneNumber),
         githubId: optional(form.githubId.replace(/^@/, '')),
       });
+      // 프로필이 저장된 뒤 Slack ID만 실패(409 등)해도 onError로 문구가 보이고 모달은 남는다.
+      // 전체 저장이 실패한 것처럼 보이지 않게, 프로필은 저장됐다는 걸 문구 앞에 밝힌다.
+      const slackId = normalizeSlackId(form.slackId);
+      if (slackId !== (member.slackId ?? null)) {
+        try {
+          await updateMemberSlackId(member.id, slackId);
+        } catch (e) {
+          const reason = e instanceof ApiError ? ` ${e.message}` : '';
+          throw new ApiError(e instanceof ApiError ? e.status : 0, `프로필은 저장했지만 Slack ID 저장에 실패했습니다.${reason}`);
+        }
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: memberKeys.all() });
       onClose();
     },
-    onError: (e) => setError(e instanceof ApiError ? e.message : '저장에 실패했습니다.'),
+    onError: (e) => {
+      // 프로필은 저장되고 Slack ID만 실패(409 등)했을 수 있으니, 모달을 닫으면 바로 보이게 목록을 갱신한다.
+      queryClient.invalidateQueries({ queryKey: memberKeys.all() });
+      setError(e instanceof ApiError ? e.message : '저장에 실패했습니다.');
+    },
   });
 
   function handleSubmit() {
@@ -314,6 +338,15 @@ export function MemberFormModal({
 
         {!isNew && (
           <>
+            <FormField label="Slack ID" error={errors.slackId}>
+              <input
+                value={form.slackId}
+                onChange={(e) => update({ slackId: toSlackIdInput(e.target.value) })}
+                placeholder="U0123ABCDE"
+                className={INPUT_CLASS_COMPACT}
+              />
+            </FormField>
+
             <FormField label="보직">
               <Select
                 multiple

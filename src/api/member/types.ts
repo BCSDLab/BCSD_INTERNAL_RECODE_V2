@@ -19,6 +19,8 @@ export interface MemberDirectoryItem {
   email: string;
   phoneNumber: string | null;
   githubId: string | null;
+  /** 회비 Slack 알림 수신자. */
+  slackId: string | null;
   photoUrl: string | null;
   role: MemberRole;
   active: boolean;
