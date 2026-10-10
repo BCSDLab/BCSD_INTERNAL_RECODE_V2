@@ -2,8 +2,8 @@ import type { Track } from '@/api/auth/types';
 import type { SemesterId } from '@/api/dues/types';
 
 /**
- * 장부 API 계약 초안(DTO). 화면은 components/ledger/types의 뷰 모델을 쓰고, 둘 사이 변환은
- * ./mappers가 맡는다. 잔액(balance)은 서버가 거래 시각 순으로 계산해 내려준다.
+ * 장부 API 계약(DTO). 기준은 BE 설계 v3 12절 "최종 API 계약 표"다. 화면은 components/ledger/types의
+ * 뷰 모델을 쓰고, 둘 사이 변환은 ./mappers가 맡는다. 잔액(balance)은 계산 값이 아니라 은행 거래 후 잔액이다.
  */
 
 export type EntryType = 'DEPOSIT' | 'WITHDRAWAL';
@@ -50,7 +50,8 @@ export interface LedgerEntryResponse {
 
 /**
  * GET /v1/admin/ledger/entries 쿼리. 다중 선택은 반복 파라미터(apiClient buildQuery 규칙).
- * from/to는 "yyyy-mm-dd" 포함 구간. 지금 화면은 전체를 받아 클라이언트에서 거르므로 아직 쓰지 않는다.
+ * from/to는 "yyyy-mm-dd" 포함 구간. 설계 v3 서버는 쿼리 파라미터를 무시하고 전체를 준다. 화면도 전체를 받아
+ * 클라이언트에서 거르므로 아직 보내지 않는다.
  */
 export interface LedgerEntryParams {
   from?: string;

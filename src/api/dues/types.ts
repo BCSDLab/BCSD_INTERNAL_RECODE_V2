@@ -2,7 +2,7 @@ import type { Track } from '@/api/auth/types';
 import type { SlackIdLookupResult } from '@/api/member/api';
 
 /**
- * 회비 API 계약 초안(DTO). 화면은 components/dues/types의 뷰 모델을 쓰고, 변환은 ./mappers가 맡는다.
+ * 회비 API 계약(DTO). 기준은 BE 설계 v3 12절 "최종 API 계약 표"다. 화면은 components/dues/types의 뷰 모델을 쓰고, 변환은 ./mappers가 맡는다.
  * 집계(상태·부과액·미납액·초과납부액)는 지금 mock이 흉내 내는 대로 **서버가** 계산해 내려준다.
  *
  * 상태는 "차이" 하나로 정한다 — 차이 = 연결된 입금 합계 − 연결된 출금 합계 − 부과액.
@@ -61,6 +61,7 @@ export interface SemesterCreatableResponse {
 export interface SemesterCreateRequest {
   year: number;
   term: 1 | 2;
+  /** 1 이상 1,000,000 이하의 정수. 넘으면 400. */
   monthlyAmount: number;
 }
 
@@ -111,7 +112,7 @@ export interface SemesterDuesDetailResponse {
   members: MemberDuesResponse[];
 }
 
-// ---------- 학기 명단 (BE v2에서 경로·필드 확정) ----------
+// ---------- 학기 명단 (설계 v3 4-3절) ----------
 
 /** 학기 명단 한 줄. applicable이 false면 이 학기 납부 비대상이다. */
 export interface RosterMemberResponse {
@@ -180,7 +181,7 @@ export interface ExemptionListResponse {
   exemptions: ExemptionResponse[];
 }
 
-/** GET /v1/admin/dues/exemption-reasons — 기본 사유 + 지금까지 쓰인 사유. 새 사유는 면제 저장 때 함께 등록된다. */
+/** GET /v1/admin/dues/exemption-reasons — 시드 15개 다음 등록 순. 새 사유는 면제 저장 때 함께 등록된다. */
 export interface ExemptionReasonListResponse {
   reasons: string[];
 }
