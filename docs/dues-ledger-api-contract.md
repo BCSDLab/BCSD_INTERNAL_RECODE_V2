@@ -43,6 +43,18 @@ FE는 지금 mock "서버"(`src/api/dues/mock-db.ts`)로 이 계약대로 동작
 | POST   | `/v1/admin/members/slack-ids/lookup`                      | Slack ID 입력 모달의 "자동 채우기"  | `SlackIdLookupRequest` → `SlackIdLookupResponse`        |
 | POST   | `/v1/admin/dues/semesters/{semesterId}/notifications`     | Slack 알림 전송                     | `DuesNotificationRequest` → `DuesNotificationResponse`  |
 
+### 학기 명단 — 임시 경로 (`// TODO(BE v2)`: 경로·필드 확정 필요)
+
+| Method | Path (임시)                                               | 화면                       | 타입                                                                                  |
+| ------ | --------------------------------------------------------- | -------------------------- | ------------------------------------------------------------------------------------- |
+| GET    | `/v1/admin/dues/semesters/{semesterId}/roster`            | 명단 관리 모달 표          | `SemesterRosterResponse { members: RosterMemberResponse[] }`                          |
+| GET    | `/v1/admin/dues/semesters/{semesterId}/roster/candidates` | 명단 관리 > 회원 추가 검색 | `RosterCandidateListResponse { members: { memberId, name, studentNumber, track }[] }` |
+| POST   | `/v1/admin/dues/semesters/{semesterId}/roster`            | 회원 추가                  | `RosterAddRequest { memberId, applicable }` → `RosterMemberResponse`                  |
+| PATCH  | `/v1/admin/dues/semesters/{semesterId}/roster/{memberId}` | 납부 대상 토글             | `RosterUpdateRequest { applicable }` → `RosterMemberResponse`                         |
+
+- `RosterMemberResponse = { memberId, name, studentNumber, track, applicable }`. `applicable: false`면 이 학기 납부 비대상(월 칸 전부 `NOT_APPLICABLE`, 부과액 null).
+- 저장 뒤 FE는 장부·회비 캐시를 통째로 다시 받는다. mock은 마감된 지난 학기의 변경을 409로 막는다.
+
 ### 회비 상태 규칙 (사용자 확정)
 
 - `차이 = 연결된 입금 합계 − 연결된 출금 합계 − 부과액`
@@ -116,9 +128,9 @@ FE는 지금 mock "서버"(`src/api/dues/mock-db.ts`)로 이 계약대로 동작
 ## 미결 질문 (BE와 합의 필요)
 
 1. **자동 채우기의 Slack 호출량**: 누락 회원 수만큼 `users.lookupByEmail`을 부른다. Slack rate limit(수치는 확인 필요) 안에 드는지 확인해야 한다.
-2. **학기 명단 기준**: 학기를 만들 때 넣을 회원을 정해야 한다. 후보는 `duesRequired && active`인 회원이다. 생성 뒤 가입하거나 탈퇴한 회원을 어떻게 반영할지도 정해야 한다. mock은 생성 시점의 전체 회원을 넣는다.
+2. **학기 명단 기준** (생성 뒤 정정은 "명단 관리"로 가능): 학기를 만들 때 넣을 회원을 정해야 한다. 후보는 `duesRequired && active`인 회원이다. 생성 뒤 가입하거나 탈퇴한 회원을 어떻게 반영할지도 정해야 한다. mock은 생성 시점의 전체 회원을 넣는다.
 3. ~~월 배분 규칙~~ → 확정: 순납부액을 앞 달부터 월 회비 단위로 채운다(표시용). 복잡한 배분은 하지 않는다.
-4. **월 회비 금액**: 지금은 10,000원 고정이다. 학기마다 바뀔 수 있다면 생성 모달에서 입력받아야 한다.
+4. ~~월 회비 금액~~ → 확정: 생성 모달에서 입력받는다(기본값 직전 학기 값, 없으면 10,000원, 1 이상의 정수).
 5. **면제 사유 목록**: 별도 테이블로 둘지, 이미 쓰인 사유의 중복 제거 목록을 쓸지 정해야 한다. 초안은 면제를 저장할 때 새 사유를 함께 등록한다.
 6. **면제 삭제**: 화면에 삭제 기능이 없어서 API도 넣지 않았다.
 7. **신한 .xlsx 파싱 위치**: 초안은 서버에서 파싱한다. 거래 지문(`rowKey`)으로 중복을 막으려면 서버가 원본을 봐야 하기 때문이다. 미리보기 단계에서 회비 대상을 추천하는 값(`suggestedMemberId`)은 화면에 아직 쓰이지 않는다.
