@@ -1,0 +1,213 @@
+import { ApiError } from '@/api/client';
+import type { LedgerEntryResponse } from '@/api/ledger/types';
+import {
+  addSemester,
+  entries,
+  exemptionReasons,
+  exemptions,
+  findMember,
+  issueExemptionId,
+  parseSemesterId,
+  respond,
+  semesterIds,
+  semesterMembers,
+  semesterSummary,
+} from './mock-db';
+import type {
+  DuesLinkBulkRequest,
+  DuesLinkBulkResponse,
+  DuesNotificationRequest,
+  DuesNotificationResponse,
+  ExemptionListResponse,
+  ExemptionPreviewRequest,
+  ExemptionPreviewResponse,
+  ExemptionReasonListResponse,
+  ExemptionResponse,
+  ExemptionUpsertRequest,
+  SemesterCreatableResponse,
+  SemesterCreateRequest,
+  SemesterDuesDetailResponse,
+  SemesterDuesListResponse,
+  SemesterDuesSummaryResponse,
+  SemesterId,
+  SlackIdLookupRequest,
+  SlackIdLookupResponse,
+} from './types';
+
+/** 회비 mock. 저장소·집계는 ./mock-db에 있고, 여기서는 엔드포인트 하나당 함수 하나로 응답을 만든다. */
+
+function requireMembers(semesterId: SemesterId) {
+  const members = semesterMembers(semesterId);
+  if (!members) throw new ApiError(404, '학기 회비를 찾을 수 없습니다.');
+  return members;
+}
+
+/**
+ * 장부 기록 하나를 회원의 학기 회비에 연결한다. 출금이면 회비 반환으로 본다.
+ * 반환 금액은 연결 **전** 남은 초과분이다 — 연결하고 나면 초과분이 줄어든다.
+ */
+export function linkEntryToMember(entry: LedgerEntryResponse, memberId: number, semesterId: SemesterId) {
+  const member = requireMembers(semesterId).find((item) => item.memberId === memberId);
+  if (!member) throw new ApiError(404, '이 학기 회비 대상 회원이 아닙니다.');
+  const isRefund = entry.type === 'WITHDRAWAL';
+  entry.category = isRefund ? 'DUES_REFUND' : 'DUES';
+  entry.linkStatus = 'CONFIRMED';
+  entry.duesLink = {
+    memberId,
+    memberName: member.name,
+    studentNumber: member.studentNumber,
+    track: member.track,
+    semesterId,
+    requiredAmount: member.assessedAmount ?? 0,
+    refundReason: isRefund ? member.refundReason : null,
+    refundAmount: isRefund && member.excessAmount > 0 ? member.excessAmount : null,
+  };
+}
+
+export function mockGetSemesters(): Promise<SemesterDuesListResponse> {
+  return respond({ semesters: semesterIds().map((id) => semesterSummary(id)!) });
+}
+
+export function mockGetSemesterDues(semesterId: SemesterId): Promise<SemesterDuesDetailResponse> {
+  const semester = semesterSummary(semesterId);
+  if (!semester) return Promise.reject(new ApiError(404, '학기 회비를 찾을 수 없습니다.'));
+  return respond({ semester, members: requireMembers(semesterId) });
+}
+
+/** 오늘 날짜의 학기 — 1학기 3~8월, 2학기 9~다음 해 2월. */
+function semesterOfDate(date: Date) {
+  const year = date.getFullYear();
+  const month = date.getMonth() + 1;
+  if (month >= 3 && month <= 8) return { year, term: 1 as const };
+  return month >= 9 ? { year, term: 2 as const } : { year: year - 1, term: 2 as const };
+}
+
+function nextOf({ year, term }: { year: number; term: 1 | 2 }) {
+  return term === 1 ? { year, term: 2 as const } : { year: year + 1, term: 1 as const };
+}
+
+const semesterOrder = ({ year, term }: { year: number; term: 1 | 2 }) => year * 2 + term;
+
+/** 백엔드가 할 판단 — 만들 학기(가장 최근 학기의 다음)가 현재 학기의 바로 다음 학기 이내인지. */
+function semesterCreatable(): SemesterCreatableResponse {
+  const current = semesterOfDate(new Date());
+  const latestId = semesterIds()[0];
+  const nextSemester = latestId ? nextOf(parseSemesterId(latestId)) : current;
+  return {
+    currentSemesterId: `${current.year}-${current.term}`,
+    nextSemester,
+    creatable: semesterOrder(nextSemester) <= semesterOrder(nextOf(current)),
+  };
+}
+
+export function mockGetSemesterCreatable(): Promise<SemesterCreatableResponse> {
+  return respond(semesterCreatable());
+}
+
+export function mockCreateSemester(body: SemesterCreateRequest): Promise<SemesterDuesSummaryResponse> {
+  const semesterId = `${body.year}-${body.term}`;
+  if (semesterSummary(semesterId)) return Promise.reject(new ApiError(409, '이미 생성된 학기 회비입니다.'));
+  const { nextSemester, creatable } = semesterCreatable();
+  if (!creatable || body.year !== nextSemester.year || body.term !== nextSemester.term) {
+    return Promise.reject(new ApiError(400, '현재 학기의 바로 다음 학기까지만 만들 수 있습니다.'));
+  }
+  addSemester(semesterId, body.monthlyAmount);
+  return respond(semesterSummary(semesterId)!);
+}
+
+export function mockLinkSemesterEntries(
+  semesterId: SemesterId,
+  body: DuesLinkBulkRequest,
+): Promise<DuesLinkBulkResponse> {
+  let linkedCount = 0;
+  for (const link of body.links) {
+    const entry = entries.find((item) => item.id === link.entryId);
+    if (!entry || entry.linkStatus === 'CONFIRMED') continue;
+    linkEntryToMember(entry, link.memberId, semesterId);
+    linkedCount += 1;
+  }
+  return respond({ linkedCount });
+}
+
+// ---------- 면제 ----------
+
+function toExemption(id: number, body: ExemptionUpsertRequest): ExemptionResponse {
+  if (!findMember(body.memberId)) throw new ApiError(404, '회원을 찾을 수 없습니다.');
+  if (body.endMonth !== null && body.endMonth < body.startMonth) {
+    throw new ApiError(400, '종료 월은 시작 월보다 빠를 수 없습니다.');
+  }
+  return { id, ...body, reason: body.reason.trim().normalize('NFC') };
+}
+
+function rememberReason(reason: string) {
+  if (!exemptionReasons.includes(reason)) exemptionReasons.push(reason);
+}
+
+export function mockGetExemptions(): Promise<ExemptionListResponse> {
+  return respond({ exemptions });
+}
+
+export function mockGetExemptionReasons(): Promise<ExemptionReasonListResponse> {
+  return respond({ reasons: exemptionReasons });
+}
+
+export function mockCreateExemption(body: ExemptionUpsertRequest): Promise<ExemptionResponse> {
+  const exemption = toExemption(issueExemptionId(), body);
+  exemptions.push(exemption);
+  rememberReason(exemption.reason);
+  return respond(exemption);
+}
+
+export function mockUpdateExemption(exemptionId: number, body: ExemptionUpsertRequest): Promise<ExemptionResponse> {
+  const index = exemptions.findIndex((item) => item.id === exemptionId);
+  if (index < 0) return Promise.reject(new ApiError(404, '면제 기록을 찾을 수 없습니다.'));
+  const exemption = toExemption(exemptionId, body);
+  exemptions[index] = exemption;
+  rememberReason(exemption.reason);
+  return respond(exemption);
+}
+
+export function mockPreviewExemption(
+  semesterId: SemesterId,
+  { editingId, ...body }: ExemptionPreviewRequest,
+): Promise<ExemptionPreviewResponse> {
+  const draft = toExemption(editingId ?? -1, body);
+  const nextExemptions = editingId
+    ? exemptions.map((item) => (item.id === editingId ? draft : item))
+    : [...exemptions, draft];
+  const before = requireMembers(semesterId).find((member) => member.memberId === body.memberId);
+  const after = semesterMembers(semesterId, nextExemptions)?.find((member) => member.memberId === body.memberId);
+  if (!before || !after) return Promise.reject(new ApiError(404, '이 학기 회비 대상 회원이 아닙니다.'));
+  return respond({ before, after });
+}
+
+// ---------- Slack ----------
+
+/** 인명부 Slack ID 저장. 실제로는 회원 API(PATCH /v1/admin/members/{id}/slack-id)다. */
+export function mockUpdateMemberSlackId(memberId: number, slackId: string | null): Promise<void> {
+  const member = findMember(memberId);
+  if (!member) return Promise.reject(new ApiError(404, '회원을 찾을 수 없습니다.'));
+  member.slackId = slackId;
+  return respond(undefined);
+}
+
+/** 이메일로 Slack 계정 조회(findSlackIdByEmail) → 찾은 값은 바로 인명부에 저장한다. */
+export function mockLookupSlackIds(body: SlackIdLookupRequest): Promise<SlackIdLookupResponse> {
+  const results = body.memberIds.map((memberId) => {
+    const member = findMember(memberId);
+    const slackId = member?.slackLookupId ?? null;
+    if (member && slackId) member.slackId = slackId;
+    return { memberId, slackId };
+  });
+  return respond({ results }, 600);
+}
+
+export function mockSendDuesNotifications(
+  _semesterId: SemesterId,
+  body: DuesNotificationRequest,
+): Promise<DuesNotificationResponse> {
+  const failed = body.messages
+    .filter((item) => !findMember(item.memberId)?.slackId)
+    .map((item) => ({ memberId: item.memberId, reason: 'SLACK_ID_MISSING' as const }));
+  return respond({ sentCount: body.messages.length - failed.length, failed }, 700);
+}

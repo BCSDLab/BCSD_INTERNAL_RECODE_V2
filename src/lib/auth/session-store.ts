@@ -1,8 +1,8 @@
-import type { MemberSummary } from '@/api/auth/types';
+import type { MemberDetail, MemberSummary } from '@/api/auth/types';
 
 export interface Session {
   accessToken: string;
-  member: MemberSummary;
+  member: MemberSummary & Partial<Pick<MemberDetail, 'phoneNumber'>>;
 }
 
 export type SessionStatus = 'loading' | 'ready';

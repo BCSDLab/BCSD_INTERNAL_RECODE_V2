@@ -11,5 +11,5 @@
   "sortTailwindcss": {},
   // package.json 키 순서는 건드리지 않는다(prettier도 하지 않았다).
   "sortPackageJson": false,
-  "ignorePatterns": [".next/**", "out/**", "build/**", "pnpm-lock.yaml"]
+  "ignorePatterns": [".next/**", "out/**", "build/**", "pnpm-lock.yaml", "와이어프레임 기반 디자인 생성/**"]
 }

@@ -44,6 +44,18 @@ export function updateMemberSlackId(memberId: number, slackId: string | null) {
   return apiClient.patch<void>(`${ADMIN_BASE}/${memberId}/slack-id`, { slackId });
 }
 
+export interface SlackIdLookupResult {
+  memberId: number;
+  slackId: string | null;
+  status: 'SAVED' | 'NOT_FOUND' | 'DUPLICATED' | 'FAILED' | 'MEMBER_NOT_FOUND';
+  ownerName: string | null;
+}
+
+/** 회원 이메일로 Slack ID를 찾아 저장한다. 결과는 회원마다 status로 돌아온다. */
+export function lookupMemberSlackIds(memberIds: number[]) {
+  return apiClient.post<{ results: SlackIdLookupResult[] }>(`${ADMIN_BASE}/slack-ids/lookup`, { memberIds });
+}
+
 export function updateMemberAcademicStatus(memberId: number, academicStatus: AcademicStatus) {
   return apiClient.patch<void>(`${ADMIN_BASE}/${memberId}/academic-status`, { academicStatus });
 }
