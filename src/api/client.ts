@@ -73,7 +73,8 @@ async function rawFetch<T>(path: string, init: ApiFetchInit): Promise<T> {
       credentials: 'include',
       signal: rest.signal ?? timeoutController.signal,
       headers: {
-        'Content-Type': 'application/json',
+        // FormData면 브라우저가 multipart boundary까지 넣은 Content-Type을 붙이게 둔다.
+        ...(rest.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...headers,
       },

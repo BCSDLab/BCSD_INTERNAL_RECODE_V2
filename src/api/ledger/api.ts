@@ -64,10 +64,7 @@ export async function uploadEvidence(file: File): Promise<EvidenceResponse> {
   return apiClient.post<EvidenceResponse>(`${BASE}/evidences/${presigned.evidenceId}/complete`);
 }
 
-/**
- * 주의: apiFetch는 Content-Type을 application/json으로 고정한다. 실제 API를 붙일 때 multipart가
- * 나가도록 client.ts에 FormData 분기가 필요하다(지금은 mock만 쓴다).
- */
+/** multipart(파트 이름 file). apiFetch는 FormData 본문에 Content-Type을 붙이지 않아 브라우저가 boundary를 넣는다. */
 export function previewImport(file: File) {
   if (USE_LEDGER_MOCK) return mockPreviewImport(file);
   const form = new FormData();
