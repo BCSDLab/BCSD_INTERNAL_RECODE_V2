@@ -7,6 +7,7 @@ import {
   exemptionReasons,
   exemptions,
   findMember,
+  hasLinkedEntries,
   issueExemptionId,
   listMembers,
   markRosterChanged,
@@ -53,12 +54,22 @@ function requireMembers(semesterId: SemesterId) {
 }
 
 /**
+ * 연결할 수 있는 회원인지 서버 규칙대로 확인한다. 명단에 없으면 404, 납부 비대상이면 409다.
+ * 비대상 행은 회비 표에서 숨겨지므로, 막지 않으면 연결된 돈이 화면에서 사라진다.
+ */
+function requireLinkableMember(semesterId: SemesterId, memberId: number) {
+  const row = requireRoster(semesterId).find((item) => item.memberId === memberId);
+  if (!row) throw new ApiError(404, '이 학기 회비 명단에 없는 회원입니다.');
+  if (!row.applicable) throw new ApiError(409, '이 학기 납부 비대상 회원에게는 입출금 내역을 연결할 수 없습니다.');
+}
+
+/**
  * 장부 기록 하나를 회원의 학기 회비에 연결한다. 입금·출금 모두 같은 흐름이다 —
  * 입금은 납부액에 더해지고 출금은 빠진다. 연결하면 분류는 회비가 된다.
  */
 export function linkEntryToMember(entry: LedgerEntryResponse, memberId: number, semesterId: SemesterId) {
-  const member = requireMembers(semesterId).find((item) => item.memberId === memberId);
-  if (!member) throw new ApiError(404, '이 학기 회비 대상 회원이 아닙니다.');
+  requireLinkableMember(semesterId, memberId);
+  const member = findMember(memberId)!;
   entry.category = 'DUES';
   entry.linkStatus = 'CONFIRMED';
   entry.duesLink = {
@@ -125,14 +136,24 @@ export function mockLinkSemesterEntries(
   semesterId: SemesterId,
   body: DuesLinkBulkRequest,
 ): Promise<DuesLinkBulkResponse> {
-  let linkedCount = 0;
-  for (const link of body.links) {
-    const entry = entries.find((item) => item.id === link.entryId);
-    if (!entry || entry.linkStatus === 'CONFIRMED') continue;
-    linkEntryToMember(entry, link.memberId, semesterId);
-    linkedCount += 1;
+  try {
+    // 하나라도 실패하면 아무것도 연결하지 않는다(서버는 트랜잭션 전체 롤백). 그래서 모두 확인한 뒤 반영한다.
+    const entryIds = new Set(body.links.map((link) => link.entryId));
+    if (entryIds.size !== body.links.length) throw new ApiError(400, '같은 장부 기록이 요청에 두 번 있습니다.');
+    for (const link of body.links) requireLinkableMember(semesterId, link.memberId);
+
+    let linkedCount = 0;
+    for (const link of body.links) {
+      // 없는 내역과 이미 연결된 내역은 건너뛰고 세지 않는다.
+      const entry = entries.find((item) => item.id === link.entryId);
+      if (!entry || entry.linkStatus === 'CONFIRMED') continue;
+      linkEntryToMember(entry, link.memberId, semesterId);
+      linkedCount += 1;
+    }
+    return respond({ linkedCount });
+  } catch (error) {
+    return Promise.reject(error);
   }
-  return respond({ linkedCount });
 }
 
 // ---------- 학기 명단 ----------
@@ -189,6 +210,9 @@ export function mockUpdateRosterMember(
   try {
     const row = requireRoster(semesterId).find((item) => item.memberId === memberId);
     if (!row) throw new ApiError(404, '이 학기 회비 명단에 없는 회원입니다.');
+    if (!body.applicable && hasLinkedEntries(semesterId, memberId)) {
+      throw new ApiError(409, '연결된 입출금 내역이 있어 납부 비대상으로 바꿀 수 없습니다. 연결을 먼저 해제하세요.');
+    }
     row.applicable = body.applicable;
     markRosterChanged(semesterId);
     return respond(rosterMember(semesterId, memberId));
@@ -245,7 +269,7 @@ export function mockPreviewExemption(
     : [...exemptions, draft];
   const before = requireMembers(semesterId).find((member) => member.memberId === body.memberId);
   const after = semesterMembers(semesterId, nextExemptions)?.find((member) => member.memberId === body.memberId);
-  if (!before || !after) return Promise.reject(new ApiError(404, '이 학기 회비 대상 회원이 아닙니다.'));
+  if (!before || !after) return Promise.reject(new ApiError(404, '이 학기 회비 명단에 없는 회원입니다.'));
   return respond({ before, after });
 }
 

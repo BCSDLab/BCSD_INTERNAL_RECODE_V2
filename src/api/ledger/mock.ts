@@ -68,9 +68,14 @@ export function mockUpdateLedgerEntry(entryId: number, body: LedgerEntryUpdateRe
 }
 
 export function mockLinkLedgerEntry(entryId: number, body: DuesLinkRequest): Promise<LedgerEntryResponse> {
-  const entry = findEntry(entryId);
-  linkEntryToMember(entry, body.memberId, body.semesterId);
-  return respond(entry);
+  try {
+    const entry = findEntry(entryId);
+    // 명단에 없으면 404, 납부 비대상이면 409. 실패하면 기존 연결은 그대로다.
+    linkEntryToMember(entry, body.memberId, body.semesterId);
+    return respond(entry);
+  } catch (error) {
+    return Promise.reject(error);
+  }
 }
 
 export function mockUnlinkLedgerEntry(entryId: number): Promise<void> {
