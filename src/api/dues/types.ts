@@ -1,4 +1,5 @@
 import type { Track } from '@/api/auth/types';
+import type { SlackIdLookupResult } from '@/api/member/api';
 
 /**
  * 회비 API 계약 초안(DTO). 화면은 components/dues/types의 뷰 모델을 쓰고, 변환은 ./mappers가 맡는다.
@@ -213,9 +214,13 @@ export interface SlackIdLookupRequest {
   memberIds: number[];
 }
 
+/**
+ * 회원마다 status로 결과가 온다. SAVED만 slackId가 채워지고 서버가 저장까지 한다.
+ * NOT_FOUND: Slack에 그 이메일 계정이 없음 / DUPLICATED: 찾은 ID를 ownerName 회원이 이미 사용 중(저장 안 함) /
+ * FAILED: Slack 호출 실패 / MEMBER_NOT_FOUND: 회원 ID가 없음.
+ */
 export interface SlackIdLookupResponse {
-  /** slackId가 null이면 Slack에서 그 이메일의 계정을 찾지 못한 것이다. */
-  results: { memberId: number; slackId: string | null }[];
+  results: SlackIdLookupResult[];
 }
 
 /**

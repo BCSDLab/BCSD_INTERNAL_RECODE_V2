@@ -1,5 +1,6 @@
 import { ApiError } from '@/api/client';
 import type { LedgerEntryResponse } from '@/api/ledger/types';
+import type { SlackIdLookupResult } from '@/api/member/api';
 import {
   addSemester,
   editableRoster,
@@ -246,31 +247,49 @@ export function mockPreviewExemption(
 
 // ---------- Slack ----------
 
-/** 인명부 Slack ID 저장. 실제로는 회원 API(PATCH /v1/admin/members/{id}/slack-id)다. */
+function slackIdOwner(slackId: string, exceptMemberId: number) {
+  return listMembers().find((member) => member.id !== exceptMemberId && member.slackId === slackId);
+}
+
+/** 인명부 Slack ID 저장. 실제로는 회원 API(PATCH /v1/admin/members/{id}/slack-id)다. 다른 회원이 쓰는 ID면 409. */
 export function mockUpdateMemberSlackId(memberId: number, slackId: string | null): Promise<void> {
   const member = findMember(memberId);
   if (!member) return Promise.reject(new ApiError(404, '회원을 찾을 수 없습니다.'));
+  const owner = slackId ? slackIdOwner(slackId, memberId) : undefined;
+  if (owner) return Promise.reject(new ApiError(409, `이미 ${owner.name} 회원이 사용 중인 Slack ID입니다.`));
   member.slackId = slackId;
   return respond(undefined);
 }
 
-/** 이메일로 Slack 계정 조회(findSlackIdByEmail) → 찾은 값은 바로 인명부에 저장한다. */
+/** 이메일로 Slack 계정 조회(findSlackIdByEmail) → 찾은 값은 바로 인명부에 저장한다(SAVED일 때만). */
 export function mockLookupSlackIds(body: SlackIdLookupRequest): Promise<SlackIdLookupResponse> {
-  const results = body.memberIds.map((memberId) => {
+  const results = body.memberIds.map((memberId): SlackIdLookupResult => {
     const member = findMember(memberId);
-    const slackId = member?.slackLookupId ?? null;
-    if (member && slackId) member.slackId = slackId;
-    return { memberId, slackId };
+    if (!member) return { memberId, slackId: null, status: 'MEMBER_NOT_FOUND', ownerName: null };
+    if (member.slackLookupFails) return { memberId, slackId: null, status: 'FAILED', ownerName: null };
+    const slackId = member.slackLookupId;
+    if (!slackId) return { memberId, slackId: null, status: 'NOT_FOUND', ownerName: null };
+    const owner = slackIdOwner(slackId, memberId);
+    if (owner) return { memberId, slackId: null, status: 'DUPLICATED', ownerName: owner.name };
+    member.slackId = slackId;
+    return { memberId, slackId, status: 'SAVED', ownerName: null };
   });
   return respond({ results }, 600);
 }
 
+/**
+ * 알림 발송 mock. 회비가 live여도 발송은 mock일 수 있으므로(NEXT_PUBLIC_DUES_NOTIFICATION_API),
+ * mock 회원 저장소에 없는 회원은 보낸 것으로 친다.
+ */
 export function mockSendDuesNotifications(
   _semesterId: SemesterId,
   body: DuesNotificationRequest,
 ): Promise<DuesNotificationResponse> {
   const failed = body.messages
-    .filter((item) => !findMember(item.memberId)?.slackId)
+    .filter((item) => {
+      const member = findMember(item.memberId);
+      return member !== undefined && !member.slackId;
+    })
     .map((item) => ({ memberId: item.memberId, reason: 'SLACK_ID_MISSING' as const }));
   return respond({ sentCount: body.messages.length - failed.length, failed }, 700);
 }

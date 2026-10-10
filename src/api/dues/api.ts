@@ -19,7 +19,7 @@ import {
   mockUpdateMemberSlackId,
   mockUpdateRosterMember,
 } from './mock';
-import { USE_LEDGER_MOCK } from './mock-switch';
+import { USE_DUES_NOTIFICATION_MOCK, USE_LEDGER_MOCK } from './mock-switch';
 import type {
   DuesLinkBulkRequest,
   DuesLinkBulkResponse,
@@ -125,10 +125,11 @@ export function previewExemption(semesterId: SemesterId, body: ExemptionPreviewR
 /**
  * "Slack ID 입력" 모달의 저장. 회비 mock일 때는 회비 mock 회원(가짜 ID)에 저장하고,
  * 실제 API일 때는 인명부 API를 그대로 쓴다 — 회원 ID가 같은 체계가 되기 때문이다.
+ * 행마다 따로 성공·실패한다(한 행이 409여도 나머지는 저장된다).
  */
 export function updateMemberSlackIds(updates: { memberId: number; slackId: string | null }[]) {
   const save = USE_LEDGER_MOCK ? mockUpdateMemberSlackId : updateMemberSlackIdLive;
-  return Promise.all(updates.map(({ memberId, slackId }) => save(memberId, slackId)));
+  return Promise.allSettled(updates.map(({ memberId, slackId }) => save(memberId, slackId)));
 }
 
 /** "자동 채우기" — 서버가 회원 이메일로 Slack을 조회하고, 찾은 값을 인명부에 바로 저장한다. */
@@ -138,6 +139,6 @@ export function lookupSlackIds(body: SlackIdLookupRequest) {
 }
 
 export function sendDuesNotifications(semesterId: SemesterId, body: DuesNotificationRequest) {
-  if (USE_LEDGER_MOCK) return mockSendDuesNotifications(semesterId, body);
+  if (USE_DUES_NOTIFICATION_MOCK) return mockSendDuesNotifications(semesterId, body);
   return apiClient.post<DuesNotificationResponse>(`${BASE}/semesters/${semesterId}/notifications`, body);
 }

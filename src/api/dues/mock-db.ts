@@ -101,6 +101,8 @@ export interface MockMember {
   slackId: string | null;
   /** 이메일로 Slack을 조회하면 나올 값 — 자동 채우기(findSlackIdByEmail) 흉내용. null이면 못 찾는다. */
   slackLookupId: string | null;
+  /** true면 Slack 조회 자체가 실패한다(FAILED). */
+  slackLookupFails: boolean;
 }
 
 const memberIdByKey = new Map<string, number>();
@@ -115,7 +117,17 @@ function memberIdOf(key: string) {
 }
 
 /** 처음부터 인명부에 Slack ID가 비어 있는 회원 — "Slack ID 입력" 흐름을 보여 주기 위한 시드. */
-const MISSING_SLACK_ID_KEYS = new Set(['member-jian', 'member-seoyeon', 'member-taeo']);
+const MISSING_SLACK_ID_KEYS = new Set(['member-jian', 'member-seoyeon', 'member-taeo', 'member-minjun']);
+
+/**
+ * 자동 채우기 결과 시드 — 네 가지 status가 모두 나오게 한다. 여기 없는 누락 회원(강태오)은 SAVED.
+ * - 박지안: Slack에 계정이 없다(NOT_FOUND).
+ * - 이서연: 이메일로 찾은 ID를 이미 최유나가 쓰고 있다(DUPLICATED).
+ * - 김민준: Slack 호출이 실패한다(FAILED).
+ */
+const SLACK_LOOKUP_NOT_FOUND_KEYS = new Set(['member-jian']);
+const SLACK_LOOKUP_DUPLICATE_OF: Record<string, string> = { 'member-seoyeon': 'member-yuna' };
+const SLACK_LOOKUP_FAIL_KEYS = new Set(['member-minjun']);
 
 /** U + 10자리 — 실제 Slack 회원 ID와 같은 형식(인명부 입력 검증을 통과한다). */
 function mockSlackId(id: number) {
@@ -124,15 +136,20 @@ function mockSlackId(id: number) {
 
 const members: MockMember[] = [...CURRENT_SEMESTER_MEMBERS, ...EXTRA_MEMBERS].map((member) => {
   const id = memberIdOf(member.id);
-  // 시드에 slackId가 없던 회원은 Slack에도 없는 것으로 친다(자동 채우기로도 못 찾음).
-  const slackLookupId = member.slackId ? mockSlackId(id) : null;
+  const ownSlackId = mockSlackId(id);
+  const duplicateOf = SLACK_LOOKUP_DUPLICATE_OF[member.id];
   return {
     id,
     name: member.name,
     studentNumber: member.studentNumber,
     track: trackCode(member.track),
-    slackId: MISSING_SLACK_ID_KEYS.has(member.id) ? null : slackLookupId,
-    slackLookupId,
+    slackId: MISSING_SLACK_ID_KEYS.has(member.id) ? null : ownSlackId,
+    slackLookupId: SLACK_LOOKUP_NOT_FOUND_KEYS.has(member.id)
+      ? null
+      : duplicateOf
+        ? mockSlackId(memberIdOf(duplicateOf))
+        : ownSlackId,
+    slackLookupFails: SLACK_LOOKUP_FAIL_KEYS.has(member.id),
   };
 });
 

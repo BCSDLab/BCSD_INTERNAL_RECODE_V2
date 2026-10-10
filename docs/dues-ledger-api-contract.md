@@ -90,34 +90,27 @@ FE는 지금 mock "서버"(`src/api/dues/mock-db.ts`)로 이 계약대로 동작
 - 분류를 바꾸면 서버가 연결을 끊는다. 회비 분류(DUES)면 PENDING, 그 밖의 분류면 NONE으로 되돌린다.
 - 입금·출금 모두 회비에 연결하면 분류가 DUES가 된다. 출금은 납부액에서 빠진다.
 
-## 인명부 Slack ID — 래퍼 mock으로 먼저 연결 (FE 적용 완료)
+## 인명부 Slack ID (main #71에 반영됨)
 
-- 인명부 화면에 Slack ID 열이 있고, 회원 수정 모달에 Slack ID 입력칸이 있다.
-- 인명부 API는 실제 BE를 그대로 부른다. BE가 아직 모르는 `slackId`만 FE 래퍼 mock(`src/api/member/slack-id-mock.ts`)이 채운다.
-  - 래퍼 mock은 브라우저 localStorage에 값을 저장하고, 응답에 덮어 준다.
-  - 응답에 `slackId`가 **없을 때(undefined)만** 덮는다. BE가 필드를 내려주기 시작하면(null 포함) 서버 값이 그대로 쓰인다.
-- **BE 요청 사항**
-  - `member.slack_id` 컬럼(nullable)을 추가한다.
-  - `MemberSummaryResponse`에 `slackId` 필드를 추가한다. 응답 필드 추가라 기존 클라이언트는 깨지지 않는다.
-  - `PATCH /v1/admin/members/{memberId}/slack-id` `{ slackId: string | null }`를 만든다.
-  - 프로필 PATCH(`AdminMemberProfileUpdateRequest`)에는 **넣지 않는다.** 이 API는 전체를 덮어쓰는 방식이라, slackId를 모르는 클라이언트가 저장할 때마다 값이 null로 지워진다.
-- **부원 추가 시 자동 조회:** 추가 모달에는 Slack ID 입력칸이 없다. 저장으로 회원이 생기면 FE가 `POST /v1/admin/members/slack-ids/lookup`을 그 회원 ID로 부른다. 서버는 입력한 이메일로 Slack을 조회해 찾은 값을 저장한다. 조회가 실패해도 회원 생성은 성공으로 본다.
-  - 대안: BE의 회원 생성 처리 안에서 바로 조회하면 FE 호출이 하나 줄어든다.
-- **입력 형식:** U로 시작하는 영문 대문자·숫자 11자다. 영문은 입력할 때 자동으로 대문자로 바뀐다.
-- **연결 절차:** BE 배포 → FE 환경변수 `NEXT_PUBLIC_MEMBER_SLACK_API=live` → `slack-id-mock.ts` 삭제. 화면 코드는 고치지 않는다.
+- 인명부 Slack ID 열·수정 입력과 `PATCH /v1/admin/members/{memberId}/slack-id`는 main에 실제 API로 들어가 있다.
+  예전 FE 래퍼 mock(`slack-id-mock.ts`)은 쓰지 않는다.
+- 입력 형식은 `src/lib/slack-id.ts`가 원본이다: U 또는 W로 시작하는 영문 대문자·숫자 9~20자(`^[UW][A-Z0-9]{8,19}$`).
 
 ## Slack 알림
 
 - **수신자는 인명부에 저장된 slackId**로 정한다. FE는 `memberId`만 보내고, 서버가 `member.slack_id`로 바꿔 보낸다.
   - 학기 회비 응답(`MemberDuesResponse.slackId`)에 인명부 값이 들어 있다. 알림 모달의 "Slack 계정 확인"은 이 값이 비어 있는 대상자 수를 보여 준다.
 - 누락이 있으면 알림 모달에 **"Slack ID 입력"** 버튼이 생긴다. 누르면 누락 회원 표가 나온다.
-  - **직접 입력:** 형식은 U로 시작하는 11자다. 저장하면 `PATCH /v1/admin/members/{id}/slack-id`로 인명부에 반영된다.
-  - **자동 채우기:** `POST /v1/admin/members/slack-ids/lookup`을 부른다. 서버가 회원 이메일로 Slack을 조회하고(`findSlackIdByEmail`), 찾은 값을 **바로** `member.slack_id`에 저장한 뒤 결과를 돌려준다. 못 찾은 회원은 화면에 표시한다.
+  - **직접 입력:** 저장하면 `PATCH /v1/admin/members/{id}/slack-id`로 인명부에 반영된다. 행마다 따로 저장되며, 409(다른 회원이 쓰는 ID 등)로 실패한 행은 서버 메시지를 그 행에 보이고 모달을 닫지 않는다. 성공한 행은 저장된 것으로 둔다.
+  - **자동 채우기:** `POST /v1/admin/members/slack-ids/lookup`을 부른다. 서버가 회원 이메일로 Slack을 조회하고(`findSlackIdByEmail`), 찾은 값을 **바로** `member.slack_id`에 저장한 뒤 결과를 돌려준다. 결과는 `status`별로 표시한다.
+    - `SAVED`: 입력칸을 채운다 / `NOT_FOUND`: "Slack에서 찾지 못했습니다." / `DUPLICATED`: "이미 {ownerName} 회원이 사용 중입니다."(칸은 비워 둔다) / `FAILED`: "Slack 조회에 실패했습니다."
+
   - 저장하고 닫으면 회비·인명부 캐시를 다시 받는다. 그래서 알림 모달의 상태가 곧바로 갱신된다.
 - **BE 변경 범위**
   - `SlackClient.findProfileImageUrlByEmail()`은 사진 URL만 돌려주고 응답의 `user.id`는 버린다. 같은 호출을 쓰는 `findSlackIdByEmail(email)`을 추가한다.
   - 위 lookup 엔드포인트와 인명부 slackId 컬럼·API를 만든다(앞 절 참고).
   - 메시지 발송은 `chat.postMessage`로 한다. 지금 봇 토큰에 발송 scope가 있는지는 확인이 필요하다. 이 문서는 아직 Slack 문서와 대조하지 않았다.
+- **발송 스위치는 회비·장부와 따로 둔다:** `NEXT_PUBLIC_DUES_NOTIFICATION_API`(기본 mock). 회비·장부를 live로 바꿔도 알림 발송은 mock으로 남는다. 실제 발송은 이 값을 `live`로 바꿀 때만 나간다.
 - `{담당자 멘션}` 토큰은 FE가 치환하지 않고 그대로 보낸다. 서버가 로그인한 관리자의 slackId로 `<@U…>`를 만든다.
 
 ## 미결 질문 (BE와 합의 필요)
