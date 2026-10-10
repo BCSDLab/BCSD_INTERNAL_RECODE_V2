@@ -171,9 +171,15 @@ export function MemberFormModal({
         githubId: optional(form.githubId.replace(/^@/, '')),
       });
       // 프로필이 저장된 뒤 Slack ID만 실패(409 등)해도 onError로 문구가 보이고 모달은 남는다.
+      // 전체 저장이 실패한 것처럼 보이지 않게, 프로필은 저장됐다는 걸 문구 앞에 밝힌다.
       const slackId = normalizeSlackId(form.slackId);
       if (slackId !== (member.slackId ?? null)) {
-        await updateMemberSlackId(member.id, slackId);
+        try {
+          await updateMemberSlackId(member.id, slackId);
+        } catch (e) {
+          const reason = e instanceof ApiError ? ` ${e.message}` : '';
+          throw new ApiError(e instanceof ApiError ? e.status : 0, `프로필은 저장했지만 Slack ID 저장에 실패했습니다.${reason}`);
+        }
       }
     },
     onSuccess: () => {
