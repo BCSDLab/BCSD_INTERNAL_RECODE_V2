@@ -1,6 +1,7 @@
-# 회비·장부 API 계약 초안
+# 회비·장부 API 계약
 
-BE와 합의하기 전의 초안이다. 요청·응답 타입은 `src/api/dues/types.ts`, `src/api/ledger/types.ts`가 원본이다.
+BE 설계 v3(`ledger-be-design.md`) 12절 "최종 API 계약 표"와 맞춘 FE 계약이다. 둘이 다르면 설계 12절이 맞다.
+요청·응답 타입은 `src/api/dues/types.ts`, `src/api/ledger/types.ts`가 원본이다.
 FE는 지금 mock "서버"(`src/api/dues/mock-db.ts`)로 이 계약대로 동작한다. BE가 배포되면 `NEXT_PUBLIC_LEDGER_API=live`로 바꾼다.
 
 ## FE 구조 (iOS 대응)
@@ -71,8 +72,14 @@ FE는 지금 mock "서버"(`src/api/dues/mock-db.ts`)로 이 계약대로 동작
 - `needsReview`는 미납 또는 초과납부 회원이 한 명이라도 있으면 true다.
 - 월 칸은 표시용이다. 순납부액을 앞 달부터 월 회비 단위로 채워 `PAID`로 보이고, 면제 월은 건너뛴다. 남은 달은 `UNPAID`다.
 - 면제는 겹칠 수 있다. 한 달에 면제가 하나라도 걸리면 그 달 부과액은 0이다(몇 개가 걸려도 같다). 겹침 검증은 두지 않는다.
+- 납부 비대상(`applicable: false`) 회원은 항상 `EXEMPT`이고 `assessedAmount`·`paidAmount`·`unpaidAmount`는 null, `excessAmount`는 0이다. 회비 표에서는 숨겨진다.
+- **납부 비대상 회원에게는 연결할 수 없고, 연결이 있는 회원은 비대상으로 바꿀 수 없다.** 그래서 연결된 돈이 숨겨진 행으로 사라지지 않는다.
+  - 비대상 회원에게 연결: 409 `ROSTER_MEMBER_NOT_APPLICABLE` "이 학기 납부 비대상 회원에게는 입출금 내역을 연결할 수 없습니다."
+  - 명단에 없는 회원에게 연결: 404 `NOT_ROSTER_MEMBER` "이 학기 회비 명단에 없는 회원입니다."
+  - 연결이 있는데 비대상으로 정정: 409 `ROSTER_MEMBER_HAS_LINKS`(명단 절 참고). 연결을 먼저 해제한다.
+- 일괄 연결(`POST …/links`, 1~1,000건)은 하나라도 실패하면 **아무것도 연결하지 않는다**(전체 롤백). 같은 내역이 두 번 오면 400 `DUPLICATED_ENTRY_IN_REQUEST`. 없는 내역과 이미 연결된 내역은 건너뛰고 `linkedCount`에 세지 않는다.
 
-#### 반환 제거로 바뀐 계약 (BE v2와 맞출 것)
+#### 반환 제거로 바뀐 계약 (설계 v3에 반영됨)
 
 | 위치                 | 제거                                                                                                                  | 대신                                                    |
 | -------------------- | --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
@@ -80,17 +87,18 @@ FE는 지금 mock "서버"(`src/api/dues/mock-db.ts`)로 이 계약대로 동작
 | `MemberDuesResponse` | `refundStatus`, `refundReason`, `refundedAmount`                                                                      | `excessAmount`(차이가 양수일 때 그 값, 아니면 0)만 남김 |
 | `api/dues/types.ts`  | `RefundStatus`, `RefundReason` 타입                                                                                   | –                                                       |
 | `MonthDuesResponse`  | `exemption: MonthExemption \| null`                                                                                   | `exemptions: MonthExemption[]` (겹친 면제 전부)         |
-| `DuesLinkResponse`   | `refundReason`, `refundAmount`                                                                                        | –                                                       |
+| `DuesLinkResponse`   | `refundReason`, `refundAmount`, `requiredAmount`                                                                      | –                                                       |
 | `LedgerCategory`     | `DUES_REFUND`(회비 반환)                                                                                              | 회비 출금도 `DUES`                                      |
 | `ImportCategory`     | `DUES_REFUND`                                                                                                         | `DUES` \| `ETC`                                         |
 | FE 화면              | 환불 마법사(`RefundFlowAssistant`), 장부 "반환 출금을 찾고 있습니다" 배너·연결 확정 모달, `DuesUiProvider.refundFlow` | 출금도 "입출금 내역 연결" 모달로 연결                   |
 
 ### 회비 생성 제한
 
-- 서버가 오늘 날짜로 현재 학기를 정한다. 1학기는 3~~8월, 2학기는 9월~~다음 해 2월이다.
+- 서버가 오늘 날짜로 현재 학기를 정한다. 1학기는 3월부터 8월, 2학기는 9월부터 다음 해 2월까지다.
 - 만들 학기는 가장 최근 학기의 다음 학기다. 그 학기가 **현재 학기의 바로 다음 학기 이내**일 때만 `creatable: true`를 준다.
 - 예: 오늘이 2026-10이면 현재 학기는 2026-2다. 2027-1까지 만들 수 있고, 2027-1을 만들면 버튼이 사라진다.
-- 생성 API(`POST`)도 같은 규칙으로 다시 검사한다.
+- 생성 API(`POST`)도 같은 규칙으로 다시 검사한다(400 `SEMESTER_NOT_CREATABLE`, 이미 있으면 409 `SEMESTER_ALREADY_EXISTS`).
+- `monthlyAmount`는 1 이상 1,000,000 이하의 정수다(0을 더 친 오타 방지). 넘으면 생성 모달이 막고, 서버도 400이다.
 
 ## 장부
 
@@ -103,11 +111,21 @@ FE는 지금 mock "서버"(`src/api/dues/mock-db.ts`)로 이 계약대로 동작
 | POST   | `/v1/admin/ledger/evidences/presigned-url` | 증빙 업로드 1단계                                                                 | `EvidencePresignedUrlRequest` → `EvidencePresignedUrlResponse` |
 | POST   | `/v1/admin/ledger/evidences/{id}/complete` | 증빙 업로드 완료                                                                  | `EvidenceResponse`                                             |
 | POST   | `/v1/admin/ledger/imports/preview`         | 신한 .xlsx 분석 (multipart)                                                       | `ImportPreviewResponse`                                        |
-| POST   | `/v1/admin/ledger/imports`                 | 선택한 거래 반영                                                                  | `ImportCommitRequest` → `ImportCommitResponse`                 |
+| POST   | `/v1/admin/ledger/imports`                 | 미리보기의 모든 거래 반영                                                         | `ImportCommitRequest` → `ImportCommitResponse`                 |
 
 - 증빙은 먼저 업로드해 ID를 받는다. 장부 기록에는 `PATCH`의 `evidenceIds`로 붙인다. 교체와 삭제도 같은 PATCH로 처리한다.
 - 분류를 바꾸면 서버가 연결을 끊는다. 회비 분류(DUES)면 PENDING, 그 밖의 분류면 NONE으로 되돌린다.
 - 입금·출금 모두 회비에 연결하면 분류가 DUES가 된다. 출금은 납부액에서 빠진다.
+- 단건 연결(`PUT …/dues-link`) 오류: 404 `ENTRY_NOT_FOUND`·`SEMESTER_NOT_FOUND`·`NOT_ROSTER_MEMBER`, 409 `ROSTER_MEMBER_NOT_APPLICABLE`. 연결 해제(`DELETE`)는 연결이 없어도 204다.
+- **증빙 형식:** png·jpg(jpeg)·webp·pdf, 확장자와 MIME 짝이 맞아야 하고 1B~10MB다. GIF·SVG·HEIC는 받지 않는다. 선택 창 accept는 `image/png,image/jpeg,image/webp,application/pdf`이고, 선택 뒤 확장자·MIME·크기를 다시 본다. 기록당 최대 5개.
+- 장부 `balance`는 서버가 계산하지 않고 **은행 거래 후 잔액**(`bank_balance`)을 그대로 쓴다.
+
+### 거래내역 가져오기
+
+- 미리보기(`POST …/imports/preview`)는 multipart(파트 이름 `file`, `.xlsx`, 1MB 이하)다. `apiFetch`는 본문이 `FormData`면 `Content-Type`을 붙이지 않아 브라우저가 `multipart/form-data; boundary=…`를 넣는다.
+- 미리보기 거래마다 `bankBalance`(은행 거래 후 잔액)가 온다. FE는 이 값을 커밋 요청에 그대로 돌려보낸다. 서버는 `(occurredAt, type, amount, bankBalance, counterparty)`로 `rowKey`를 다시 계산해 다르면 400 `IMPORT_ROW_KEY_MISMATCH`다.
+- **미리보기의 모든 거래를 반영한다**(1~5,000건). 거래 선택 체크박스는 없다. 거래를 빼면 은행 잔액 흐름에 구멍이 생긴다. 새 거래가 0건이면 커밋을 부르지 않는다.
+- 증빙 없는 출금은 저장을 막지 않고 경고만 띄운다. 반영 뒤 장부 상세(PATCH `evidenceIds`)에서 붙인다.
 
 ## 인명부 Slack ID (main #71에 반영됨)
 
@@ -135,10 +153,10 @@ FE는 지금 mock "서버"(`src/api/dues/mock-db.ts`)로 이 계약대로 동작
 ## 미결 질문 (BE와 합의 필요)
 
 1. **자동 채우기의 Slack 호출량**: 누락 회원 수만큼 `users.lookupByEmail`을 부른다. Slack rate limit(수치는 확인 필요) 안에 드는지 확인해야 한다.
-2. **학기 명단 기준** (생성 뒤 정정은 "명단 관리"로 가능): 학기를 만들 때 넣을 회원을 정해야 한다. 후보는 `duesRequired && active`인 회원이다. 생성 뒤 가입하거나 탈퇴한 회원을 어떻게 반영할지도 정해야 한다. mock은 생성 시점의 전체 회원을 넣는다.
+2. ~~학기 명단 기준~~ → 확정: 학기를 만들 때 `is_active && status ≠ WITHDRAWN`인 회원을 넣고, `applicable = dues_required`다. 생성 뒤 가입·정정은 "명단 관리"로 한다(지난 학기 포함). mock은 생성 시점의 전체 회원을 대상으로 넣는다.
 3. ~~월 배분 규칙~~ → 확정: 순납부액을 앞 달부터 월 회비 단위로 채운다(표시용). 복잡한 배분은 하지 않는다.
-4. ~~월 회비 금액~~ → 확정: 생성 모달에서 입력받는다(기본값 직전 학기 값, 없으면 10,000원, 1 이상의 정수).
-5. **면제 사유 목록**: 별도 테이블로 둘지, 이미 쓰인 사유의 중복 제거 목록을 쓸지 정해야 한다. 초안은 면제를 저장할 때 새 사유를 함께 등록한다.
+4. ~~월 회비 금액~~ → 확정: 생성 모달에서 입력받는다(기본값 직전 학기 값, 없으면 10,000원, 1 이상 1,000,000 이하의 정수).
+5. ~~면제 사유 목록~~ → 확정: 별도 테이블로 두고 시드 15개로 시작한다. 면제를 저장할 때 새 사유를 함께 등록한다(이미 있으면 그대로). 목록은 시드 다음 등록 순이다.
 6. **면제 삭제**: 화면에 삭제 기능이 없어서 API도 넣지 않았다.
-7. **신한 .xlsx 파싱 위치**: 초안은 서버에서 파싱한다. 거래 지문(`rowKey`)으로 중복을 막으려면 서버가 원본을 봐야 하기 때문이다. 미리보기 단계에서 회비 대상을 추천하는 값(`suggestedMemberId`)은 화면에 아직 쓰이지 않는다.
-8. **업로드 multipart**: `apiFetch`가 `Content-Type: application/json`을 고정하고 있다. 실제 API를 붙일 때 `client.ts`에 FormData 분기가 필요하다.
+7. ~~신한 .xlsx 파싱 위치~~ → 확정: 서버에서 파싱한다. 거래 지문(`rowKey`)으로 중복을 막으려면 서버가 원본을 봐야 하기 때문이다. 미리보기 단계에서 회비 대상을 추천하는 값(`suggestedMemberId`)은 화면에 아직 쓰이지 않는다.
+8. ~~업로드 multipart~~ → 해결: `client.ts`가 `FormData` 본문에는 `Content-Type`을 붙이지 않는다(위 "거래내역 가져오기").
