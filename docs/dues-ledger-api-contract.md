@@ -75,16 +75,16 @@ FE는 지금 mock "서버"(`src/api/dues/mock-db.ts`)로 이 계약대로 동작
 
 ## 장부
 
-| Method | Path                                       | 화면                                             | 타입                                                           |
-| ------ | ------------------------------------------ | ------------------------------------------------ | -------------------------------------------------------------- |
-| GET    | `/v1/admin/ledger/entries`                 | 장부 목록 (헤더 필터는 지금 클라이언트에서 처리) | `LedgerEntryListResponse`                                      |
-| PATCH  | `/v1/admin/ledger/entries/{id}`            | 상세 수정, 증빙 교체·삭제                        | `LedgerEntryUpdateRequest` → `LedgerEntryResponse`             |
-| PUT    | `/v1/admin/ledger/entries/{id}/dues-link`  | 단건 회비 연결 (입금·출금 공통)                  | `DuesLinkRequest` → `LedgerEntryResponse`                      |
-| DELETE | `/v1/admin/ledger/entries/{id}/dues-link`  | 연결 해제 (화면은 아직 없음)                     | –                                                              |
-| POST   | `/v1/admin/ledger/evidences/presigned-url` | 증빙 업로드 1단계                                | `EvidencePresignedUrlRequest` → `EvidencePresignedUrlResponse` |
-| POST   | `/v1/admin/ledger/evidences/{id}/complete` | 증빙 업로드 완료                                 | `EvidenceResponse`                                             |
-| POST   | `/v1/admin/ledger/imports/preview`         | 신한 .xlsx 분석 (multipart)                      | `ImportPreviewResponse`                                        |
-| POST   | `/v1/admin/ledger/imports`                 | 선택한 거래 반영                                 | `ImportCommitRequest` → `ImportCommitResponse`                 |
+| Method | Path                                       | 화면                                                                              | 타입                                                           |
+| ------ | ------------------------------------------ | --------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| GET    | `/v1/admin/ledger/entries`                 | 장부 목록 (헤더 필터는 지금 클라이언트에서 처리)                                  | `LedgerEntryListResponse`                                      |
+| PATCH  | `/v1/admin/ledger/entries/{id}`            | 상세 수정, 증빙 교체·삭제                                                         | `LedgerEntryUpdateRequest` → `LedgerEntryResponse`             |
+| PUT    | `/v1/admin/ledger/entries/{id}/dues-link`  | 단건 회비 연결 (입금·출금 공통)                                                   | `DuesLinkRequest` → `LedgerEntryResponse`                      |
+| DELETE | `/v1/admin/ledger/entries/{id}/dues-link`  | 연결 해제 (회원 회비 모달 "수정" → "연결 해제"). 회비 분류면 PENDING으로 돌아간다 | –                                                              |
+| POST   | `/v1/admin/ledger/evidences/presigned-url` | 증빙 업로드 1단계                                                                 | `EvidencePresignedUrlRequest` → `EvidencePresignedUrlResponse` |
+| POST   | `/v1/admin/ledger/evidences/{id}/complete` | 증빙 업로드 완료                                                                  | `EvidenceResponse`                                             |
+| POST   | `/v1/admin/ledger/imports/preview`         | 신한 .xlsx 분석 (multipart)                                                       | `ImportPreviewResponse`                                        |
+| POST   | `/v1/admin/ledger/imports`                 | 선택한 거래 반영                                                                  | `ImportCommitRequest` → `ImportCommitResponse`                 |
 
 - 증빙은 먼저 업로드해 ID를 받는다. 장부 기록에는 `PATCH`의 `evidenceIds`로 붙인다. 교체와 삭제도 같은 PATCH로 처리한다.
 - 분류를 바꾸면 서버가 연결을 끊는다. 회비 분류(DUES)면 PENDING, 그 밖의 분류면 NONE으로 되돌린다.
