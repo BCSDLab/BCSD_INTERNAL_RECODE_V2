@@ -66,7 +66,6 @@ export function linkEntryToMember(entry: LedgerEntryResponse, memberId: number, 
     studentNumber: member.studentNumber,
     track: member.track,
     semesterId,
-    requiredAmount: member.assessedAmount ?? 0,
   };
 }
 

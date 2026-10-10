@@ -289,7 +289,6 @@ export const entries: LedgerEntryResponse[] = INITIAL_LEDGER_ENTRIES.map((entry)
         studentNumber: entry.duesLink.studentNumber,
         track: trackCode(entry.duesLink.track),
         semesterId: entry.duesLink.semesterId,
-        requiredAmount: entry.duesLink.requiredAmount,
       }
     : null,
   evidences: entry.evidences.map((evidence) => {

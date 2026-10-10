@@ -28,8 +28,6 @@ export interface DuesLinkResponse {
   studentNumber: string;
   track: Track;
   semesterId: SemesterId;
-  /** 연결 시점 학기 부과액. */
-  requiredAmount: number;
 }
 
 export interface LedgerEntryResponse {

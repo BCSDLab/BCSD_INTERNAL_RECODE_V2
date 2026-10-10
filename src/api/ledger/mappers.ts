@@ -75,7 +75,6 @@ export function toLedgerEntry(dto: LedgerEntryResponse): LedgerEntry {
           track: TRACK_LABELS[link.track],
           semesterId: link.semesterId,
           semester: semesterLabel(link.semesterId),
-          requiredAmount: link.requiredAmount,
         }
       : undefined,
     evidences: dto.evidences.map(toEvidence),

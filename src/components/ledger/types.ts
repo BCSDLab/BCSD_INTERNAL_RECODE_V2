@@ -22,7 +22,6 @@ export interface DuesLink {
   semesterId: string;
   /** "2026년 2학기" — 회비 학기 제목에서 " 회비"를 뗀 값과 같다. */
   semester: string;
-  requiredAmount: number;
 }
 
 export interface LedgerEntry {

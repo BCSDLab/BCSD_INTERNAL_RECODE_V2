@@ -10,7 +10,6 @@ const linkedMembers: Record<string, DuesLink> = {
     track: 'iOS',
     semesterId: '2026-2',
     semester: '2026년 2학기',
-    requiredAmount: 60000,
   },
   seojun: {
     memberId: 'member-seojun',
@@ -19,7 +18,6 @@ const linkedMembers: Record<string, DuesLink> = {
     track: 'Backend',
     semesterId: '2026-2',
     semester: '2026년 2학기',
-    requiredAmount: 60000,
   },
   mentor: {
     memberId: 'member-mentor',
@@ -28,7 +26,6 @@ const linkedMembers: Record<string, DuesLink> = {
     track: 'Design',
     semesterId: '2026-2',
     semester: '2026년 2학기',
-    requiredAmount: 0,
   },
   haneul: {
     memberId: 'member-haneul',
@@ -37,7 +34,6 @@ const linkedMembers: Record<string, DuesLink> = {
     track: 'Frontend',
     semesterId: '2026-2',
     semester: '2026년 2학기',
-    requiredAmount: 60000,
   },
   hangyeol: {
     memberId: 'member-hangyeol',
@@ -46,7 +42,6 @@ const linkedMembers: Record<string, DuesLink> = {
     track: 'Frontend',
     semesterId: '2026-2',
     semester: '2026년 2학기',
-    requiredAmount: 30000,
   },
   minjun: {
     memberId: 'member-minjun',
@@ -55,7 +50,6 @@ const linkedMembers: Record<string, DuesLink> = {
     track: 'Android',
     semesterId: '2026-2',
     semester: '2026년 2학기',
-    requiredAmount: 60000,
   },
   seoyeon: {
     memberId: 'member-seoyeon',
@@ -64,7 +58,6 @@ const linkedMembers: Record<string, DuesLink> = {
     track: 'PM',
     semesterId: '2026-2',
     semester: '2026년 2학기',
-    requiredAmount: 60000,
   },
   jian: {
     memberId: 'member-jian',
@@ -73,7 +66,6 @@ const linkedMembers: Record<string, DuesLink> = {
     track: 'Data Analyst',
     semesterId: '2026-2',
     semester: '2026년 2학기',
-    requiredAmount: 60000,
   },
   taeo: {
     memberId: 'member-taeo',
@@ -82,7 +74,6 @@ const linkedMembers: Record<string, DuesLink> = {
     track: 'Backend',
     semesterId: '2026-2',
     semester: '2026년 2학기',
-    requiredAmount: 30000,
   },
   somi: {
     memberId: 'member-somi',
@@ -91,7 +82,6 @@ const linkedMembers: Record<string, DuesLink> = {
     track: 'Backend',
     semesterId: '2026-2',
     semester: '2026년 2학기',
-    requiredAmount: 30000,
   },
 };
 
