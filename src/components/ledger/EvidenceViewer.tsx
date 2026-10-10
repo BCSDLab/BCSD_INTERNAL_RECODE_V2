@@ -5,7 +5,13 @@ import { useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import { Button, ModalFrame } from '@/components/ledger/LedgerUi';
 import type { Evidence, LedgerEntry } from '@/components/ledger/types';
-import { entryTypeLabel, formatWon } from '@/components/ledger/utils';
+import {
+  EVIDENCE_ACCEPT,
+  EVIDENCE_TYPE_ERROR,
+  entryTypeLabel,
+  formatWon,
+  isAllowedEvidenceFile,
+} from '@/components/ledger/utils';
 
 interface EvidenceViewerProps {
   entry: LedgerEntry;
@@ -26,12 +32,18 @@ function isImageEvidence(evidence: Evidence) {
 export function EvidenceViewer({ entry, evidence, onClose, onReplace, onDelete, onDownloaded }: EvidenceViewerProps) {
   const fileInput = useRef<HTMLInputElement>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [fileError, setFileError] = useState('');
 
   function replaceEvidence(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
-    if (!file) return;
-    onReplace(file);
     event.target.value = '';
+    if (!file) return;
+    if (!isAllowedEvidenceFile(file)) {
+      setFileError(EVIDENCE_TYPE_ERROR);
+      return;
+    }
+    setFileError('');
+    onReplace(file);
   }
 
   function downloadEvidence() {
@@ -148,13 +160,15 @@ export function EvidenceViewer({ entry, evidence, onClose, onReplace, onDelete, 
               </Button>
             </div>
           )}
-          <input
-            ref={fileInput}
-            type="file"
-            accept="image/*,application/pdf"
-            onChange={replaceEvidence}
-            className="hidden"
-          />
+          {fileError && (
+            <p
+              role="alert"
+              className="bg-danger-soft text-danger mt-3 rounded-lg px-3 py-2.5 text-[11.5px] font-medium"
+            >
+              {fileError}
+            </p>
+          )}
+          <input ref={fileInput} type="file" accept={EVIDENCE_ACCEPT} onChange={replaceEvidence} className="hidden" />
         </div>
       </div>
     </ModalFrame>

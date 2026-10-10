@@ -62,3 +62,17 @@ export function linkStatusLabel(entry: LedgerEntry) {
   if (entry.linkStatus === 'pending') return '미정';
   return '없음';
 }
+
+/** 증빙으로 받는 형식. HEIC 등은 브라우저·서버에서 미리보기가 안 돼 받지 않는다. */
+export const EVIDENCE_ACCEPT = 'image/png,image/jpeg,image/webp,application/pdf';
+
+export const EVIDENCE_TYPE_ERROR = 'PNG, JPG, WEBP, PDF만 첨부할 수 있습니다.';
+
+const EVIDENCE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'webp', 'pdf'];
+const EVIDENCE_MIME_TYPES = EVIDENCE_ACCEPT.split(',');
+
+/** accept는 파일 선택 창의 거름일 뿐이라(드래그·"모든 파일" 선택) 확장자와 MIME을 다시 본다. */
+export function isAllowedEvidenceFile(file: File) {
+  const extension = file.name.split('.').pop()?.toLowerCase() ?? '';
+  return EVIDENCE_EXTENSIONS.includes(extension) && (file.type === '' || EVIDENCE_MIME_TYPES.includes(file.type));
+}

@@ -7,7 +7,7 @@ import { Button } from '@/components/ledger/LedgerUi';
 import type { ImportStep, ImportTransaction } from '@/components/ledger/import/types';
 import type { Evidence } from '@/components/ledger/types';
 import { MAX_EVIDENCE_COUNT } from '@/components/ledger/types';
-import { formatWon } from '@/components/ledger/utils';
+import { EVIDENCE_ACCEPT, EVIDENCE_TYPE_ERROR, formatWon, isAllowedEvidenceFile } from '@/components/ledger/utils';
 
 interface TransactionImportFlowProps {
   onCancel: () => void;
@@ -160,6 +160,10 @@ export function TransactionImportFlow({ onCancel, onSave }: TransactionImportFlo
     const files = Array.from(fileList ?? []);
     const target = evidenceTarget;
     if (files.length === 0 || !target) return;
+    if (!files.every(isAllowedEvidenceFile)) {
+      setEvidenceError(EVIDENCE_TYPE_ERROR);
+      return;
+    }
 
     const currentCount = transactions.find((transaction) => transaction.id === target)?.evidences.length ?? 0;
     const remainingCount = MAX_EVIDENCE_COUNT - currentCount;
@@ -387,7 +391,7 @@ export function TransactionImportFlow({ onCancel, onSave }: TransactionImportFlo
             <input
               ref={evidenceInput}
               type="file"
-              accept="image/*"
+              accept={EVIDENCE_ACCEPT}
               multiple
               className="hidden"
               onChange={(event) => {

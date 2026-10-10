@@ -11,7 +11,14 @@ import type { MemberDues } from '@/components/dues/types';
 import { Button, Input, ModalFrame, Panel, Select } from '@/components/ledger/LedgerUi';
 import type { Evidence, LedgerCategory, LedgerEntry } from '@/components/ledger/types';
 import { LEDGER_CATEGORIES, MAX_EVIDENCE_COUNT } from '@/components/ledger/types';
-import { entryTypeLabel, formatOccurredAt, formatWon } from '@/components/ledger/utils';
+import {
+  EVIDENCE_ACCEPT,
+  EVIDENCE_TYPE_ERROR,
+  entryTypeLabel,
+  formatOccurredAt,
+  formatWon,
+  isAllowedEvidenceFile,
+} from '@/components/ledger/utils';
 
 interface LedgerDetailViewProps {
   entry: LedgerEntry;
@@ -115,6 +122,11 @@ export function LedgerDetailView({ entry, onClose, onSave, onOpenEvidence }: Led
   async function uploadEvidence(event: ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.target.files ?? []);
     if (files.length === 0) return;
+    if (!files.every(isAllowedEvidenceFile)) {
+      setError(EVIDENCE_TYPE_ERROR);
+      event.target.value = '';
+      return;
+    }
 
     const remainingCount = MAX_EVIDENCE_COUNT - evidences.length;
     if (remainingCount <= 0) {
@@ -273,7 +285,7 @@ export function LedgerDetailView({ entry, onClose, onSave, onOpenEvidence }: Led
                         <input
                           ref={evidenceInput}
                           type="file"
-                          accept="image/*,application/pdf"
+                          accept={EVIDENCE_ACCEPT}
                           multiple
                           onChange={uploadEvidence}
                           className="hidden"
