@@ -110,9 +110,13 @@ export function SemesterRosterModal({
     saveMutation.mutate();
   }
 
+  // 저장 직후 명단을 다시 받는 동안 추가한 회원이 서버 명단과 겹쳐 보이지 않게 거른다.
+  const rosterIds = new Set(roster.map((member) => member.id));
   const rows = [
     ...roster.map((member) => ({ member, isNew: false, applicable: toggles[member.id] ?? member.applicable })),
-    ...additions.map((member) => ({ member, isNew: true, applicable: member.applicable })),
+    ...additions
+      .filter((member) => !rosterIds.has(member.id))
+      .map((member) => ({ member, isNew: true, applicable: member.applicable })),
   ];
 
   return (
@@ -149,7 +153,7 @@ export function SemesterRosterModal({
         ) : (
           <div className="border-line max-h-[340px] overflow-y-auto rounded-[12px] border">
             <table className="w-full border-collapse text-left">
-              <thead className="bg-panel2 text-faint sticky top-0 text-[11px] font-bold">
+              <thead className="bg-panel2 text-faint sticky top-0 z-10 text-[11px] font-bold">
                 <tr className="border-line border-b">
                   <th className="px-4 py-2.5">이름</th>
                   <th className="px-4 py-2.5">학번</th>
