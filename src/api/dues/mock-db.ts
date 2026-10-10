@@ -239,7 +239,7 @@ interface StaticSemester extends DerivedSemester {
 const staticSemesters = new Map<SemesterId, StaticSemester>(
   SEMESTER_DUES_SUMMARIES.slice(1).map((summary) => {
     const { year, term } = parseSemesterId(summary.id);
-    const members = getSemesterMembers(summary.id).map((member) => staticMemberDues(summary.id, member));
+    const seededMembers = getSemesterMembers(summary.id).map((member) => staticMemberDues(summary.id, member));
     return [
       summary.id,
       {
@@ -258,9 +258,12 @@ const staticSemesters = new Map<SemesterId, StaticSemester>(
           unpaidAmount: summary.unpaidAmount,
           needsReview: summary.needsReview,
         },
-        members,
+        members: seededMembers,
         monthlyAmount: summary.monthlyAmount,
-        roster: members.map((member) => ({ memberId: member.memberId, applicable: member.assessedAmount !== null })),
+        roster: seededMembers.map((member) => ({
+          memberId: member.memberId,
+          applicable: member.assessedAmount !== null,
+        })),
         rosterChanged: false,
       },
     ];

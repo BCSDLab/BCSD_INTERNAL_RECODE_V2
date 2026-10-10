@@ -342,7 +342,9 @@ export function TransactionImportFlow({ onCancel, onSave }: TransactionImportFlo
                             {transaction.type === 'withdrawal' ? '-' : ''}
                             {formatWon(transaction.amount)}
                           </td>
-                          <td className="text-muted p-2 text-xs whitespace-nowrap">{formatWon(transaction.bankBalance)}</td>
+                          <td className="text-muted p-2 text-xs whitespace-nowrap">
+                            {formatWon(transaction.bankBalance)}
+                          </td>
                           <td className="p-2">
                             <select
                               aria-label={`${transaction.counterparty} 종류`}
