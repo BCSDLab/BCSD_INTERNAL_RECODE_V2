@@ -43,9 +43,9 @@ FE는 지금 mock "서버"(`src/api/dues/mock-db.ts`)로 이 계약대로 동작
 | POST   | `/v1/admin/members/slack-ids/lookup`                      | Slack ID 입력 모달의 "자동 채우기"  | `SlackIdLookupRequest` → `SlackIdLookupResponse`        |
 | POST   | `/v1/admin/dues/semesters/{semesterId}/notifications`     | Slack 알림 전송                     | `DuesNotificationRequest` → `DuesNotificationResponse`  |
 
-### 학기 명단 — 임시 경로 (`// TODO(BE v2)`: 경로·필드 확정 필요)
+### 학기 명단 (설계 v3 4-3절 확정)
 
-| Method | Path (임시)                                               | 화면                       | 타입                                                                                  |
+| Method | Path                                                      | 화면                       | 타입                                                                                  |
 | ------ | --------------------------------------------------------- | -------------------------- | ------------------------------------------------------------------------------------- |
 | GET    | `/v1/admin/dues/semesters/{semesterId}/roster`            | 명단 관리 모달 표          | `SemesterRosterResponse { members: RosterMemberResponse[] }`                          |
 | GET    | `/v1/admin/dues/semesters/{semesterId}/roster/candidates` | 명단 관리 > 회원 추가 검색 | `RosterCandidateListResponse { members: { memberId, name, studentNumber, track }[] }` |
@@ -53,6 +53,13 @@ FE는 지금 mock "서버"(`src/api/dues/mock-db.ts`)로 이 계약대로 동작
 | PATCH  | `/v1/admin/dues/semesters/{semesterId}/roster/{memberId}` | 납부 대상 토글             | `RosterUpdateRequest { applicable }` → `RosterMemberResponse`                         |
 
 - `RosterMemberResponse = { memberId, name, studentNumber, track, applicable }`. `applicable: false`면 이 학기 납부 비대상(월 칸 전부 `NOT_APPLICABLE`, 부과액 null).
+- 후보(`candidates`)는 **명단에 없는 모든 회원**이다. 회원 상태와 회비 대상 여부(`duesRequired`)는 따지지 않는다. 검색은 FE가 클라이언트에서 한다.
+- 명단에서 빼는 API(DELETE)는 없다. 잘못 들어간 회원은 `applicable: false`로 둔다.
+- 오류(`ErrorResponse { message }`, 괄호 안은 서버 오류 코드)
+  - 학기 공통: 400 `INVALID_SEMESTER_ID`(형식 `2026-2`가 아님), 404 `SEMESTER_NOT_FOUND`
+  - POST: 400 검증, 404 `MEMBER_NOT_FOUND`, 409 `ROSTER_MEMBER_EXISTS` "이미 이 학기 명단에 있는 회원입니다."
+  - PATCH: 400 검증, 404 `NOT_ROSTER_MEMBER` "이 학기 회비 명단에 없는 회원입니다.", 409 `ROSTER_MEMBER_HAS_LINKS` "연결된 입출금 내역이 있어 납부 비대상으로 바꿀 수 없습니다. 연결을 먼저 해제하세요."
+- 모달은 변경을 한 건씩 차례로 보낸다. 중간에 실패하면 앞의 변경은 남고, 모달이 명단을 다시 받아 보여 준다.
 - 저장 뒤 FE는 장부·회비 캐시를 통째로 다시 받는다. 마감 개념은 없어서 지난 학기를 포함해 어느 학기든 추가·정정할 수 있다.
 
 ### 회비 상태 규칙 (사용자 확정)

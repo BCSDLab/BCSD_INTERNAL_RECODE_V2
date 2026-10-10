@@ -68,30 +68,33 @@ export function createSemester(body: SemesterCreateRequest) {
   return apiClient.post<SemesterDuesSummaryResponse>(`${BASE}/semesters`, body);
 }
 
-// TODO(BE v2): 경로·필드 확정 필요
+// ---------- 학기 명단 (설계 4-3절). 학기 공통 오류: 400 INVALID_SEMESTER_ID, 404 SEMESTER_NOT_FOUND ----------
+
+/** 명단 관리 모달의 표. 이름·학번·memberId 오름차순. */
 export function getSemesterRoster(semesterId: SemesterId) {
   if (USE_LEDGER_MOCK) return mockGetSemesterRoster(semesterId);
   return apiClient.get<SemesterRosterResponse>(`${BASE}/semesters/${semesterId}/roster`);
 }
 
-// TODO(BE v2): 경로·필드 확정 필요
+/** "회원 추가" 검색 목록 — 명단에 없는 모든 회원(회원 상태·회비 대상 여부 무관). 검색은 클라이언트에서 한다. */
 export function getRosterCandidates(semesterId: SemesterId) {
   if (USE_LEDGER_MOCK) return mockGetRosterCandidates(semesterId);
   return apiClient.get<RosterCandidateListResponse>(`${BASE}/semesters/${semesterId}/roster/candidates`);
 }
 
-// TODO(BE v2): 경로·필드 확정 필요
+/** 201. 404 MEMBER_NOT_FOUND, 409 ROSTER_MEMBER_EXISTS. 회원 상태는 따지지 않는다. */
 export function addRosterMember(semesterId: SemesterId, body: RosterAddRequest) {
   if (USE_LEDGER_MOCK) return mockAddRosterMember(semesterId, body);
   return apiClient.post<RosterMemberResponse>(`${BASE}/semesters/${semesterId}/roster`, body);
 }
 
-// TODO(BE v2): 경로·필드 확정 필요
+/** 납부 대상 정정. 404 NOT_ROSTER_MEMBER, 409 ROSTER_MEMBER_HAS_LINKS(연결이 있는데 false로 바꿀 때). */
 export function updateRosterMember(semesterId: SemesterId, memberId: number, body: RosterUpdateRequest) {
   if (USE_LEDGER_MOCK) return mockUpdateRosterMember(semesterId, memberId, body);
   return apiClient.patch<RosterMemberResponse>(`${BASE}/semesters/${semesterId}/roster/${memberId}`, body);
 }
 
+/** 하나라도 실패하면 전체 롤백. 400 DUPLICATED_ENTRY_IN_REQUEST, 404 NOT_ROSTER_MEMBER, 409 ROSTER_MEMBER_NOT_APPLICABLE. */
 export function linkSemesterEntries(semesterId: SemesterId, body: DuesLinkBulkRequest) {
   if (USE_LEDGER_MOCK) return mockLinkSemesterEntries(semesterId, body);
   return apiClient.post<DuesLinkBulkResponse>(`${BASE}/semesters/${semesterId}/links`, body);

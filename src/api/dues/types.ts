@@ -122,23 +122,23 @@ export interface RosterMemberResponse {
   applicable: boolean;
 }
 
-/** GET (임시) /v1/admin/dues/semesters/{semesterId}/roster */
+/** GET /v1/admin/dues/semesters/{semesterId}/roster */
 export interface SemesterRosterResponse {
   members: RosterMemberResponse[];
 }
 
-/** GET (임시) /v1/admin/dues/semesters/{semesterId}/roster/candidates — 명단에 없는 회원. */
+/** GET /v1/admin/dues/semesters/{semesterId}/roster/candidates — 명단에 없는 모든 회원(회원 상태·회비 대상 여부 무관). */
 export interface RosterCandidateListResponse {
   members: Omit<RosterMemberResponse, 'applicable'>[];
 }
 
-/** POST (임시) /v1/admin/dues/semesters/{semesterId}/roster */
+/** POST /v1/admin/dues/semesters/{semesterId}/roster → 201 RosterMemberResponse */
 export interface RosterAddRequest {
   memberId: number;
   applicable: boolean;
 }
 
-/** PATCH (임시) /v1/admin/dues/semesters/{semesterId}/roster/{memberId} */
+/** PATCH /v1/admin/dues/semesters/{semesterId}/roster/{memberId} → 200 RosterMemberResponse */
 export interface RosterUpdateRequest {
   applicable: boolean;
 }
