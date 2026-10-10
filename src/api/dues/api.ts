@@ -1,12 +1,15 @@
 import { apiClient } from '@/api/client';
 import { lookupMemberSlackIds, updateMemberSlackId as updateMemberSlackIdLive } from '@/api/member/api';
 import {
+  mockAddRosterMember,
   mockCreateExemption,
   mockCreateSemester,
   mockGetExemptionReasons,
   mockGetExemptions,
+  mockGetRosterCandidates,
   mockGetSemesterCreatable,
   mockGetSemesterDues,
+  mockGetSemesterRoster,
   mockGetSemesters,
   mockLinkSemesterEntries,
   mockLookupSlackIds,
@@ -14,6 +17,7 @@ import {
   mockSendDuesNotifications,
   mockUpdateExemption,
   mockUpdateMemberSlackId,
+  mockUpdateRosterMember,
 } from './mock';
 import { USE_LEDGER_MOCK } from './mock-switch';
 import type {
@@ -27,12 +31,17 @@ import type {
   ExemptionReasonListResponse,
   ExemptionResponse,
   ExemptionUpsertRequest,
+  RosterAddRequest,
+  RosterCandidateListResponse,
+  RosterMemberResponse,
+  RosterUpdateRequest,
   SemesterCreatableResponse,
   SemesterCreateRequest,
   SemesterDuesDetailResponse,
   SemesterDuesListResponse,
   SemesterDuesSummaryResponse,
   SemesterId,
+  SemesterRosterResponse,
   SlackIdLookupRequest,
 } from './types';
 
@@ -57,6 +66,30 @@ export function getSemesterCreatable() {
 export function createSemester(body: SemesterCreateRequest) {
   if (USE_LEDGER_MOCK) return mockCreateSemester(body);
   return apiClient.post<SemesterDuesSummaryResponse>(`${BASE}/semesters`, body);
+}
+
+// TODO(BE v2): 경로·필드 확정 필요
+export function getSemesterRoster(semesterId: SemesterId) {
+  if (USE_LEDGER_MOCK) return mockGetSemesterRoster(semesterId);
+  return apiClient.get<SemesterRosterResponse>(`${BASE}/semesters/${semesterId}/roster`);
+}
+
+// TODO(BE v2): 경로·필드 확정 필요
+export function getRosterCandidates(semesterId: SemesterId) {
+  if (USE_LEDGER_MOCK) return mockGetRosterCandidates(semesterId);
+  return apiClient.get<RosterCandidateListResponse>(`${BASE}/semesters/${semesterId}/roster/candidates`);
+}
+
+// TODO(BE v2): 경로·필드 확정 필요
+export function addRosterMember(semesterId: SemesterId, body: RosterAddRequest) {
+  if (USE_LEDGER_MOCK) return mockAddRosterMember(semesterId, body);
+  return apiClient.post<RosterMemberResponse>(`${BASE}/semesters/${semesterId}/roster`, body);
+}
+
+// TODO(BE v2): 경로·필드 확정 필요
+export function updateRosterMember(semesterId: SemesterId, memberId: number, body: RosterUpdateRequest) {
+  if (USE_LEDGER_MOCK) return mockUpdateRosterMember(semesterId, memberId, body);
+  return apiClient.patch<RosterMemberResponse>(`${BASE}/semesters/${semesterId}/roster/${memberId}`, body);
 }
 
 export function linkSemesterEntries(semesterId: SemesterId, body: DuesLinkBulkRequest) {

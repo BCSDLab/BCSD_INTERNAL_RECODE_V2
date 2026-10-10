@@ -3,6 +3,7 @@ import type {
   ExemptionResponse,
   MemberDuesResponse,
   MonthDuesResponse,
+  RosterMemberResponse,
   MonthDuesStatus,
   SemesterDuesStatus,
   SemesterDuesSummaryResponse,
@@ -14,6 +15,7 @@ import type { EvidenceResponse, LedgerCategory, LedgerEntryResponse } from '@/ap
 import type { MemberDues, MonthDues } from '@/components/dues/types';
 import {
   CURRENT_SEMESTER_MEMBERS,
+  EXTRA_MEMBERS,
   getSemesterMembers,
   INITIAL_EXEMPTION_REASONS,
   INITIAL_EXEMPTIONS,
@@ -120,7 +122,7 @@ function mockSlackId(id: number) {
   return `U0DUES${String(id).padStart(5, '0')}`;
 }
 
-const members: MockMember[] = CURRENT_SEMESTER_MEMBERS.map((member) => {
+const members: MockMember[] = [...CURRENT_SEMESTER_MEMBERS, ...EXTRA_MEMBERS].map((member) => {
   const id = memberIdOf(member.id);
   // 시드에 slackId가 없던 회원은 Slack에도 없는 것으로 친다(자동 채우기로도 못 찾음).
   const slackLookupId = member.slackId ? mockSlackId(id) : null;
@@ -463,4 +465,32 @@ export function addSemester(semesterId: SemesterId, monthlyAmount: number) {
     monthlyAmount,
     roster: members.map((member) => ({ memberId: member.id, applicable: true })),
   });
+}
+
+// ---------- 학기 명단 ----------
+
+function rosterMemberOf(memberId: number, applicable: boolean): RosterMemberResponse {
+  const member = findMember(memberId)!;
+  return {
+    memberId: member.id,
+    name: member.name,
+    studentNumber: member.studentNumber,
+    track: member.track,
+    applicable,
+  };
+}
+
+/** 학기 명단. 마감된 지난 학기도 조회는 된다(납부 비대상 = 부과액 null). */
+export function semesterRoster(semesterId: SemesterId): RosterMemberResponse[] | null {
+  const derived = derivedSemesters.get(semesterId);
+  if (derived) return derived.roster.map((row) => rosterMemberOf(row.memberId, row.applicable));
+  const closed = staticSemesters.get(semesterId);
+  return closed
+    ? closed.members.map((member) => rosterMemberOf(member.memberId, member.assessedAmount !== null))
+    : null;
+}
+
+/** 바꿀 수 있는 명단 — 집계를 다시 하는 학기만. 지난 학기는 null. */
+export function editableRoster(semesterId: SemesterId): RosterRow[] | null {
+  return derivedSemesters.get(semesterId)?.roster ?? null;
 }

@@ -39,3 +39,12 @@ export interface SemesterDuesSummary {
   unpaidAmount: number;
   needsReview: boolean;
 }
+
+/** 학기 명단 한 줄. applicable이 false면 이 학기 납부 비대상이다. */
+export interface RosterMember {
+  id: string;
+  name: string;
+  studentNumber: string;
+  track: string;
+  applicable: boolean;
+}

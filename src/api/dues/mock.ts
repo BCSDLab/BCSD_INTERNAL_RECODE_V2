@@ -2,15 +2,18 @@ import { ApiError } from '@/api/client';
 import type { LedgerEntryResponse } from '@/api/ledger/types';
 import {
   addSemester,
+  editableRoster,
   entries,
   exemptionReasons,
   exemptions,
   findMember,
   issueExemptionId,
+  listMembers,
   parseSemesterId,
   respond,
   semesterIds,
   semesterMembers,
+  semesterRoster,
   semesterSummary,
 } from './mock-db';
 import type {
@@ -24,12 +27,17 @@ import type {
   ExemptionReasonListResponse,
   ExemptionResponse,
   ExemptionUpsertRequest,
+  RosterAddRequest,
+  RosterCandidateListResponse,
+  RosterMemberResponse,
+  RosterUpdateRequest,
   SemesterCreatableResponse,
   SemesterCreateRequest,
   SemesterDuesDetailResponse,
   SemesterDuesListResponse,
   SemesterDuesSummaryResponse,
   SemesterId,
+  SemesterRosterResponse,
   SlackIdLookupRequest,
   SlackIdLookupResponse,
 } from './types';
@@ -124,6 +132,64 @@ export function mockLinkSemesterEntries(
     linkedCount += 1;
   }
   return respond({ linkedCount });
+}
+
+// ---------- 학기 명단 ----------
+
+function requireEditableRoster(semesterId: SemesterId) {
+  if (!semesterRoster(semesterId)) throw new ApiError(404, '학기 회비를 찾을 수 없습니다.');
+  const roster = editableRoster(semesterId);
+  if (!roster) throw new ApiError(409, '마감된 학기의 명단은 바꿀 수 없습니다.');
+  return roster;
+}
+
+function rosterMember(semesterId: SemesterId, memberId: number): RosterMemberResponse {
+  return semesterRoster(semesterId)!.find((member) => member.memberId === memberId)!;
+}
+
+export function mockGetSemesterRoster(semesterId: SemesterId): Promise<SemesterRosterResponse> {
+  const members = semesterRoster(semesterId);
+  if (!members) return Promise.reject(new ApiError(404, '학기 회비를 찾을 수 없습니다.'));
+  return respond({ members });
+}
+
+/** 명단에 없는 회원. 실제로는 인명부(회비 대상 여부와 무관한 전체 회원)에서 고른다. */
+export function mockGetRosterCandidates(semesterId: SemesterId): Promise<RosterCandidateListResponse> {
+  const roster = semesterRoster(semesterId);
+  if (!roster) return Promise.reject(new ApiError(404, '학기 회비를 찾을 수 없습니다.'));
+  const inRoster = new Set(roster.map((member) => member.memberId));
+  return respond({
+    members: listMembers()
+      .filter((member) => !inRoster.has(member.id))
+      .map(({ id, name, studentNumber, track }) => ({ memberId: id, name, studentNumber, track })),
+  });
+}
+
+export function mockAddRosterMember(semesterId: SemesterId, body: RosterAddRequest): Promise<RosterMemberResponse> {
+  try {
+    const roster = requireEditableRoster(semesterId);
+    if (!findMember(body.memberId)) throw new ApiError(404, '회원을 찾을 수 없습니다.');
+    if (roster.some((row) => row.memberId === body.memberId)) throw new ApiError(409, '이미 명단에 있는 회원입니다.');
+    roster.push({ memberId: body.memberId, applicable: body.applicable });
+    return respond(rosterMember(semesterId, body.memberId));
+  } catch (error) {
+    return Promise.reject(error);
+  }
+}
+
+export function mockUpdateRosterMember(
+  semesterId: SemesterId,
+  memberId: number,
+  body: RosterUpdateRequest,
+): Promise<RosterMemberResponse> {
+  try {
+    const row = requireEditableRoster(semesterId).find((item) => item.memberId === memberId);
+    if (!row) throw new ApiError(404, '명단에 없는 회원입니다.');
+    row.applicable = body.applicable;
+    return respond(rosterMember(semesterId, memberId));
+  } catch (error) {
+    return Promise.reject(error);
+  }
 }
 
 // ---------- 면제 ----------

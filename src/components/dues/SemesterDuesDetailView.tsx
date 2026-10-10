@@ -11,6 +11,7 @@ import { ledgerQueries } from '@/api/ledger/queries';
 import { DuesLedgerLinkModal } from '@/components/dues/DuesLedgerLinkModal';
 import { DuesSlackNotificationModal } from '@/components/dues/DuesSlackNotificationModal';
 import { MemberDuesLedgerModal } from '@/components/dues/MemberDuesLedgerModal';
+import { SemesterRosterModal } from '@/components/dues/SemesterRosterModal';
 import { useDuesUi } from '@/components/dues/DuesUiProvider';
 import { CheckboxFilter, HeaderFilter } from '@/components/dues/TableHeaderFilter';
 import type { FilterOption } from '@/components/dues/TableHeaderFilter';
@@ -140,6 +141,7 @@ export function SemesterDuesDetailView({
   const [openFilter, setOpenFilter] = useState<FilterKey | null>(null);
   const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
   const [isSlackModalOpen, setIsSlackModalOpen] = useState(false);
+  const [isRosterModalOpen, setIsRosterModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [monthlyAmountInput, setMonthlyAmountInput] = useState('');
   const monthlyAmount = parseMonthlyAmount(monthlyAmountInput);
@@ -324,6 +326,7 @@ export function SemesterDuesDetailView({
           <p className="text-muted mt-1 text-xs">회원별 부과액·납부액·오차와 상태를 한눈에 확인하세요.</p>
         </div>
         <div className="ml-auto flex items-center gap-2.5">
+          <Button onClick={() => setIsRosterModalOpen(true)}>명단 관리</Button>
           <Button onClick={() => setIsSlackModalOpen(true)}>Slack 알림 전송</Button>
           <Button
             variant={canLinkLedgerEntries ? 'primary' : 'outline'}
@@ -521,6 +524,16 @@ export function SemesterDuesDetailView({
           members={tableMembers}
           onClose={() => setIsSlackModalOpen(false)}
           onResult={(message, tone) => flash(message, tone)}
+        />
+      )}
+      {isRosterModalOpen && (
+        <SemesterRosterModal
+          semester={semester}
+          onClose={() => setIsRosterModalOpen(false)}
+          onSaved={(message) => {
+            setIsRosterModalOpen(false);
+            flash(message);
+          }}
         />
       )}
       {isCreateModalOpen && createTarget && (

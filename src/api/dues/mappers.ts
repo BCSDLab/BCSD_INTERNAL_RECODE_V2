@@ -1,5 +1,5 @@
 import type { ExemptionDraft, ExemptionPeriod } from '@/components/dues/exemptions';
-import type { MemberDues, MonthDues, SemesterDuesSummary } from '@/components/dues/types';
+import type { MemberDues, MonthDues, RosterMember, SemesterDuesSummary } from '@/components/dues/types';
 import { TRACK_LABELS } from '@/lib/member-labels';
 import type {
   ExemptionResponse,
@@ -7,6 +7,7 @@ import type {
   MemberDuesResponse,
   MonthDuesResponse,
   MonthDuesStatus,
+  RosterMemberResponse,
   SemesterDuesStatus,
   SemesterDuesSummaryResponse,
   SemesterId,
@@ -81,6 +82,16 @@ export function toMemberDues(dto: MemberDuesResponse): MemberDues {
     paidAmount: dto.paidAmount,
     unpaidAmount: dto.unpaidAmount,
     excessAmount: dto.excessAmount > 0 ? dto.excessAmount : undefined,
+  };
+}
+
+export function toRosterMember(dto: RosterMemberResponse): RosterMember {
+  return {
+    id: String(dto.memberId),
+    name: dto.name,
+    studentNumber: dto.studentNumber,
+    track: TRACK_LABELS[dto.track],
+    applicable: dto.applicable,
   };
 }
 

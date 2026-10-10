@@ -110,6 +110,38 @@ export interface SemesterDuesDetailResponse {
   members: MemberDuesResponse[];
 }
 
+// ---------- 학기 명단 (BE v2에서 경로·필드 확정) ----------
+
+/** 학기 명단 한 줄. applicable이 false면 이 학기 납부 비대상이다. */
+export interface RosterMemberResponse {
+  memberId: number;
+  name: string;
+  studentNumber: string;
+  track: Track;
+  applicable: boolean;
+}
+
+/** GET (임시) /v1/admin/dues/semesters/{semesterId}/roster */
+export interface SemesterRosterResponse {
+  members: RosterMemberResponse[];
+}
+
+/** GET (임시) /v1/admin/dues/semesters/{semesterId}/roster/candidates — 명단에 없는 회원. */
+export interface RosterCandidateListResponse {
+  members: Omit<RosterMemberResponse, 'applicable'>[];
+}
+
+/** POST (임시) /v1/admin/dues/semesters/{semesterId}/roster */
+export interface RosterAddRequest {
+  memberId: number;
+  applicable: boolean;
+}
+
+/** PATCH (임시) /v1/admin/dues/semesters/{semesterId}/roster/{memberId} */
+export interface RosterUpdateRequest {
+  applicable: boolean;
+}
+
 // ---------- 장부 ↔ 회비 연결 ----------
 
 /** POST /v1/admin/dues/semesters/{semesterId}/links — 입출금 내역 연결 모달의 일괄 저장. */

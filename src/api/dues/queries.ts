@@ -2,12 +2,14 @@ import { queryOptions, type QueryClient } from '@tanstack/react-query';
 import {
   getExemptionReasons,
   getExemptions,
+  getRosterCandidates,
   getSemesterCreatable,
   getSemesterDues,
+  getSemesterRoster,
   getSemesters,
   previewExemption,
 } from './api';
-import { toExemption, toMemberDues, toSemesterSummary } from './mappers';
+import { toExemption, toMemberDues, toRosterMember, toSemesterSummary } from './mappers';
 import type { ExemptionPreviewRequest, SemesterId } from './types';
 
 export const duesKeys = {
@@ -16,6 +18,8 @@ export const duesKeys = {
   semesters: () => ['dues', 'semesters'] as const,
   semesterCreatable: () => ['dues', 'semester-creatable'] as const,
   semester: (semesterId: SemesterId) => ['dues', 'semester', semesterId] as const,
+  roster: (semesterId: SemesterId) => ['dues', 'roster', semesterId] as const,
+  rosterCandidates: (semesterId: SemesterId) => ['dues', 'roster-candidates', semesterId] as const,
   exemptions: () => ['dues', 'exemptions'] as const,
   exemptionReasons: () => ['dues', 'exemption-reasons'] as const,
   exemptionPreview: (semesterId: SemesterId, body: ExemptionPreviewRequest) =>
@@ -37,6 +41,19 @@ export const duesQueries = {
         const response = await getSemesterDues(semesterId);
         return { semester: toSemesterSummary(response.semester), members: response.members.map(toMemberDues) };
       },
+    }),
+  roster: (semesterId: SemesterId) =>
+    queryOptions({
+      queryKey: duesKeys.roster(semesterId),
+      queryFn: async () => (await getSemesterRoster(semesterId)).members.map(toRosterMember),
+    }),
+  rosterCandidates: (semesterId: SemesterId) =>
+    queryOptions({
+      queryKey: duesKeys.rosterCandidates(semesterId),
+      queryFn: async () =>
+        (await getRosterCandidates(semesterId)).members.map((member) =>
+          toRosterMember({ ...member, applicable: true }),
+        ),
     }),
   exemptions: () =>
     queryOptions({

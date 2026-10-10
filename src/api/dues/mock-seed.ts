@@ -234,6 +234,13 @@ export const CURRENT_SEMESTER_MEMBERS: SeedMemberDues[] = [
   },
 ];
 
+/** 현재 학기 명단에 없는 회원 — "명단 관리 > 회원 추가"의 후보로 쓴다. */
+export const EXTRA_MEMBERS: Pick<SeedMemberDues, 'id' | 'name' | 'studentNumber' | 'track' | 'slackId'>[] = [
+  { id: 'member-junho', name: '문준호', studentNumber: '2025174012', track: 'Backend', slackId: 'U_DUES_JUNHO' },
+  { id: 'member-yerin', name: '송예린', studentNumber: '2025174033', track: 'Frontend', slackId: 'U_DUES_YERIN' },
+  { id: 'member-dahyun', name: '임다현', studentNumber: '2025174056', track: 'Design', slackId: 'U_DUES_DAHYUN' },
+];
+
 export function getSemesterMembers(semesterId: string): SeedMemberDues[] {
   if (semesterId === '2026-2') return CURRENT_SEMESTER_MEMBERS;
 
