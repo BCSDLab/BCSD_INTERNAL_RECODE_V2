@@ -66,13 +66,25 @@ export function linkStatusLabel(entry: LedgerEntry) {
 /** 증빙으로 받는 형식. HEIC 등은 브라우저·서버에서 미리보기가 안 돼 받지 않는다. */
 export const EVIDENCE_ACCEPT = 'image/png,image/jpeg,image/webp,application/pdf';
 
-export const EVIDENCE_TYPE_ERROR = 'PNG, JPG, WEBP, PDF만 첨부할 수 있습니다.';
+export const EVIDENCE_TYPE_ERROR = 'PNG, JPG, WEBP, PDF(10MB 이하)만 첨부할 수 있습니다.';
 
-const EVIDENCE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'webp', 'pdf'];
-const EVIDENCE_MIME_TYPES = EVIDENCE_ACCEPT.split(',');
+/** 서버 presigned-url 검증과 같은 상한(1B~10MB). */
+const MAX_EVIDENCE_BYTES = 10 * 1024 * 1024;
 
-/** accept는 파일 선택 창의 거름일 뿐이라(드래그·"모든 파일" 선택) 확장자와 MIME을 다시 본다. */
+/** 확장자 ↔ MIME 짝. 서버는 짝이 맞지 않으면 400이다. */
+const EVIDENCE_MIME_BY_EXTENSION: Record<string, string> = {
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  webp: 'image/webp',
+  pdf: 'application/pdf',
+};
+
+/** accept는 파일 선택 창의 거름일 뿐이라(드래그·"모든 파일" 선택) 확장자·MIME·크기를 다시 본다. */
 export function isAllowedEvidenceFile(file: File) {
   const extension = file.name.split('.').pop()?.toLowerCase() ?? '';
-  return EVIDENCE_EXTENSIONS.includes(extension) && (file.type === '' || EVIDENCE_MIME_TYPES.includes(file.type));
+  const mimeType = EVIDENCE_MIME_BY_EXTENSION[extension];
+  return (
+    !!mimeType && (file.type === '' || file.type === mimeType) && file.size >= 1 && file.size <= MAX_EVIDENCE_BYTES
+  );
 }

@@ -23,7 +23,7 @@ interface EvidenceViewerProps {
   onDownloaded: () => void;
 }
 
-const IMAGE_EXTENSION = /\.(png|jpe?g|gif|webp|svg)$/i;
+const IMAGE_EXTENSION = /\.(png|jpe?g|webp)$/i;
 
 function isImageEvidence(evidence: Evidence) {
   return !!evidence.url && (evidence.url.startsWith('data:image') || IMAGE_EXTENSION.test(evidence.name));
