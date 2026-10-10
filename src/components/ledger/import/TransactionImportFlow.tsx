@@ -347,7 +347,6 @@ export function TransactionImportFlow({ onCancel, onSave }: TransactionImportFlo
                               className="border-line2 bg-panel h-7 w-full rounded-[7px] border px-1.5 text-center text-xs outline-none disabled:opacity-45"
                             >
                               <option>회비</option>
-                              <option>회비 반환</option>
                               <option>기타</option>
                             </select>
                           </td>

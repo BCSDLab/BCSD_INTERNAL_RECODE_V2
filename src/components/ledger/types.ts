@@ -1,6 +1,6 @@
 export type EntryType = 'deposit' | 'withdrawal';
 
-export type LedgerCategory = '회비' | '회비 반환' | '행사' | '운영비' | '기타';
+export type LedgerCategory = '회비' | '행사' | '운영비' | '기타';
 
 export type LinkStatus = 'confirmed' | 'pending' | 'none';
 
@@ -23,8 +23,6 @@ export interface DuesLink {
   /** "2026년 2학기" — 회비 학기 제목에서 " 회비"를 뗀 값과 같다. */
   semester: string;
   requiredAmount: number;
-  refundReason?: string;
-  refundAmount?: number;
 }
 
 export interface LedgerEntry {
@@ -58,7 +56,7 @@ export interface LedgerFilters {
 
 export type LedgerScreen = { name: 'list' } | { name: 'detail'; entryId: string };
 
-export const LEDGER_CATEGORIES: LedgerCategory[] = ['회비', '회비 반환', '행사', '운영비', '기타'];
+export const LEDGER_CATEGORIES: LedgerCategory[] = ['회비', '행사', '운영비', '기타'];
 
 export const EMPTY_LEDGER_FILTERS: LedgerFilters = {
   from: '',

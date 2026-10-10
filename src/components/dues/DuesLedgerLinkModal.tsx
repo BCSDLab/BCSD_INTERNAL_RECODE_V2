@@ -13,10 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
 
 function isUnlinkedDuesEntry(entry: LedgerEntry) {
-  return (
-    (entry.category === '회비' || entry.category === '회비 반환') &&
-    (!entry.duesLink || entry.linkStatus !== 'confirmed')
-  );
+  return entry.category === '회비' && (!entry.duesLink || entry.linkStatus !== 'confirmed');
 }
 
 export function DuesLedgerLinkModal({

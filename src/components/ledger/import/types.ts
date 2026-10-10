@@ -7,7 +7,7 @@ export interface ImportTransaction {
   counterparty: string;
   amount: number;
   selected: boolean;
-  category: Extract<LedgerCategory, '회비' | '회비 반환' | '기타'>;
+  category: Extract<LedgerCategory, '회비' | '기타'>;
   duesMatchId: string | null;
   note: string;
   evidences: Evidence[];

@@ -15,43 +15,34 @@ import { entryTypeLabel, formatOccurredAt, formatWon } from '@/components/ledger
 
 interface LedgerDetailViewProps {
   entry: LedgerEntry;
-  allEntries: LedgerEntry[];
   onClose: () => void;
   onSave: (entry: LedgerEntry) => void;
   onOpenEvidence: (evidenceId: string) => void;
 }
 
-type PaymentStatus = '완료' | '미납' | '확인필요';
+type PaymentStatus = '완료' | '미납' | '초과납부' | '면제' | '확인필요';
+
+const PAYMENT_STATUS: Record<MemberDues['status'], PaymentStatus> = {
+  paid: '완료',
+  unpaid: '미납',
+  overpaid: '초과납부',
+  exempt: '면제',
+};
 
 function isDuesCategory(category: LedgerCategory) {
-  return category === '회비' || category === '회비 반환';
+  return category === '회비';
 }
 
 function duesHref(semesterId: string, latestSemesterId: string | undefined) {
   return semesterId === latestSemesterId ? '/ledger/dues' : `/ledger/dues/${semesterId}`;
 }
 
-function paymentStatus(entry: LedgerEntry, allEntries: LedgerEntry[], members: MemberDues[]): PaymentStatus {
+/** 연결된 회원의 학기 회비 상태를 그대로 보여 준다(차이 규칙은 서버가 계산한다). */
+function paymentStatus(entry: LedgerEntry, members: MemberDues[]): PaymentStatus {
   const duesLink = entry.duesLink;
   if (!duesLink || entry.linkStatus !== 'confirmed') return '확인필요';
-  if (entry.category === '회비 반환') return '완료';
-
-  const requiredAmount =
-    members.find((member) => member.id === duesLink.memberId)?.assessedAmount ?? duesLink.requiredAmount;
-
-  const paidAmount = allEntries
-    .filter(
-      (candidate) =>
-        candidate.type === 'deposit' &&
-        candidate.category === '회비' &&
-        candidate.linkStatus === 'confirmed' &&
-        candidate.duesLink?.memberId === duesLink.memberId &&
-        candidate.duesLink?.semesterId === duesLink.semesterId,
-    )
-    .reduce((total, candidate) => total + candidate.amount, 0);
-
-  if (paidAmount > requiredAmount) return '확인필요';
-  return paidAmount >= requiredAmount ? '완료' : '미납';
+  const member = members.find((item) => item.id === duesLink.memberId);
+  return member ? PAYMENT_STATUS[member.status] : '확인필요';
 }
 
 function StatusBadge({ status }: { status: PaymentStatus }) {
@@ -66,7 +57,7 @@ function StatusBadge({ status }: { status: PaymentStatus }) {
   return (
     <span
       className={`inline-flex rounded-full border px-2.5 py-[3px] text-[10.5px] font-bold ${
-        status === '완료'
+        status === '완료' || status === '초과납부'
           ? 'border-primary-line bg-primary-soft text-primary-text'
           : 'border-line2 bg-panel2 text-muted'
       }`}
@@ -76,7 +67,7 @@ function StatusBadge({ status }: { status: PaymentStatus }) {
   );
 }
 
-export function LedgerDetailView({ entry, allEntries, onClose, onSave, onOpenEvidence }: LedgerDetailViewProps) {
+export function LedgerDetailView({ entry, onClose, onSave, onOpenEvidence }: LedgerDetailViewProps) {
   const linkedSemesterId = entry.duesLink?.semesterId;
   const { data: semesters } = useQuery(duesQueries.semesters());
   const { data: linkedSemester } = useQuery({
@@ -95,7 +86,7 @@ export function LedgerDetailView({ entry, allEntries, onClose, onSave, onOpenEvi
   const [error, setError] = useState('');
 
   const displayedEvidences = isEditing ? evidences : entry.evidences;
-  const status = paymentStatus(entry, allEntries, linkedMembers);
+  const status = paymentStatus(entry, linkedMembers);
 
   function resetDraft() {
     setCounterparty(entry.counterparty);
@@ -308,9 +299,7 @@ export function LedgerDetailView({ entry, allEntries, onClose, onSave, onOpenEvi
                   </div>
                 </div>
                 <div className="ml-auto text-right">
-                  <div className="text-faint mb-1.5 text-[10px] font-semibold">
-                    {entry.category === '회비 반환' ? '반환 상태' : '납부 상태'}
-                  </div>
+                  <div className="text-faint mb-1.5 text-[10px] font-semibold">납부 상태</div>
                   <StatusBadge status={status} />
                 </div>
                 <span aria-hidden="true" className="text-faint text-sm">

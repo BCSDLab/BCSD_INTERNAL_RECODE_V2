@@ -77,7 +77,7 @@ function uniqueFilterOptions(entries: Array<[string, string]>): FilterOption<str
 }
 
 function formatMonth(value: string | null) {
-  return value ? value.replace('-', '.') : '계속';
+  return value ? value.replace('-', '.') : '계속';
 }
 
 function normalizeMonthInput(value: string) {
@@ -91,7 +91,7 @@ function isValidMonth(value: string | null) {
 }
 
 function won(amount: number) {
-  return `${amount.toLocaleString('ko-KR')}원`;
+  return `${amount.toLocaleString('ko-KR')}원`;
 }
 
 function defaultDraft(memberId: string): ExemptionDraft {
@@ -126,8 +126,8 @@ function moveSemester(semester: Semester, direction: -1 | 1): Semester {
 
 function fixedRoleOf(exemption: ExemptionPeriod): FixedRole | null {
   const reason = exemption.reason.normalize('NFC');
-  if (reason.endsWith(' 트랙장'.normalize('NFC'))) return 'track-leader';
-  if (reason.endsWith(' 교욱장'.normalize('NFC'))) return 'education-leader';
+  if (reason === '트랙장' || reason.endsWith(' 트랙장')) return 'track-leader';
+  if (reason === '교육장' || reason.endsWith(' 교육장')) return 'education-leader';
   return null;
 }
 
@@ -149,10 +149,10 @@ function monthLabelsOf(semesterId: string) {
 }
 
 function statusLabel(status: MemberDues['months'][number]['status']) {
-  if (status === 'paid') return '완료';
-  if (status === 'unpaid') return '미납';
-  if (status === 'exempt') return '예외';
-  return '납부 비대상';
+  if (status === 'paid') return '완료';
+  if (status === 'unpaid') return '미납';
+  if (status === 'exempt') return '예외';
+  return '납부 비대상';
 }
 
 function ImpactBody({ semesterId, before, after }: { semesterId: string; before: MemberDues; after: MemberDues }) {
@@ -160,7 +160,7 @@ function ImpactBody({ semesterId, before, after }: { semesterId: string; before:
   const changes = after.months
     .map((month, index) => ({ before: before.months[index], after: month, label: monthLabels[index] }))
     .filter((item) => item.before.status !== item.after.status || item.before.description !== item.after.description);
-  const newRefund = Math.max(0, (after.refundAmount ?? 0) - (before.refundAmount ?? 0));
+  const excessChange = (after.excessAmount ?? 0) - (before.excessAmount ?? 0);
 
   return (
     <div className="flex flex-col gap-3 px-[22px] py-5 text-[13px]">
@@ -177,24 +177,26 @@ function ImpactBody({ semesterId, before, after }: { semesterId: string; before:
               >
                 {statusLabel(change.after.status)}
               </span>
-              {change.before.status === 'paid' && change.after.status === 'exempt' && ' · 납불액 반환 대상'}
             </div>
           ))
         ) : (
-          <div className="text-muted">현재 학기 회비에 반영되는 변경이 없습니다.</div>
+          <div className="text-muted">현재 학기 회비에 반영되는 변경이 없습니다.</div>
         )}
       </div>
       <div className="border-line mt-1.5 grid grid-cols-2 gap-2 border-t pt-3 text-[12.5px]">
-        <span className="text-muted">총 부과액</span>
+        <span className="text-muted">총 부과액</span>
         <span className="text-right">
           {won(before.assessedAmount ?? 0)} → <b>{won(after.assessedAmount ?? 0)}</b>
         </span>
-        <span className="text-muted">총 미납액</span>
+        <span className="text-muted">총 미납액</span>
         <span className="text-right">
           {won(before.unpaidAmount ?? 0)} → <b>{won(after.unpaidAmount ?? 0)}</b>
         </span>
-        <span className="text-muted">새로운 반환 필요액</span>
-        <span className="text-danger text-right font-semibold">{won(newRefund)}</span>
+        <span className="text-muted">초과납부액 변화</span>
+        <span className="text-right">
+          {won(before.excessAmount ?? 0)} →{' '}
+          <b className={excessChange > 0 ? 'text-primary-text' : ''}>{won(after.excessAmount ?? 0)}</b>
+        </span>
       </div>
     </div>
   );

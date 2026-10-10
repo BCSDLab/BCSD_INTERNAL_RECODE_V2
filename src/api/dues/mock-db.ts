@@ -4,8 +4,6 @@ import type {
   MemberDuesResponse,
   MonthDuesResponse,
   MonthDuesStatus,
-  RefundReason,
-  RefundStatus,
   SemesterDuesStatus,
   SemesterDuesSummaryResponse,
   SemesterId,
@@ -13,7 +11,6 @@ import type {
 } from '@/api/dues/types';
 import { INITIAL_LEDGER_ENTRIES } from '@/api/ledger/mock-seed';
 import type { EvidenceResponse, LedgerCategory, LedgerEntryResponse } from '@/api/ledger/types';
-import { WITHDRAWAL_EXEMPTION_REASON } from '@/components/dues/exemptions';
 import type { MemberDues, MonthDues } from '@/components/dues/types';
 import {
   CURRENT_SEMESTER_MEMBERS,
@@ -55,26 +52,15 @@ const TRACK_CODES: Record<string, Track> = {
 
 const CATEGORY_CODES: Record<string, LedgerCategory> = {
   회비: 'DUES',
-  '회비 반환': 'DUES_REFUND',
   행사: 'EVENT',
   운영비: 'OPERATION',
   기타: 'ETC',
-};
-
-const REFUND_REASON_CODES: Record<string, RefundReason> = {
-  '초과 납부': 'OVERPAID',
-  '탈퇴 기간': 'WITHDRAWAL_PERIOD',
-  '전액 면제 회원 오입금': 'EXEMPT_MEMBER_DEPOSIT',
 };
 
 const DEFAULT_MONTH_NOTES = new Set(['완료', '연결된 기록 없음', '납부 비대상']);
 
 function trackCode(label: string): Track {
   return TRACK_CODES[label] ?? 'BACKEND';
-}
-
-function refundReasonCode(label: string | undefined): RefundReason | null {
-  return label ? (REFUND_REASON_CODES[label] ?? null) : null;
 }
 
 function seedNumber(id: string) {
@@ -158,18 +144,10 @@ export function listMembers() {
 
 // ---------- 학기 명단 ----------
 
-interface RosterMonth {
-  status: MonthDuesStatus;
-  note: string | null;
-}
-
 interface RosterRow {
   memberId: number;
   /** false면 이 학기 납부 비대상(전 월 NOT_APPLICABLE). */
   applicable: boolean;
-  baseMonths: RosterMonth[];
-  /** 반환을 이미 끝낸 회원의 사유 — 시드에만 있는 값. */
-  completedRefundReason: RefundReason | null;
 }
 
 interface DerivedSemester {
@@ -189,15 +167,7 @@ function monthNote(month: MonthDues) {
 }
 
 function rosterFromSeed(member: SeedMemberDues): RosterRow {
-  return {
-    memberId: memberIdOf(member.id),
-    applicable: member.assessedAmount !== null,
-    baseMonths: member.months.map((month) => ({
-      status: MONTH_STATUS_CODES[month.status],
-      note: month.status === 'exempt' ? null : monthNote(month),
-    })),
-    completedRefundReason: refundReasonCode(member.refundReason),
-  };
+  return { memberId: memberIdOf(member.id), applicable: member.assessedAmount !== null };
 }
 
 const LIVE_SEED_SEMESTER_ID = SEMESTER_DUES_SUMMARIES[0].id;
@@ -209,17 +179,9 @@ const derivedSemesters = new Map<SemesterId, DerivedSemester>([
 
 const STATUS_CODES: Record<MemberDues['status'], SemesterDuesStatus> = {
   paid: 'PAID',
-  partial: 'PARTIAL',
   unpaid: 'UNPAID',
   exempt: 'EXEMPT',
   overpaid: 'OVERPAID',
-};
-
-const REFUND_STATUS_CODES: Record<MemberDues['refundStatus'], RefundStatus> = {
-  none: 'NONE',
-  needed: 'NEEDED',
-  partial: 'PARTIAL',
-  completed: 'COMPLETED',
 };
 
 function staticMemberDues(semesterId: SemesterId, member: SeedMemberDues): MemberDuesResponse {
@@ -233,7 +195,7 @@ function staticMemberDues(semesterId: SemesterId, member: SeedMemberDues): Membe
     months: member.months.map((month, index) => ({
       month: months[index],
       status: MONTH_STATUS_CODES[month.status],
-      exemption: null,
+      exemptions: [],
       note: monthNote(month),
     })),
     status: STATUS_CODES[member.status],
@@ -241,9 +203,6 @@ function staticMemberDues(semesterId: SemesterId, member: SeedMemberDues): Membe
     paidAmount: member.paidAmount,
     unpaidAmount: member.unpaidAmount,
     excessAmount: member.excessAmount ?? 0,
-    refundStatus: REFUND_STATUS_CODES[member.refundStatus],
-    refundReason: refundReasonCode(member.refundReason),
-    refundedAmount: member.refundedAmount ?? 0,
   };
 }
 
@@ -312,8 +271,6 @@ export const entries: LedgerEntryResponse[] = INITIAL_LEDGER_ENTRIES.map((entry)
         track: trackCode(entry.duesLink.track),
         semesterId: entry.duesLink.semesterId,
         requiredAmount: entry.duesLink.requiredAmount,
-        refundReason: refundReasonCode(entry.duesLink.refundReason),
-        refundAmount: entry.duesLink.refundAmount ?? null,
       }
     : null,
   evidences: entry.evidences.map((evidence) => {
@@ -367,18 +324,20 @@ function monthIsInExemption(month: YearMonth, exemption: Pick<ExemptionResponse,
 
 // ---------- 집계 (백엔드가 할 계산) ----------
 
-function sumConfirmed(semesterId: SemesterId, memberId: number, match: (entry: LedgerEntryResponse) => boolean) {
-  return entries
-    .filter(
-      (entry) =>
-        match(entry) &&
-        entry.linkStatus === 'CONFIRMED' &&
-        entry.duesLink?.memberId === memberId &&
-        entry.duesLink.semesterId === semesterId,
-    )
-    .reduce((total, entry) => total + entry.amount, 0);
+/** 이 학기 회비에 연결(CONFIRMED)된 장부 기록. 분류와 무관하게 입금은 더하고 출금은 뺀다. */
+function linkedEntriesOf(semesterId: SemesterId, memberId: number) {
+  return entries.filter(
+    (entry) =>
+      entry.linkStatus === 'CONFIRMED' &&
+      entry.duesLink?.memberId === memberId &&
+      entry.duesLink.semesterId === semesterId,
+  );
 }
 
+/**
+ * 차이 = 연결된 입금 합계 − 연결된 출금 합계 − 부과액. 0이면 완료, 음수면 미납, 양수면 초과납부.
+ * 부과액이 0이고 연결 내역이 없으면 면제다. 월 칸은 표시용 — 순납부액을 앞 달부터 월 회비 단위로 채운다.
+ */
 function deriveMemberDues(
   semesterId: SemesterId,
   semester: DerivedSemester,
@@ -398,89 +357,59 @@ function deriveMemberDues(
   if (!row.applicable) {
     return {
       ...base,
-      months: months.map((month) => ({ month, status: 'NOT_APPLICABLE', exemption: null, note: null })),
+      months: months.map((month) => ({ month, status: 'NOT_APPLICABLE', exemptions: [], note: null })),
       status: 'EXEMPT',
       assessedAmount: null,
       paidAmount: null,
       unpaidAmount: null,
       excessAmount: 0,
-      refundStatus: 'NONE',
-      refundReason: null,
-      refundedAmount: 0,
     };
   }
 
+  // 면제는 겹칠 수 있다. 한 달에 몇 개가 걸려도 그 달 부과액은 0이다.
   const memberExemptions = exemptionList.filter((exemption) => exemption.memberId === member.id);
+  const exemptionsByMonth = months.map((month) =>
+    memberExemptions
+      .filter((item) => monthIsInExemption(month, item))
+      .map(({ id, reason, startMonth, endMonth }) => ({ id, reason, startMonth, endMonth })),
+  );
+  const assessedAmount = exemptionsByMonth.filter((list) => list.length === 0).length * semester.monthlyAmount;
+
+  const linked = linkedEntriesOf(semesterId, member.id);
+  const paidAmount = linked.reduce(
+    (total, entry) => total + (entry.type === 'DEPOSIT' ? entry.amount : -entry.amount),
+    0,
+  );
+  const difference = paidAmount - assessedAmount;
+
+  let remaining = paidAmount;
   const monthDues: MonthDuesResponse[] = months.map((month, index) => {
-    const exemption = memberExemptions.find((item) => monthIsInExemption(month, item));
-    if (exemption) {
-      const { id, reason, startMonth, endMonth } = exemption;
-      return { month, status: 'EXEMPT', exemption: { id, reason, startMonth, endMonth }, note: null };
+    const monthExemptions = exemptionsByMonth[index];
+    if (monthExemptions.length > 0) return { month, status: 'EXEMPT', exemptions: monthExemptions, note: null };
+    if (remaining >= semester.monthlyAmount) {
+      remaining -= semester.monthlyAmount;
+      return { month, status: 'PAID', exemptions: [], note: null };
     }
-    const original = row.baseMonths[index] ?? { status: 'UNPAID', note: null };
-    return original.status === 'EXEMPT'
-      ? { month, status: 'UNPAID', exemption: null, note: null }
-      : { month, status: original.status, exemption: null, note: original.note };
+    return { month, status: 'UNPAID', exemptions: [], note: null };
   });
 
-  const assessedAmount = monthDues.filter((month) => month.status !== 'EXEMPT').length * semester.monthlyAmount;
-  const grossPaid = sumConfirmed(
-    semesterId,
-    member.id,
-    (entry) => entry.type === 'DEPOSIT' && entry.category === 'DUES',
-  );
-  const refundedAmount = sumConfirmed(
-    semesterId,
-    member.id,
-    (entry) => entry.type === 'WITHDRAWAL' && entry.category === 'DUES_REFUND',
-  );
-
-  const grossExcess = Math.max(0, grossPaid - assessedAmount);
-  const remainingExcess = Math.max(0, grossExcess - refundedAmount);
-  const netPaid = Math.max(0, grossPaid - refundedAmount);
-
   const status: SemesterDuesStatus =
-    remainingExcess > 0
-      ? 'OVERPAID'
-      : assessedAmount === 0
-        ? 'EXEMPT'
-        : netPaid <= 0
+    assessedAmount === 0 && linked.length === 0
+      ? 'EXEMPT'
+      : difference === 0
+        ? 'PAID'
+        : difference < 0
           ? 'UNPAID'
-          : netPaid < assessedAmount
-            ? 'PARTIAL'
-            : 'PAID';
-
-  const refundStatus: RefundStatus =
-    grossExcess === 0
-      ? refundedAmount > 0
-        ? 'COMPLETED'
-        : 'NONE'
-      : refundedAmount === 0
-        ? 'NEEDED'
-        : refundedAmount < grossExcess
-          ? 'PARTIAL'
-          : 'COMPLETED';
-
-  const hasWithdrawalExemption = memberExemptions.some((exemption) => exemption.reason === WITHDRAWAL_EXEMPTION_REASON);
+          : 'OVERPAID';
 
   return {
     ...base,
     months: monthDues,
     status,
     assessedAmount,
-    paidAmount: netPaid,
-    unpaidAmount: Math.max(0, assessedAmount - netPaid),
-    excessAmount: remainingExcess,
-    refundStatus,
-    refundReason:
-      remainingExcess > 0
-        ? hasWithdrawalExemption
-          ? 'WITHDRAWAL_PERIOD'
-          : 'OVERPAID'
-        : refundStatus === 'COMPLETED'
-          ? row.completedRefundReason
-          : null,
-    refundedAmount,
+    paidAmount,
+    unpaidAmount: Math.max(0, -difference),
+    excessAmount: Math.max(0, difference),
   };
 }
 
@@ -496,17 +425,14 @@ function deriveSummary(semesterId: SemesterId, semester: DerivedSemester, list: 
     exemptMembers,
     targetMembers: list.length - exemptMembers,
     completedMembers: list.filter((member) => member.status === 'PAID' || member.status === 'OVERPAID').length,
-    unpaidMembers: list.filter((member) => member.status === 'UNPAID' || member.status === 'PARTIAL').length,
+    unpaidMembers: list.filter((member) => member.status === 'UNPAID').length,
     totalAmount: list.reduce((total, member) => total + (member.assessedAmount ?? 0), 0),
-    paidAmount: list.reduce((total, member) => total + Math.min(member.paidAmount ?? 0, member.assessedAmount ?? 0), 0),
-    unpaidAmount: list.reduce((total, member) => total + (member.unpaidAmount ?? 0), 0),
-    needsReview: list.some(
-      (member) =>
-        member.refundStatus === 'NEEDED' ||
-        member.refundStatus === 'PARTIAL' ||
-        member.status === 'UNPAID' ||
-        member.status === 'PARTIAL',
+    paidAmount: list.reduce(
+      (total, member) => total + Math.max(0, Math.min(member.paidAmount ?? 0, member.assessedAmount ?? 0)),
+      0,
     ),
+    unpaidAmount: list.reduce((total, member) => total + (member.unpaidAmount ?? 0), 0),
+    needsReview: list.some((member) => member.status === 'UNPAID' || member.status === 'OVERPAID'),
   };
   return summary;
 }
@@ -535,11 +461,6 @@ export function semesterSummary(semesterId: SemesterId): SemesterDuesSummaryResp
 export function addSemester(semesterId: SemesterId, monthlyAmount: number) {
   derivedSemesters.set(semesterId, {
     monthlyAmount,
-    roster: members.map((member) => ({
-      memberId: member.id,
-      applicable: true,
-      baseMonths: Array.from({ length: 6 }, () => ({ status: 'UNPAID' as const, note: null })),
-      completedRefundReason: null,
-    })),
+    roster: members.map((member) => ({ memberId: member.id, applicable: true })),
   });
 }

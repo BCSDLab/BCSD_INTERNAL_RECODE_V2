@@ -7,8 +7,6 @@ import type {
   MemberDuesResponse,
   MonthDuesResponse,
   MonthDuesStatus,
-  RefundReason,
-  RefundStatus,
   SemesterDuesStatus,
   SemesterDuesSummaryResponse,
   SemesterId,
@@ -19,12 +17,6 @@ import type {
  * 문자열 ID·소문자 상태·한글 라벨을 쓰므로, API 모양이 바뀌어도 이 파일만 고치면 된다.
  */
 
-export const REFUND_REASON_LABELS: Record<RefundReason, string> = {
-  OVERPAID: '초과 납부',
-  WITHDRAWAL_PERIOD: '탈퇴 기간',
-  EXEMPT_MEMBER_DEPOSIT: '전액 면제 회원 오입금',
-};
-
 const MONTH_STATUS: Record<MonthDuesStatus, MonthDues['status']> = {
   PAID: 'paid',
   EXEMPT: 'exempt',
@@ -34,17 +26,9 @@ const MONTH_STATUS: Record<MonthDuesStatus, MonthDues['status']> = {
 
 const SEMESTER_STATUS: Record<SemesterDuesStatus, MemberDues['status']> = {
   PAID: 'paid',
-  PARTIAL: 'partial',
   UNPAID: 'unpaid',
   EXEMPT: 'exempt',
   OVERPAID: 'overpaid',
-};
-
-const REFUND_STATUS: Record<RefundStatus, MemberDues['refundStatus']> = {
-  NONE: 'none',
-  NEEDED: 'needed',
-  PARTIAL: 'partial',
-  COMPLETED: 'completed',
 };
 
 export function semesterLabel(semesterId: SemesterId) {
@@ -69,16 +53,18 @@ export function toSemesterSummary(dto: SemesterDuesSummaryResponse): SemesterDue
   };
 }
 
+/** 면제가 겹친 달은 사유를 ", "로 잇는다. 면제가 하나뿐이고 시작 달이면 기간을 덧붙인다. */
 function monthDescription(dto: MonthDuesResponse) {
   if (dto.status === 'EXEMPT') {
-    const exemption = dto.exemption;
-    if (!exemption) return dto.note ?? '면제';
+    if (dto.exemptions.length === 0) return dto.note ?? '면제';
+    if (dto.exemptions.length > 1) return [...new Set(dto.exemptions.map((item) => item.reason))].join(', ');
+    const [exemption] = dto.exemptions;
     if (dto.month !== exemption.startMonth) return exemption.reason;
     const period = `${exemption.startMonth.replace('-', '.')}~${exemption.endMonth?.replace('-', '.') ?? '계속'}`;
     return `${exemption.reason} ${period}`;
   }
   if (dto.status === 'NOT_APPLICABLE') return '납부 비대상';
-  return dto.note ?? (dto.status === 'PAID' ? '완료' : '연결된 기록 없음');
+  return dto.note ?? (dto.status === 'PAID' ? '완료' : '미납');
 }
 
 export function toMemberDues(dto: MemberDuesResponse): MemberDues {
@@ -94,10 +80,6 @@ export function toMemberDues(dto: MemberDuesResponse): MemberDues {
     paidAmount: dto.paidAmount,
     unpaidAmount: dto.unpaidAmount,
     excessAmount: dto.excessAmount > 0 ? dto.excessAmount : undefined,
-    refundStatus: REFUND_STATUS[dto.refundStatus],
-    refundAmount: dto.excessAmount > 0 ? dto.excessAmount : undefined,
-    refundReason: dto.refundReason ? REFUND_REASON_LABELS[dto.refundReason] : undefined,
-    refundedAmount: dto.refundedAmount > 0 ? dto.refundedAmount : undefined,
   };
 }
 

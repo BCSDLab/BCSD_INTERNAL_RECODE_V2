@@ -3,13 +3,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { ApiError } from '@/api/client';
 import { invalidateLedgerAndDues } from '@/api/dues/queries';
 import { commitImport, updateLedgerEntry, uploadEvidence } from '@/api/ledger/api';
 import { toCategoryCode, toEvidence, toImportCategoryCode } from '@/api/ledger/mappers';
 import { ledgerQueries } from '@/api/ledger/queries';
-import { useDuesUi } from '@/components/dues/DuesUiProvider';
 import { EvidenceViewer } from '@/components/ledger/EvidenceViewer';
 import { LedgerDetailView } from '@/components/ledger/LedgerDetailView';
 import { LedgerListView } from '@/components/ledger/LedgerListView';
@@ -20,14 +18,6 @@ import type { Evidence, LedgerEntry, LedgerFilters, LedgerScreen } from '@/compo
 import { EMPTY_LEDGER_FILTERS } from '@/components/ledger/types';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { isCompleteLedgerDate } from '@/components/ledger/utils';
-import {
-  isDirectRefundCandidate,
-  refundOriginHref,
-  useLinkRefundEntry,
-  useRefundMember,
-} from '@/components/dues/RefundFlowAssistant';
-import { Modal } from '@/components/ui/modal';
-import { formatOccurredAt, formatWon } from '@/components/ledger/utils';
 
 type EvidenceState = { entryId: string; evidenceId: string } | null;
 
@@ -36,19 +26,12 @@ const EMPTY_ENTRIES: LedgerEntry[] = [];
 export function LedgerPageClient() {
   const queryClient = useQueryClient();
   const { data: entries = EMPTY_ENTRIES, isPending, isError } = useQuery(ledgerQueries.entries());
-  const { refundFlow, cancelRefundFlow } = useDuesUi();
-  const linkRefund = useLinkRefundEntry();
-  const router = useRouter();
   const [filters, setFilters] = useState<LedgerFilters>(EMPTY_LEDGER_FILTERS);
   const [screen, setScreen] = useState<LedgerScreen>({ name: 'list' });
   const [evidenceState, setEvidenceState] = useState<EvidenceState>(null);
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [toast, setToast] = useState('');
-  const [pendingRefundEntryId, setPendingRefundEntryId] = useState('');
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const directRefundFlow = refundFlow?.stage === 'direct' ? refundFlow : null;
-  const refundMember = useRefundMember();
-  const pendingRefundEntry = entries.find((entry) => entry.id === pendingRefundEntryId);
 
   useEffect(
     () => () => {
@@ -183,30 +166,6 @@ export function LedgerPageClient() {
         </div>
       </header>
 
-      {directRefundFlow && refundMember && (
-        <div className="border-primary-line bg-primary-soft mx-8 mt-5 flex items-center gap-3 rounded-[11px] border px-4 py-3">
-          <div>
-            <div className="text-primary-text text-[13px] font-bold">
-              {refundMember.name}님의 반환 출금을 찾고 있습니다.
-            </div>
-            <div className="text-muted mt-1 text-[11.5px]">
-              반환 금액 {formatWon(refundMember.refundAmount ?? 0)} · 연결하지 않은 출금의 ‘선택’ 버튼을 누르세요.
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => {
-              const href = refundOriginHref(directRefundFlow.origin);
-              cancelRefundFlow();
-              router.push(href);
-            }}
-            className="border-line2 text-muted hover:text-primary-text ml-auto cursor-pointer rounded-[9px] border px-3 py-2 text-xs"
-          >
-            취소하고 돌아가기
-          </button>
-        </div>
-      )}
-
       {isError ? (
         <div className="text-muted px-8 py-24 text-center text-[13px]">장부를 불러오지 못했습니다.</div>
       ) : isPending ? (
@@ -220,62 +179,12 @@ export function LedgerPageClient() {
           onResetFilters={() => setFilters(EMPTY_LEDGER_FILTERS)}
           onOpenEntry={(entryId) => setScreen({ name: 'detail', entryId })}
           onOpenImport={() => setIsImportOpen(true)}
-          refundSelection={
-            directRefundFlow && refundMember
-              ? {
-                  isEligible: (entry) => isDirectRefundCandidate(entry, refundMember.refundAmount ?? 0),
-                  onSelect: setPendingRefundEntryId,
-                }
-              : undefined
-          }
         />
-      )}
-
-      {directRefundFlow && refundMember && pendingRefundEntry && (
-        <Modal
-          title={`${refundMember.name} 회비 반환 · 출금 연결 확정`}
-          onClose={() => setPendingRefundEntryId('')}
-          width="480px"
-          footer={
-            <>
-              <button
-                type="button"
-                onClick={() => setPendingRefundEntryId('')}
-                className="border-line2 text-muted ml-auto cursor-pointer rounded-[9px] border px-3 py-2 text-xs"
-              >
-                취소
-              </button>
-              <button
-                type="button"
-                disabled={linkRefund.isPending}
-                onClick={() => {
-                  const href = refundOriginHref(directRefundFlow.origin);
-                  linkRefund.mutate(pendingRefundEntry.id, {
-                    onSuccess: () => {
-                      setPendingRefundEntryId('');
-                      router.push(href);
-                    },
-                    onError: () => flash('반환 출금을 연결하지 못했습니다.'),
-                  });
-                }}
-                className="bg-primary text-on-primary cursor-pointer rounded-[9px] px-3.5 py-[9px] text-xs font-semibold"
-              >
-                연결 확정
-              </button>
-            </>
-          }
-        >
-          <div className="px-6 py-5 text-[13px] leading-[1.7]">
-            <b>{formatOccurredAt(pendingRefundEntry.occurredAt)}</b> {pendingRefundEntry.counterparty}{' '}
-            <b>{formatWon(pendingRefundEntry.amount)}</b> 출금을 {refundMember.name}님의 회비 반환으로 연결할까요?
-          </div>
-        </Modal>
       )}
 
       {detailEntry && (
         <LedgerDetailView
           entry={detailEntry}
-          allEntries={entries}
           onClose={() => setScreen({ name: 'list' })}
           onSave={saveEntry}
           onOpenEvidence={(evidenceId) => setEvidenceState({ entryId: detailEntry.id, evidenceId })}

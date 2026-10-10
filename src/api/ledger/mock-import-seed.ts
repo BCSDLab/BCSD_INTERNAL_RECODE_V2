@@ -47,7 +47,7 @@ export function createMockImportTransactions(): ImportTransaction[] {
       counterparty: '한소미',
       amount: 10000,
       selected: true,
-      category: '회비 반환',
+      category: '회비',
       duesMatchId: 'member-somi',
       note: '',
       evidences: [],

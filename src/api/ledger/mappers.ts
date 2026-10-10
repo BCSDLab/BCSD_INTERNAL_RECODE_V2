@@ -1,4 +1,4 @@
-import { REFUND_REASON_LABELS, semesterLabel } from '@/api/dues/mappers';
+import { semesterLabel } from '@/api/dues/mappers';
 import type { ImportTransaction } from '@/components/ledger/import/types';
 import type { Evidence, LedgerCategory, LedgerEntry } from '@/components/ledger/types';
 import { TRACK_LABELS } from '@/lib/member-labels';
@@ -15,7 +15,6 @@ import type {
 
 const CATEGORY_LABELS: Record<LedgerCategoryCode, LedgerCategory> = {
   DUES: '회비',
-  DUES_REFUND: '회비 반환',
   EVENT: '행사',
   OPERATION: '운영비',
   ETC: '기타',
@@ -77,8 +76,6 @@ export function toLedgerEntry(dto: LedgerEntryResponse): LedgerEntry {
           semesterId: link.semesterId,
           semester: semesterLabel(link.semesterId),
           requiredAmount: link.requiredAmount,
-          refundReason: link.refundReason ? REFUND_REASON_LABELS[link.refundReason] : undefined,
-          refundAmount: link.refundAmount ?? undefined,
         }
       : undefined,
     evidences: dto.evidences.map(toEvidence),

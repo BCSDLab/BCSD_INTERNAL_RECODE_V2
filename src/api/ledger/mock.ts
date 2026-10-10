@@ -33,7 +33,7 @@ function findEntry(entryId: number) {
 }
 
 function isDuesCategory(category: LedgerEntryResponse['category']) {
-  return category === 'DUES' || category === 'DUES_REFUND';
+  return category === 'DUES';
 }
 
 function attachEvidences(evidenceIds: number[]) {
@@ -112,12 +112,7 @@ export function mockPreviewImport(file: File): Promise<ImportPreviewResponse> {
       type: transaction.type === 'deposit' ? ('DEPOSIT' as const) : ('WITHDRAWAL' as const),
       counterparty: transaction.counterparty,
       amount: transaction.amount,
-      suggestedCategory:
-        transaction.category === '회비'
-          ? ('DUES' as const)
-          : transaction.category === '회비 반환'
-            ? ('DUES_REFUND' as const)
-            : ('ETC' as const),
+      suggestedCategory: transaction.category === '회비' ? ('DUES' as const) : ('ETC' as const),
       suggestedMemberId: null,
     }));
   return respond({ fileName: file.name, transactions }, 900);
@@ -138,13 +133,7 @@ export function mockCommitImport(body: ImportCommitRequest): Promise<ImportCommi
       type: transaction.type,
       category: transaction.category,
       counterparty: transaction.counterparty,
-      description:
-        transaction.note ||
-        (transaction.category === 'DUES'
-          ? `${semesterLabel} 회비`
-          : transaction.category === 'DUES_REFUND'
-            ? `${semesterLabel} 회비 반환`
-            : '가져온 거래내역'),
+      description: transaction.note || (transaction.category === 'DUES' ? `${semesterLabel} 회비` : '가져온 거래내역'),
       note: transaction.note,
       amount: transaction.amount,
       balance,

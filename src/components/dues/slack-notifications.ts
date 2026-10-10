@@ -127,11 +127,13 @@ export function createUnpaidNotificationMessage({
   duesListUrl: string;
   managerPhoneNumber?: string | null;
 }) {
-  return template
-    .replaceAll('{이름}', member.name)
-    .replaceAll('{회비이름}', duesName(semester))
-    .replaceAll('{미납액}', formatCurrency(member.unpaidAmount ?? 0))
-    .replaceAll('{회비납부목록URL}', duesListUrl || '{회비납부목록URL}')
-    // {담당자 멘션}은 그대로 둔다 — 서버가 로그인한 관리자의 Slack ID로 바꾼다.
-    .replaceAll('{전화번호}', managerPhoneNumber?.trim() || '{전화번호}');
+  return (
+    template
+      .replaceAll('{이름}', member.name)
+      .replaceAll('{회비이름}', duesName(semester))
+      .replaceAll('{미납액}', formatCurrency(member.unpaidAmount ?? 0))
+      .replaceAll('{회비납부목록URL}', duesListUrl || '{회비납부목록URL}')
+      // {담당자 멘션}은 그대로 둔다 — 서버가 로그인한 관리자의 Slack ID로 바꾼다.
+      .replaceAll('{전화번호}', managerPhoneNumber?.trim() || '{전화번호}')
+  );
 }

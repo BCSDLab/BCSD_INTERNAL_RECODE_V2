@@ -1,8 +1,11 @@
-import { WITHDRAWAL_EXEMPTION_REASON } from '@/components/dues/exemptions';
 import type { ExemptionPeriod } from '@/components/dues/exemptions';
 import type { MemberDues, MonthDues, MonthDuesStatus, SemesterDuesSummary } from '@/components/dues/types';
 
-/** mock 전용 시드. 화면 모양(뷰 모델)으로 적고 ./mock-db가 DTO로 바꿔 들고 있는다. */
+/**
+ * mock 전용 시드. 화면 모양(뷰 모델)으로 적고 ./mock-db가 DTO로 바꿔 들고 있는다.
+ * 현재 학기(2026-2)의 월 칸·상태·금액은 mock-db가 장부 연결과 면제로 다시 계산하므로 여기 값은 쓰이지 않는다
+ * (지난 학기 시드의 바탕으로만 쓴다).
+ */
 
 /** slackId는 "이메일로 Slack 계정을 찾을 수 있는 회원"을 표시하는 시드 전용 값이다. */
 export type SeedMemberDues = Omit<MemberDues, 'slackId'> & { slackId?: string };
@@ -74,9 +77,6 @@ export const CURRENT_SEMESTER_MEMBERS: SeedMemberDues[] = [
     paidAmount: 60000,
     unpaidAmount: 0,
     excessAmount: 10000,
-    refundStatus: 'partial',
-    refundAmount: 10000,
-    refundReason: '초과 납부',
   },
   {
     id: 'member-jihoon',
@@ -89,7 +89,6 @@ export const CURRENT_SEMESTER_MEMBERS: SeedMemberDues[] = [
     assessedAmount: null,
     paidAmount: null,
     unpaidAmount: null,
-    refundStatus: 'none',
   },
   {
     id: 'member-doyun',
@@ -102,7 +101,6 @@ export const CURRENT_SEMESTER_MEMBERS: SeedMemberDues[] = [
     assessedAmount: 60000,
     paidAmount: 60000,
     unpaidAmount: 0,
-    refundStatus: 'none',
   },
   {
     id: 'member-seojun',
@@ -115,7 +113,6 @@ export const CURRENT_SEMESTER_MEMBERS: SeedMemberDues[] = [
     assessedAmount: 60000,
     paidAmount: 60000,
     unpaidAmount: 0,
-    refundStatus: 'none',
   },
   {
     id: 'member-haneul',
@@ -124,11 +121,10 @@ export const CURRENT_SEMESTER_MEMBERS: SeedMemberDues[] = [
     track: 'Frontend',
     slackId: 'U_DUES_HANEUL',
     months: [paid(), paid(), paid(), paid(), paid(), unpaid('부족 납부 5,000원(10,000원 중)')],
-    status: 'partial',
+    status: 'unpaid',
     assessedAmount: 60000,
     paidAmount: 55000,
     unpaidAmount: 5000,
-    refundStatus: 'none',
   },
   {
     id: 'member-hangyeol',
@@ -136,19 +132,11 @@ export const CURRENT_SEMESTER_MEMBERS: SeedMemberDues[] = [
     studentNumber: '2022174130',
     track: 'Frontend',
     slackId: 'U_DUES_HANGYEOL',
-    months: [
-      exempt('Frontend 트랙장 2026.09~11'),
-      exempt('Frontend 트랙장'),
-      exempt('Frontend 트랙장'),
-      paid(),
-      paid(),
-      paid(),
-    ],
+    months: [exempt('트랙장 2026.09~11'), exempt('트랙장'), exempt('트랙장'), paid(), paid(), paid()],
     status: 'paid',
     assessedAmount: 30000,
     paidAmount: 30000,
     unpaidAmount: 0,
-    refundStatus: 'none',
   },
   {
     id: 'member-somi',
@@ -156,15 +144,12 @@ export const CURRENT_SEMESTER_MEMBERS: SeedMemberDues[] = [
     studentNumber: '2021174093',
     track: 'Backend',
     slackId: 'U_DUES_SOMI',
-    months: [paid(), paid(), paid(), exempt('탈퇴 2026.12~계속'), exempt('탈퇴'), exempt('탈퇴')],
+    months: [paid(), paid(), paid(), exempt('활동 중지 2026.12~계속'), exempt('활동 중지'), exempt('활동 중지')],
     status: 'overpaid',
     assessedAmount: 30000,
     paidAmount: 40000,
     unpaidAmount: 0,
     excessAmount: 10000,
-    refundStatus: 'needed',
-    refundAmount: 10000,
-    refundReason: '탈퇴 기간',
   },
   {
     id: 'member-mentor',
@@ -177,7 +162,6 @@ export const CURRENT_SEMESTER_MEMBERS: SeedMemberDues[] = [
     assessedAmount: 0,
     paidAmount: 0,
     unpaidAmount: 0,
-    refundStatus: 'completed',
   },
   {
     id: 'member-minjun',
@@ -190,7 +174,6 @@ export const CURRENT_SEMESTER_MEMBERS: SeedMemberDues[] = [
     assessedAmount: 60000,
     paidAmount: 43000,
     unpaidAmount: 20000,
-    refundStatus: 'none',
   },
   {
     id: 'member-seoyeon',
@@ -202,7 +185,6 @@ export const CURRENT_SEMESTER_MEMBERS: SeedMemberDues[] = [
     assessedAmount: 60000,
     paidAmount: 50000,
     unpaidAmount: 10000,
-    refundStatus: 'none',
   },
   {
     id: 'member-jian',
@@ -222,7 +204,6 @@ export const CURRENT_SEMESTER_MEMBERS: SeedMemberDues[] = [
     assessedAmount: 60000,
     paidAmount: 30000,
     unpaidAmount: 30000,
-    refundStatus: 'none',
   },
   {
     id: 'member-taeo',
@@ -230,19 +211,11 @@ export const CURRENT_SEMESTER_MEMBERS: SeedMemberDues[] = [
     studentNumber: '2024174210',
     track: 'Backend',
     slackId: 'U_DUES_TAEO',
-    months: [
-      exempt('부트캠프(소프티어) 2026.09~11'),
-      exempt('부트캠프(소프티어)'),
-      exempt('부트캠프(소프티어)'),
-      paid(),
-      paid(),
-      paid(),
-    ],
+    months: [exempt('부트캠프 2026.09~11'), exempt('부트캠프'), exempt('부트캠프'), paid(), paid(), paid()],
     status: 'paid',
     assessedAmount: 30000,
     paidAmount: 30000,
     unpaidAmount: 0,
-    refundStatus: 'none',
   },
   {
     id: 'member-seoa',
@@ -255,7 +228,6 @@ export const CURRENT_SEMESTER_MEMBERS: SeedMemberDues[] = [
     assessedAmount: 0,
     paidAmount: 0,
     unpaidAmount: 0,
-    refundStatus: 'none',
   },
 ];
 
@@ -265,15 +237,12 @@ export function getSemesterMembers(semesterId: string): SeedMemberDues[] {
   if (semesterId === '2026-1') {
     return CURRENT_SEMESTER_MEMBERS.slice(0, 10).map((member, index) => ({
       ...member,
-      months: Array.from({ length: 6 }, () => (index === 9 ? exempt('예외') : paid())),
+      months: Array.from({ length: 6 }, () => (index === 9 ? exempt('휴학') : paid())),
       status: index === 9 ? 'exempt' : 'paid',
       assessedAmount: index === 9 ? 0 : 60000,
       paidAmount: index === 9 ? 0 : 60000,
       unpaidAmount: 0,
       excessAmount: undefined,
-      refundStatus: 'none',
-      refundAmount: undefined,
-      refundReason: undefined,
     }));
   }
 
@@ -287,9 +256,6 @@ export function getSemesterMembers(semesterId: string): SeedMemberDues[] {
     paidAmount: index === 7 ? 50000 : 60000,
     unpaidAmount: index === 7 ? 10000 : 0,
     excessAmount: undefined,
-    refundStatus: 'none',
-    refundAmount: undefined,
-    refundReason: undefined,
   }));
 }
 
@@ -297,7 +263,7 @@ export const INITIAL_EXEMPTIONS: ExemptionPeriod[] = [
   {
     id: 'exemption-somi',
     memberId: 'member-somi',
-    reason: WITHDRAWAL_EXEMPTION_REASON,
+    reason: '활동 중지',
     note: '',
     startMonth: '2026-12',
     endMonth: null,
@@ -305,17 +271,26 @@ export const INITIAL_EXEMPTIONS: ExemptionPeriod[] = [
   {
     id: 'exemption-hangyeol',
     memberId: 'member-hangyeol',
-    reason: 'Frontend 트랙장',
-    note: '',
+    reason: '트랙장',
+    note: 'Frontend',
     startMonth: '2026-09',
     endMonth: '2026-11',
   },
   {
     id: 'exemption-taeo',
     memberId: 'member-taeo',
-    reason: '부트캠프(소프티어)',
-    note: '',
+    reason: '부트캠프',
+    note: '소프티어',
     startMonth: '2026-09',
+    endMonth: '2026-11',
+  },
+  // 강태오 11월은 부트캠프와 겹친다 — 겹쳐도 그 달 부과액은 한 번만 0이 된다.
+  {
+    id: 'exemption-taeo-job',
+    memberId: 'member-taeo',
+    reason: '취업',
+    note: '',
+    startMonth: '2026-11',
     endMonth: '2026-11',
   },
   {
@@ -335,21 +310,30 @@ export const INITIAL_EXEMPTIONS: ExemptionPeriod[] = [
     endMonth: null,
   },
   {
-    id: 'exemption-mentor-conference',
+    id: 'exemption-mentor-lead',
     memberId: 'member-mentor',
-    reason: '해외 학회 참가'.normalize('NFC'),
+    reason: '팀장',
     note: '',
     startMonth: '2026-10',
     endMonth: '2026-10',
   },
 ];
 
+/** 면제 사유 기본 목록. 화면에서 새 사유를 저장하면 뒤에 덧붙는다. */
 export const INITIAL_EXEMPTION_REASONS = [
-  '해외 연수',
-  'Frontend 트랙장',
-  WITHDRAWAL_EXEMPTION_REASON,
   '멘토',
-  '부트캠프(소프티어)',
+  '회장',
+  '부회장',
+  '트랙장',
+  '교육장',
+  '팀장',
   '졸업',
-  '해외 학회 참가',
+  '군휴학',
+  '질병휴학',
+  '휴학',
+  '활동 중지',
+  '프로젝트 미참여',
+  '부트캠프',
+  '취업',
+  '연락두절',
 ];

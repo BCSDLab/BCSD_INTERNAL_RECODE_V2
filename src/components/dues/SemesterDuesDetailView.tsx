@@ -24,12 +24,10 @@ const DEFAULT_MONTHLY_DUES = 10000;
 
 type FilterKey = 'name' | 'track' | 'error' | 'status';
 type ErrorKind = 'surplus' | 'exact' | 'shortage' | 'not-applicable';
-type FilteredDuesStatus = Exclude<SemesterDuesStatus, 'partial'>;
-type StateFilter = `dues-${FilteredDuesStatus}`;
+type StateFilter = `dues-${SemesterDuesStatus}`;
 
 const STATUS_LABELS: Record<SemesterDuesStatus, string> = {
   paid: '완료',
-  partial: '미납',
   unpaid: '미납',
   exempt: '면제',
   overpaid: '초과납부',
@@ -70,8 +68,7 @@ function errorKind(member: MemberDues): ErrorKind {
 }
 
 function stateKey(member: MemberDues): StateFilter {
-  const duesStatus = member.status === 'partial' ? 'unpaid' : member.status;
-  return `dues-${duesStatus}`;
+  return `dues-${member.status}`;
 }
 
 function formatAmount(amount: number | null) {
@@ -92,7 +89,7 @@ function StatusChip({ status }: { status: SemesterDuesStatus }) {
   const tone =
     status === 'paid'
       ? 'border-success-line bg-success-soft text-text'
-      : status === 'unpaid' || status === 'partial'
+      : status === 'unpaid'
         ? 'border-danger-line bg-danger-soft text-danger'
         : status === 'overpaid'
           ? 'border-primary-line bg-primary-soft text-primary-text'
@@ -159,9 +156,7 @@ export function SemesterDuesDetailView({
     [members],
   );
   const unlinkedDuesCount = ledgerEntries.filter(
-    (entry) =>
-      (entry.category === '회비' || entry.category === '회비 반환') &&
-      (!entry.duesLink || entry.linkStatus !== 'confirmed'),
+    (entry) => entry.category === '회비' && (!entry.duesLink || entry.linkStatus !== 'confirmed'),
   ).length;
   const canLinkLedgerEntries = unlinkedDuesCount > 0 && (semester.unpaidMembers > 0 || semester.needsReview);
 

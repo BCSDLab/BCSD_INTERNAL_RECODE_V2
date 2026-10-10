@@ -1,5 +1,5 @@
 import type { Track } from '@/api/auth/types';
-import type { RefundReason, SemesterId } from '@/api/dues/types';
+import type { SemesterId } from '@/api/dues/types';
 
 /**
  * 장부 API 계약 초안(DTO). 화면은 components/ledger/types의 뷰 모델을 쓰고, 둘 사이 변환은
@@ -8,10 +8,10 @@ import type { RefundReason, SemesterId } from '@/api/dues/types';
 
 export type EntryType = 'DEPOSIT' | 'WITHDRAWAL';
 
-/** 화면 라벨: 회비 / 회비 반환 / 행사 / 운영비 / 기타. */
-export type LedgerCategory = 'DUES' | 'DUES_REFUND' | 'EVENT' | 'OPERATION' | 'ETC';
+/** 화면 라벨: 회비 / 행사 / 운영비 / 기타. 회비 출금도 DUES다(반환 분류 없음). */
+export type LedgerCategory = 'DUES' | 'EVENT' | 'OPERATION' | 'ETC';
 
-/** DUES·DUES_REFUND만 PENDING/CONFIRMED가 될 수 있고, 나머지 분류는 항상 NONE이다. */
+/** DUES만 PENDING/CONFIRMED가 될 수 있고, 나머지 분류는 항상 NONE이다. */
 export type LinkStatus = 'CONFIRMED' | 'PENDING' | 'NONE';
 
 export interface EvidenceResponse {
@@ -30,8 +30,6 @@ export interface DuesLinkResponse {
   semesterId: SemesterId;
   /** 연결 시점 학기 부과액. */
   requiredAmount: number;
-  refundReason: RefundReason | null;
-  refundAmount: number | null;
 }
 
 export interface LedgerEntryResponse {
@@ -73,7 +71,7 @@ export interface LedgerEntryListResponse {
 /**
  * PATCH /v1/admin/ledger/entries/{id} — 상세 화면 수정.
  * 금액·시각·입출금 구분은 은행 거래 원본이라 바꾸지 않는다. 분류를 바꾸면 서버가 연결을 끊고
- * DUES·DUES_REFUND면 PENDING, 아니면 NONE으로 되돌린다.
+ * DUES면 PENDING, 아니면 NONE으로 되돌린다.
  */
 export interface LedgerEntryUpdateRequest {
   counterparty: string;
@@ -83,7 +81,7 @@ export interface LedgerEntryUpdateRequest {
   evidenceIds: number[];
 }
 
-/** PUT /v1/admin/ledger/entries/{id}/dues-link — 단건 연결(반환 출금 연결 포함). DELETE는 연결 해제. */
+/** PUT /v1/admin/ledger/entries/{id}/dues-link — 단건 연결(입금·출금 공통). DELETE는 연결 해제. */
 export interface DuesLinkRequest {
   memberId: number;
   semesterId: SemesterId;
@@ -103,7 +101,7 @@ export interface EvidencePresignedUrlResponse {
 
 // ---------- 거래내역 가져오기 (신한 .xlsx) ----------
 
-export type ImportCategory = Extract<LedgerCategory, 'DUES' | 'DUES_REFUND' | 'ETC'>;
+export type ImportCategory = Extract<LedgerCategory, 'DUES' | 'ETC'>;
 
 export interface ImportTransactionResponse {
   /** 은행 거래 지문(시각·금액·상대·잔액) 해시. 커밋 때 그대로 돌려보내 서버가 중복을 막는다. */

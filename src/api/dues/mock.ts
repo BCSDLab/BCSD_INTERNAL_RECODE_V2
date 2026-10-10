@@ -43,14 +43,13 @@ function requireMembers(semesterId: SemesterId) {
 }
 
 /**
- * 장부 기록 하나를 회원의 학기 회비에 연결한다. 출금이면 회비 반환으로 본다.
- * 반환 금액은 연결 **전** 남은 초과분이다 — 연결하고 나면 초과분이 줄어든다.
+ * 장부 기록 하나를 회원의 학기 회비에 연결한다. 입금·출금 모두 같은 흐름이다 —
+ * 입금은 납부액에 더해지고 출금은 빠진다. 연결하면 분류는 회비가 된다.
  */
 export function linkEntryToMember(entry: LedgerEntryResponse, memberId: number, semesterId: SemesterId) {
   const member = requireMembers(semesterId).find((item) => item.memberId === memberId);
   if (!member) throw new ApiError(404, '이 학기 회비 대상 회원이 아닙니다.');
-  const isRefund = entry.type === 'WITHDRAWAL';
-  entry.category = isRefund ? 'DUES_REFUND' : 'DUES';
+  entry.category = 'DUES';
   entry.linkStatus = 'CONFIRMED';
   entry.duesLink = {
     memberId,
@@ -59,8 +58,6 @@ export function linkEntryToMember(entry: LedgerEntryResponse, memberId: number, 
     track: member.track,
     semesterId,
     requiredAmount: member.assessedAmount ?? 0,
-    refundReason: isRefund ? member.refundReason : null,
-    refundAmount: isRefund && member.excessAmount > 0 ? member.excessAmount : null,
   };
 }
 

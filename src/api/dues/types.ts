@@ -2,7 +2,11 @@ import type { Track } from '@/api/auth/types';
 
 /**
  * 회비 API 계약 초안(DTO). 화면은 components/dues/types의 뷰 모델을 쓰고, 변환은 ./mappers가 맡는다.
- * 집계(상태·부과액·미납액·반환 필요액)는 지금 mock이 흉내 내는 대로 **서버가** 계산해 내려준다.
+ * 집계(상태·부과액·미납액·초과납부액)는 지금 mock이 흉내 내는 대로 **서버가** 계산해 내려준다.
+ *
+ * 상태는 "차이" 하나로 정한다 — 차이 = 연결된 입금 합계 − 연결된 출금 합계 − 부과액.
+ * 0이면 완료, 음수면 미납, 양수면 초과납부. 부과액이 0이고 연결 내역이 없으면 면제다.
+ * 반환(환불) 개념은 없다. 출금을 회비에 연결하면 그만큼 납부액에서 빠질 뿐이다.
  *
  * 학기 ID는 "2026-2"처럼 `{년도}-{학기}` 자연키다. 1학기는 3~8월, 2학기는 9~다음 해 2월(6개월).
  * 월 키는 "2026-09" 형식이다.
@@ -13,12 +17,7 @@ export type YearMonth = string;
 
 export type MonthDuesStatus = 'PAID' | 'EXEMPT' | 'UNPAID' | 'NOT_APPLICABLE';
 
-export type SemesterDuesStatus = 'PAID' | 'PARTIAL' | 'UNPAID' | 'EXEMPT' | 'OVERPAID';
-
-export type RefundStatus = 'NONE' | 'NEEDED' | 'PARTIAL' | 'COMPLETED';
-
-/** 반환이 필요한 이유 — 초과 납부 / 탈퇴 기간 / 전액 면제 회원 오입금. */
-export type RefundReason = 'OVERPAID' | 'WITHDRAWAL_PERIOD' | 'EXEMPT_MEMBER_DEPOSIT';
+export type SemesterDuesStatus = 'PAID' | 'UNPAID' | 'EXEMPT' | 'OVERPAID';
 
 // ---------- 학기 ----------
 
@@ -37,7 +36,7 @@ export interface SemesterDuesSummaryResponse {
   totalAmount: number;
   paidAmount: number;
   unpaidAmount: number;
-  /** 미납·부분 납부·반환 필요 회원이 한 명이라도 있으면 true. */
+  /** 미납 또는 초과납부 회원이 한 명이라도 있으면 true. */
   needsReview: boolean;
 }
 
@@ -73,12 +72,16 @@ export interface MonthExemption {
   endMonth: YearMonth | null;
 }
 
+/**
+ * 월 칸은 표시용이다. 순납부액을 앞 달부터 월 회비 단위로 채워 PAID로 보이고, 면제 월은 건너뛴다.
+ * 남은 달은 UNPAID다. 면제는 겹칠 수 있고, 하나라도 걸린 달은 부과액 0이다.
+ */
 export interface MonthDuesResponse {
   month: YearMonth;
   status: MonthDuesStatus;
-  /** status가 EXEMPT일 때만. "멘토 2024.09~계속" 같은 문구는 FE가 만든다. */
-  exemption: MonthExemption | null;
-  /** 납부 배분 메모 — "70,000원 입금 중 10,000원 배분" 같은 서버 생성 문구. */
+  /** status가 EXEMPT일 때만 채워진다 — 그 달에 걸린 면제 전부. "멘토, 휴학" 같은 문구는 FE가 만든다. */
+  exemptions: MonthExemption[];
+  /** 서버가 덧붙이는 메모. 없으면 null. */
   note: string | null;
 }
 
@@ -94,14 +97,12 @@ export interface MemberDuesResponse {
   status: SemesterDuesStatus;
   /** 이 학기 납부 비대상이면 null. */
   assessedAmount: number | null;
-  /** 반환을 뺀 순납부액. */
+  /** 순납부액 = 연결된 입금 합계 − 연결된 출금 합계. */
   paidAmount: number | null;
+  /** 차이가 음수일 때 그 절댓값. */
   unpaidAmount: number | null;
-  /** 아직 반환하지 않은 초과분. 0이면 반환 필요 없음. */
+  /** 차이가 양수일 때 그 값(초과납부액). 아니면 0. */
   excessAmount: number;
-  refundStatus: RefundStatus;
-  refundReason: RefundReason | null;
-  refundedAmount: number;
 }
 
 export interface SemesterDuesDetailResponse {

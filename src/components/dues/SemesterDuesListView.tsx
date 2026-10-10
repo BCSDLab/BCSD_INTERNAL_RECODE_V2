@@ -11,7 +11,7 @@ export function SemesterDuesListView({ semesters }: { semesters: SemesterDuesSum
       <div className="mb-5">
         <div className="text-faint mb-1.5 text-[10.5px] font-bold tracking-[0.16em]">장부 · 회비 관리</div>
         <h1 className="text-[25px] font-extrabold tracking-[-0.02em]">학기 회비 목록</h1>
-        <p className="text-muted mt-1.5 text-xs">학기별 납부 현황과 반환 필요 상태를 확인하세요.</p>
+        <p className="text-muted mt-1.5 text-xs">학기별 납부 현황과 미납·초과납부 상태를 확인하세요.</p>
       </div>
 
       <section className="border-line bg-panel overflow-hidden rounded-[13px] border">
