@@ -17,10 +17,18 @@ import type { FilterOption } from '@/components/dues/TableHeaderFilter';
 import type { MemberDues, MonthDuesStatus, SemesterDuesStatus, SemesterDuesSummary } from '@/components/dues/types';
 import { Toast } from '@/components/ledger/LedgerUi';
 import { Button } from '@/components/ui/button';
+import { Field, INPUT_CLASS_COMPACT } from '@/components/ui/field';
 import { Modal } from '@/components/ui/modal';
 
-/** 한 달 회비. 학기마다 바뀔 수 있는지는 BE와 미정 — 정해지면 생성 모달에서 입력받는다. */
+/** 직전 학기가 없을 때 생성 모달에 미리 채우는 월 회비. */
 const DEFAULT_MONTHLY_DUES = 10000;
+
+/** 1 이상의 정수만 허용한다. 맞지 않으면 null. */
+function parseMonthlyAmount(value: string) {
+  if (!/^\d+$/.test(value.trim())) return null;
+  const amount = Number(value.trim());
+  return Number.isSafeInteger(amount) && amount >= 1 ? amount : null;
+}
 
 type FilterKey = 'name' | 'track' | 'error' | 'status';
 type ErrorKind = 'surplus' | 'exact' | 'shortage' | 'not-applicable';
@@ -133,6 +141,8 @@ export function SemesterDuesDetailView({
   const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
   const [isSlackModalOpen, setIsSlackModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [monthlyAmountInput, setMonthlyAmountInput] = useState('');
+  const monthlyAmount = parseMonthlyAmount(monthlyAmountInput);
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; tone: 'success' | 'neutral' } | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -223,8 +233,8 @@ export function SemesterDuesDetailView({
   }
 
   const createSemesterMutation = useMutation({
-    mutationFn: () =>
-      createSemester({ year: createTarget!.year, term: createTarget!.term, monthlyAmount: DEFAULT_MONTHLY_DUES }),
+    mutationFn: (amount: number) =>
+      createSemester({ year: createTarget!.year, term: createTarget!.term, monthlyAmount: amount }),
     onSuccess: async (created) => {
       await invalidateLedgerAndDues(queryClient);
       const title = `${created.year}년 ${created.term}학기 회비`;
@@ -238,9 +248,15 @@ export function SemesterDuesDetailView({
     },
   });
 
+  function openCreateModal() {
+    // 기본값은 직전(가장 최근) 학기의 월 회비다.
+    setMonthlyAmountInput(String(semesters[0]?.monthlyAmount ?? DEFAULT_MONTHLY_DUES));
+    setIsCreateModalOpen(true);
+  }
+
   function createNextSemester() {
-    if (createSemesterMutation.isPending) return;
-    createSemesterMutation.mutate();
+    if (createSemesterMutation.isPending || monthlyAmount === null) return;
+    createSemesterMutation.mutate(monthlyAmount);
   }
 
   function resetFilters() {
@@ -260,7 +276,7 @@ export function SemesterDuesDetailView({
             {canCreateNextSemester && (
               <button
                 type="button"
-                onClick={() => setIsCreateModalOpen(true)}
+                onClick={openCreateModal}
                 className="border-line bg-panel text-muted hover:border-primary-line hover:text-primary-text flex w-[96px] cursor-pointer items-center justify-center gap-1 rounded-[12px] border px-2.5 py-3 text-[12px] font-semibold transition-colors"
               >
                 <span aria-hidden="true" className="text-[16px] leading-none">
@@ -517,15 +533,42 @@ export function SemesterDuesDetailView({
               <Button className="ml-auto" onClick={() => setIsCreateModalOpen(false)}>
                 취소
               </Button>
-              <Button variant="primary" disabled={createSemesterMutation.isPending} onClick={createNextSemester}>
+              <Button
+                variant="primary"
+                disabled={createSemesterMutation.isPending || monthlyAmount === null}
+                onClick={createNextSemester}
+              >
                 생성
               </Button>
             </>
           }
         >
-          <p className="text-muted px-6 py-5 text-[13px] leading-[1.7]">
-            현재 회원을 기준으로 {createTarget.label} 회비를 생성합니다.
-          </p>
+          <div className="flex flex-col gap-4 px-6 py-5">
+            <p className="text-muted text-[13px] leading-[1.7]">
+              현재 회원을 기준으로 {createTarget.label} 회비를 생성합니다.
+            </p>
+            <Field
+              label="월 회비(원)"
+              hint={
+                monthlyAmount === null ? (
+                  <span className="text-danger">1 이상의 정수를 입력해 주세요.</span>
+                ) : (
+                  `한 학기(6개월) 최대 ${(monthlyAmount * 6).toLocaleString('ko-KR')}원`
+                )
+              }
+            >
+              <input
+                inputMode="numeric"
+                value={monthlyAmountInput}
+                onChange={(event) => setMonthlyAmountInput(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') createNextSemester();
+                }}
+                aria-invalid={monthlyAmount === null}
+                className={INPUT_CLASS_COMPACT}
+              />
+            </Field>
+          </div>
         </Modal>
       )}
       {selectedMemberId && (

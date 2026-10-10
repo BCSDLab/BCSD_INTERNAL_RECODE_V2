@@ -41,6 +41,7 @@ export function toSemesterSummary(dto: SemesterDuesSummaryResponse): SemesterDue
     id: dto.id,
     shortLabel: `${String(dto.year).slice(-2)}년 ${dto.term}학기`,
     title: `${dto.year}년 ${dto.term}학기 회비`,
+    monthlyAmount: dto.monthlyAmount,
     totalMembers: dto.totalMembers,
     exemptMembers: dto.exemptMembers,
     targetMembers: dto.targetMembers,

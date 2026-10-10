@@ -217,7 +217,7 @@ const staticSemesters = new Map<SemesterId, { summary: SemesterDuesSummaryRespon
           id: summary.id,
           year,
           term,
-          monthlyAmount: MOCK_MONTHLY_DUES,
+          monthlyAmount: summary.monthlyAmount,
           totalMembers: summary.totalMembers,
           exemptMembers: summary.exemptMembers,
           targetMembers: summary.targetMembers,

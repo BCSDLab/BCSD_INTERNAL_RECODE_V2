@@ -27,6 +27,8 @@ export interface SemesterDuesSummary {
   id: string;
   shortLabel: string;
   title: string;
+  /** 한 달 회비(원). */
+  monthlyAmount: number;
   totalMembers: number;
   exemptMembers: number;
   targetMembers: number;
