@@ -112,6 +112,7 @@ export function mockPreviewImport(file: File): Promise<ImportPreviewResponse> {
       type: transaction.type === 'deposit' ? ('DEPOSIT' as const) : ('WITHDRAWAL' as const),
       counterparty: transaction.counterparty,
       amount: transaction.amount,
+      bankBalance: transaction.bankBalance,
       suggestedCategory: transaction.category === '회비' ? ('DUES' as const) : ('ETC' as const),
       suggestedMemberId: null,
     }));
@@ -120,12 +121,9 @@ export function mockPreviewImport(file: File): Promise<ImportPreviewResponse> {
 
 export function mockCommitImport(body: ImportCommitRequest): Promise<ImportCommitResponse> {
   const fresh = body.transactions.filter((transaction) => !importedRowKeys.has(transaction.rowKey));
-  const latestEntry = [...entries].sort((a, b) => b.occurredAt.localeCompare(a.occurredAt))[0];
-  let balance = latestEntry?.balance ?? 0;
   const semesterLabel = semesterLabelOf(semesterIds()[0]);
 
   for (const transaction of fresh) {
-    balance += transaction.type === 'DEPOSIT' ? transaction.amount : -transaction.amount;
     importedRowKeys.add(transaction.rowKey);
     entries.push({
       id: issueEntryId(),
@@ -136,7 +134,8 @@ export function mockCommitImport(body: ImportCommitRequest): Promise<ImportCommi
       description: transaction.note || (transaction.category === 'DUES' ? `${semesterLabel} 회비` : '가져온 거래내역'),
       note: transaction.note,
       amount: transaction.amount,
-      balance,
+      // 장부 잔액은 계산하지 않고 은행 잔액을 그대로 쓴다.
+      balance: transaction.bankBalance,
       source: body.fileName,
       linkStatus: isDuesCategory(transaction.category) ? 'PENDING' : 'NONE',
       duesLink: null,

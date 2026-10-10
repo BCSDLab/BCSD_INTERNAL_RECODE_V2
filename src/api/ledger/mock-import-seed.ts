@@ -1,6 +1,6 @@
 import type { ImportTransaction } from '@/components/ledger/import/types';
 
-/** mock 전용 — 신한 .xlsx를 서버가 파싱했다고 치고 돌려줄 거래. */
+/** mock 전용 — 신한 .xlsx를 서버가 파싱했다고 치고 돌려줄 거래. bankBalance는 엑셀의 거래 후 잔액 값이다. */
 
 export function createMockImportTransactions(): ImportTransaction[] {
   return [
@@ -10,7 +10,7 @@ export function createMockImportTransactions(): ImportTransaction[] {
       type: 'deposit',
       counterparty: '김민준',
       amount: 40000,
-      selected: true,
+      bankBalance: 1617000,
       category: '회비',
       duesMatchId: 'member-minjun',
       note: '',
@@ -22,7 +22,7 @@ export function createMockImportTransactions(): ImportTransaction[] {
       type: 'deposit',
       counterparty: '이서연',
       amount: 10000,
-      selected: true,
+      bankBalance: 1927000,
       category: '회비',
       duesMatchId: 'member-seoyeon',
       note: '',
@@ -34,7 +34,7 @@ export function createMockImportTransactions(): ImportTransaction[] {
       type: 'withdrawal',
       counterparty: '박지안',
       amount: 15000,
-      selected: true,
+      bankBalance: 1912000,
       category: '기타',
       duesMatchId: null,
       note: '',
@@ -46,7 +46,7 @@ export function createMockImportTransactions(): ImportTransaction[] {
       type: 'withdrawal',
       counterparty: '한소미',
       amount: 10000,
-      selected: true,
+      bankBalance: 1902000,
       category: '회비',
       duesMatchId: 'member-somi',
       note: '',

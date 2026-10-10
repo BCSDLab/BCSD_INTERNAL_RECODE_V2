@@ -89,7 +89,7 @@ export function toImportTransaction(dto: ImportTransactionResponse): ImportTrans
     type: dto.type === 'DEPOSIT' ? 'deposit' : 'withdrawal',
     counterparty: dto.counterparty,
     amount: dto.amount,
-    selected: true,
+    bankBalance: dto.bankBalance,
     category: CATEGORY_LABELS[dto.suggestedCategory] as ImportTransaction['category'],
     duesMatchId: dto.suggestedMemberId === null ? null : String(dto.suggestedMemberId),
     note: '',

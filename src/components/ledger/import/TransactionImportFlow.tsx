@@ -106,6 +106,8 @@ function ImportFooter({
   onNext,
   nextDisabled = false,
   error = '',
+  warning = '',
+  hint = '',
 }: {
   previousLabel: string;
   onPrevious: () => void;
@@ -113,10 +115,21 @@ function ImportFooter({
   onNext: () => void;
   nextDisabled?: boolean;
   error?: string;
+  /** 저장을 막지 않는 경고. */
+  warning?: string;
+  hint?: string;
 }) {
   return (
     <footer className="border-line flex items-center justify-end gap-2 border-t px-[22px] py-3.5">
-      {error && <span className="text-danger mr-auto text-xs">{error}</span>}
+      {error ? (
+        <span className="text-danger mr-auto text-xs">{error}</span>
+      ) : warning ? (
+        <span role="status" className="text-danger mr-auto text-xs font-semibold">
+          {warning}
+        </span>
+      ) : (
+        hint && <span className="text-faint mr-auto text-xs">{hint}</span>
+      )}
       <Button onClick={onPrevious}>{previousLabel}</Button>
       <Button tone="primary" onClick={onNext} disabled={nextDisabled}>
         {nextLabel}
@@ -138,9 +151,9 @@ export function TransactionImportFlow({ onCancel, onSave }: TransactionImportFlo
   const excelInput = useRef<HTMLInputElement>(null);
   const evidenceInput = useRef<HTMLInputElement>(null);
 
-  const selectedTransactions = transactions.filter((transaction) => transaction.selected);
-  const canReview = selectedTransactions.length > 0;
-  const missingEvidenceCount = selectedTransactions.filter(
+  // 미리보기의 모든 거래를 반영한다. 거래를 빼면 은행 잔액 흐름에 구멍이 생긴다.
+  const canReview = transactions.length > 0;
+  const missingEvidenceCount = transactions.filter(
     (transaction) => transaction.type === 'withdrawal' && transaction.evidences.length === 0,
   ).length;
 
@@ -204,11 +217,11 @@ export function TransactionImportFlow({ onCancel, onSave }: TransactionImportFlo
   }
 
   async function saveTransactions() {
-    if (isSaving) return;
+    if (isSaving || transactions.length === 0) return;
     setIsSaving(true);
     setFlowError('');
     try {
-      await onSave(selectedTransactions, fileName);
+      await onSave(transactions, fileName);
       onCancel();
     } catch {
       setFlowError('장부에 반영하지 못했습니다. 잠시 후 다시 시도해 주세요.');
@@ -299,10 +312,10 @@ export function TransactionImportFlow({ onCancel, onSave }: TransactionImportFlo
             <div className="px-[22px] pt-4 pb-5">
               <div className="border-line overflow-x-auto rounded-[13px] border">
                 <table className="w-full min-w-[704px] table-fixed border-collapse text-center">
-                  <ProportionalColumns minimums={[44, 82, 56, 68, 82, 96, 132]} />
+                  <ProportionalColumns minimums={[82, 56, 68, 82, 88, 96, 132]} />
                   <thead className="bg-panel2 text-faint text-[11px] font-bold">
                     <tr className="border-line border-b">
-                      {['추가', '거래 일시', '입출금', '거래내역', '금액', '종류', '비고'].map((label) => (
+                      {['거래 일시', '입출금', '거래내역', '금액', '잔액', '종류', '비고'].map((label) => (
                         <th key={label} className="p-2 text-center">
                           {label}
                         </th>
@@ -310,23 +323,16 @@ export function TransactionImportFlow({ onCancel, onSave }: TransactionImportFlo
                     </tr>
                   </thead>
                   <tbody>
+                    {transactions.length === 0 && (
+                      <tr>
+                        <td colSpan={7} className="text-muted p-8 text-center text-xs">
+                          새로 반영할 거래가 없습니다. 이미 장부에 있는 거래는 빠집니다.
+                        </td>
+                      </tr>
+                    )}
                     {transactions.map((transaction) => {
                       return (
                         <tr key={transaction.id} className="border-line border-b last:border-b-0">
-                          <td className="p-2 align-middle">
-                            <input
-                              type="checkbox"
-                              checked={transaction.selected}
-                              onChange={() =>
-                                updateTransaction(transaction.id, (current) => ({
-                                  ...current,
-                                  selected: !current.selected,
-                                }))
-                              }
-                              aria-label={`${transaction.counterparty} 거래 추가`}
-                              className="accent-primary h-3.5 w-3.5"
-                            />
-                          </td>
                           <td className="p-2 text-xs whitespace-nowrap">{displayTime(transaction.occurredAt)}</td>
                           <td className="p-2 text-xs whitespace-nowrap">
                             {transaction.type === 'deposit' ? '입금' : '출금'}
@@ -336,11 +342,11 @@ export function TransactionImportFlow({ onCancel, onSave }: TransactionImportFlo
                             {transaction.type === 'withdrawal' ? '-' : ''}
                             {formatWon(transaction.amount)}
                           </td>
+                          <td className="text-muted p-2 text-xs whitespace-nowrap">{formatWon(transaction.bankBalance)}</td>
                           <td className="p-2">
                             <select
                               aria-label={`${transaction.counterparty} 종류`}
                               value={transaction.category}
-                              disabled={!transaction.selected}
                               onChange={(event) =>
                                 updateTransaction(transaction.id, (current) => ({
                                   ...current,
@@ -348,7 +354,7 @@ export function TransactionImportFlow({ onCancel, onSave }: TransactionImportFlo
                                   duesMatchId: null,
                                 }))
                               }
-                              className="border-line2 bg-panel h-7 w-full rounded-[7px] border px-1.5 text-center text-xs outline-none disabled:opacity-45"
+                              className="border-line2 bg-panel h-7 w-full rounded-[7px] border px-1.5 text-center text-xs outline-none"
                             >
                               <option>회비</option>
                               <option>기타</option>
@@ -357,7 +363,6 @@ export function TransactionImportFlow({ onCancel, onSave }: TransactionImportFlo
                           <td className="p-2">
                             <input
                               value={transaction.note}
-                              disabled={!transaction.selected}
                               onChange={(event) =>
                                 updateTransaction(transaction.id, (current) => ({
                                   ...current,
@@ -365,7 +370,7 @@ export function TransactionImportFlow({ onCancel, onSave }: TransactionImportFlo
                                 }))
                               }
                               aria-label={`${transaction.counterparty} 비고`}
-                              className="border-line2 bg-panel h-7 w-full rounded-[7px] border px-2 text-center text-xs outline-none disabled:opacity-45"
+                              className="border-line2 bg-panel h-7 w-full rounded-[7px] border px-2 text-center text-xs outline-none"
                             />
                           </td>
                         </tr>
@@ -382,6 +387,7 @@ export function TransactionImportFlow({ onCancel, onSave }: TransactionImportFlo
               nextLabel="다음"
               onNext={() => setStep('evidence')}
               nextDisabled={!canReview}
+              hint={canReview ? `미리보기의 모든 거래 ${transactions.length}건을 장부에 반영합니다.` : ''}
             />
           </>
         )}
@@ -421,7 +427,7 @@ export function TransactionImportFlow({ onCancel, onSave }: TransactionImportFlo
                     </tr>
                   </thead>
                   <tbody>
-                    {selectedTransactions.map((transaction) => (
+                    {transactions.map((transaction) => (
                       <tr key={transaction.id} className="border-line border-b align-top last:border-b-0">
                         <td className="p-2.5 text-xs whitespace-nowrap">{displayTime(transaction.occurredAt)}</td>
                         <td className="p-2.5 text-xs">{transaction.type === 'deposit' ? '입금' : '출금'}</td>
@@ -489,7 +495,12 @@ export function TransactionImportFlow({ onCancel, onSave }: TransactionImportFlo
               onPrevious={() => setStep('review')}
               nextLabel="저장"
               onNext={saveTransactions}
-              nextDisabled={missingEvidenceCount > 0}
+              nextDisabled={!canReview}
+              warning={
+                missingEvidenceCount > 0
+                  ? `증빙 없는 출금 ${missingEvidenceCount}건 — 반영 뒤 장부 상세에서 첨부할 수 있습니다.`
+                  : ''
+              }
             />
           </>
         )}

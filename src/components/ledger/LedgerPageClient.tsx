@@ -126,6 +126,7 @@ export function LedgerPageClient() {
         type: transaction.type === 'deposit' ? 'DEPOSIT' : 'WITHDRAWAL',
         counterparty: transaction.counterparty,
         amount: transaction.amount,
+        bankBalance: transaction.bankBalance,
         category: toImportCategoryCode(transaction.category),
         note: transaction.note,
         evidenceIds: transaction.evidences.map((item) => Number(item.id)),
