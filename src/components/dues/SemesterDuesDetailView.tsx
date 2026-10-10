@@ -24,11 +24,20 @@ import { Modal } from '@/components/ui/modal';
 /** 직전 학기가 없을 때 생성 모달에 미리 채우는 월 회비. */
 const DEFAULT_MONTHLY_DUES = 10000;
 
-/** 1 이상의 정수만 허용한다. 맞지 않으면 null. */
+/** 서버도 같은 상한을 둔다(0을 더 친 오타 방지). */
+const MAX_MONTHLY_DUES = 1_000_000;
+
+/** 1 이상 MAX_MONTHLY_DUES 이하의 정수만 허용한다. 맞지 않으면 null. */
 function parseMonthlyAmount(value: string) {
   if (!/^\d+$/.test(value.trim())) return null;
   const amount = Number(value.trim());
-  return Number.isSafeInteger(amount) && amount >= 1 ? amount : null;
+  return Number.isSafeInteger(amount) && amount >= 1 && amount <= MAX_MONTHLY_DUES ? amount : null;
+}
+
+function monthlyAmountError(value: string) {
+  return /^\d+$/.test(value.trim()) && Number(value.trim()) > MAX_MONTHLY_DUES
+    ? `월 회비는 ${MAX_MONTHLY_DUES.toLocaleString('ko-KR')}원 이하로 입력하세요.`
+    : `1 이상 ${MAX_MONTHLY_DUES.toLocaleString('ko-KR')} 이하의 정수를 입력해 주세요.`;
 }
 
 type FilterKey = 'name' | 'track' | 'error' | 'status';
@@ -564,9 +573,9 @@ export function SemesterDuesDetailView({
               label="월 회비(원)"
               hint={
                 monthlyAmount === null ? (
-                  <span className="text-danger">1 이상의 정수를 입력해 주세요.</span>
+                  <span className="text-danger">{monthlyAmountError(monthlyAmountInput)}</span>
                 ) : (
-                  `한 학기(6개월) 최대 ${(monthlyAmount * 6).toLocaleString('ko-KR')}원`
+                  `한 학기(6개월) 최대 ${(monthlyAmount * 6).toLocaleString('ko-KR')}원 · 월 회비는 ${MAX_MONTHLY_DUES.toLocaleString('ko-KR')}원까지`
                 )
               }
             >

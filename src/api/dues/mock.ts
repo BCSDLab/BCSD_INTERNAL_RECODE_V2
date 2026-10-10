@@ -122,6 +122,10 @@ export function mockGetSemesterCreatable(): Promise<SemesterCreatableResponse> {
 }
 
 export function mockCreateSemester(body: SemesterCreateRequest): Promise<SemesterDuesSummaryResponse> {
+  if (!Number.isSafeInteger(body.monthlyAmount) || body.monthlyAmount < 1 || body.monthlyAmount > 1_000_000) {
+    // 서버의 Bean Validation 400(1~1,000,000 정수)과 같은 범위.
+    return Promise.reject(new ApiError(400, '월 회비는 1 이상 1,000,000 이하의 정수여야 합니다.'));
+  }
   const semesterId = `${body.year}-${body.term}`;
   if (semesterSummary(semesterId)) return Promise.reject(new ApiError(409, '이미 생성된 학기 회비입니다.'));
   const { nextSemester, creatable } = semesterCreatable();
