@@ -53,7 +53,7 @@ FE는 지금 mock "서버"(`src/api/dues/mock-db.ts`)로 이 계약대로 동작
 | PATCH  | `/v1/admin/dues/semesters/{semesterId}/roster/{memberId}` | 납부 대상 토글             | `RosterUpdateRequest { applicable }` → `RosterMemberResponse`                         |
 
 - `RosterMemberResponse = { memberId, name, studentNumber, track, applicable }`. `applicable: false`면 이 학기 납부 비대상(월 칸 전부 `NOT_APPLICABLE`, 부과액 null).
-- 저장 뒤 FE는 장부·회비 캐시를 통째로 다시 받는다. mock은 마감된 지난 학기의 변경을 409로 막는다.
+- 저장 뒤 FE는 장부·회비 캐시를 통째로 다시 받는다. 마감 개념은 없어서 지난 학기를 포함해 어느 학기든 추가·정정할 수 있다.
 
 ### 회비 상태 규칙 (사용자 확정)
 

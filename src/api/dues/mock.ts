@@ -3,15 +3,16 @@ import type { LedgerEntryResponse } from '@/api/ledger/types';
 import type { SlackIdLookupResult } from '@/api/member/api';
 import {
   addSemester,
-  editableRoster,
   entries,
   exemptionReasons,
   exemptions,
   findMember,
   issueExemptionId,
   listMembers,
+  markRosterChanged,
   parseSemesterId,
   respond,
+  rosterRows,
   semesterIds,
   semesterMembers,
   semesterRoster,
@@ -136,10 +137,10 @@ export function mockLinkSemesterEntries(
 
 // ---------- 학기 명단 ----------
 
-function requireEditableRoster(semesterId: SemesterId) {
-  if (!semesterRoster(semesterId)) throw new ApiError(404, '학기 회비를 찾을 수 없습니다.');
-  const roster = editableRoster(semesterId);
-  if (!roster) throw new ApiError(409, '마감된 학기의 명단은 바꿀 수 없습니다.');
+/** 마감 개념은 없다. 지난 학기를 포함해 어느 학기든 명단을 바꿀 수 있다. */
+function requireRoster(semesterId: SemesterId) {
+  const roster = rosterRows(semesterId);
+  if (!roster) throw new ApiError(404, '학기 회비를 찾을 수 없습니다.');
   return roster;
 }
 
@@ -167,10 +168,13 @@ export function mockGetRosterCandidates(semesterId: SemesterId): Promise<RosterC
 
 export function mockAddRosterMember(semesterId: SemesterId, body: RosterAddRequest): Promise<RosterMemberResponse> {
   try {
-    const roster = requireEditableRoster(semesterId);
+    const roster = requireRoster(semesterId);
     if (!findMember(body.memberId)) throw new ApiError(404, '회원을 찾을 수 없습니다.');
-    if (roster.some((row) => row.memberId === body.memberId)) throw new ApiError(409, '이미 명단에 있는 회원입니다.');
+    if (roster.some((row) => row.memberId === body.memberId)) {
+      throw new ApiError(409, '이미 이 학기 명단에 있는 회원입니다.');
+    }
     roster.push({ memberId: body.memberId, applicable: body.applicable });
+    markRosterChanged(semesterId);
     return respond(rosterMember(semesterId, body.memberId));
   } catch (error) {
     return Promise.reject(error);
@@ -183,9 +187,10 @@ export function mockUpdateRosterMember(
   body: RosterUpdateRequest,
 ): Promise<RosterMemberResponse> {
   try {
-    const row = requireEditableRoster(semesterId).find((item) => item.memberId === memberId);
-    if (!row) throw new ApiError(404, '명단에 없는 회원입니다.');
+    const row = requireRoster(semesterId).find((item) => item.memberId === memberId);
+    if (!row) throw new ApiError(404, '이 학기 회비 명단에 없는 회원입니다.');
     row.applicable = body.applicable;
+    markRosterChanged(semesterId);
     return respond(rosterMember(semesterId, memberId));
   } catch (error) {
     return Promise.reject(error);

@@ -225,10 +225,21 @@ function staticMemberDues(semesterId: SemesterId, member: SeedMemberDues): Membe
   };
 }
 
-/** 이미 마감된 지난 학기 — 집계가 고정돼 있다. */
-const staticSemesters = new Map<SemesterId, { summary: SemesterDuesSummaryResponse; members: MemberDuesResponse[] }>(
+interface StaticSemester extends DerivedSemester {
+  summary: SemesterDuesSummaryResponse;
+  members: MemberDuesResponse[];
+  /** 명단을 한 번이라도 바꿨으면 요약을 다시 계산한다. */
+  rosterChanged: boolean;
+}
+
+/**
+ * 지난 학기 — 시드 집계를 그대로 보여 준다. 마감 개념은 없어서 명단은 바꿀 수 있고, 추가하거나 납부 대상을
+ * 바꾼 회원만 장부·면제로 다시 계산한다.
+ */
+const staticSemesters = new Map<SemesterId, StaticSemester>(
   SEMESTER_DUES_SUMMARIES.slice(1).map((summary) => {
     const { year, term } = parseSemesterId(summary.id);
+    const members = getSemesterMembers(summary.id).map((member) => staticMemberDues(summary.id, member));
     return [
       summary.id,
       {
@@ -247,7 +258,10 @@ const staticSemesters = new Map<SemesterId, { summary: SemesterDuesSummaryRespon
           unpaidAmount: summary.unpaidAmount,
           needsReview: summary.needsReview,
         },
-        members: getSemesterMembers(summary.id).map((member) => staticMemberDues(summary.id, member)),
+        members,
+        monthlyAmount: summary.monthlyAmount,
+        roster: members.map((member) => ({ memberId: member.memberId, applicable: member.assessedAmount !== null })),
+        rosterChanged: false,
       },
     ];
   }),
@@ -462,18 +476,24 @@ export function semesterIds(): SemesterId[] {
 export function semesterMembers(semesterId: SemesterId, exemptionList = exemptions): MemberDuesResponse[] | null {
   const derived = derivedSemesters.get(semesterId);
   if (derived) return derived.roster.map((row) => deriveMemberDues(semesterId, derived, row, exemptionList));
-  // 지난 학기 집계는 고정이지만 Slack ID는 인명부의 현재 값을 따른다.
-  return (
-    staticSemesters
-      .get(semesterId)
-      ?.members.map((member) => ({ ...member, slackId: findMember(member.memberId)?.slackId ?? null })) ?? null
-  );
+  const past = staticSemesters.get(semesterId);
+  if (!past) return null;
+  return past.roster.map((row) => {
+    const seeded = past.members.find((member) => member.memberId === row.memberId);
+    // 시드 그대로인 회원은 고정 집계를 쓰되 Slack ID는 인명부의 현재 값을 따른다.
+    if (seeded && (seeded.assessedAmount !== null) === row.applicable) {
+      return { ...seeded, slackId: findMember(seeded.memberId)?.slackId ?? null };
+    }
+    return deriveMemberDues(semesterId, past, row, exemptionList);
+  });
 }
 
 export function semesterSummary(semesterId: SemesterId): SemesterDuesSummaryResponse | null {
   const derived = derivedSemesters.get(semesterId);
   if (derived) return deriveSummary(semesterId, derived, semesterMembers(semesterId)!);
-  return staticSemesters.get(semesterId)?.summary ?? null;
+  const past = staticSemesters.get(semesterId);
+  if (!past) return null;
+  return past.rosterChanged ? deriveSummary(semesterId, past, semesterMembers(semesterId)!) : past.summary;
 }
 
 export function addSemester(semesterId: SemesterId, monthlyAmount: number) {
@@ -496,17 +516,22 @@ function rosterMemberOf(memberId: number, applicable: boolean): RosterMemberResp
   };
 }
 
-/** 학기 명단. 마감된 지난 학기도 조회는 된다(납부 비대상 = 부과액 null). */
-export function semesterRoster(semesterId: SemesterId): RosterMemberResponse[] | null {
-  const derived = derivedSemesters.get(semesterId);
-  if (derived) return derived.roster.map((row) => rosterMemberOf(row.memberId, row.applicable));
-  const closed = staticSemesters.get(semesterId);
-  return closed
-    ? closed.members.map((member) => rosterMemberOf(member.memberId, member.assessedAmount !== null))
-    : null;
+/** 학기 명단 행. 지난 학기를 포함해 어느 학기든 바꿀 수 있다. 학기가 없으면 null. */
+export function rosterRows(semesterId: SemesterId): RosterRow[] | null {
+  return (derivedSemesters.get(semesterId) ?? staticSemesters.get(semesterId))?.roster ?? null;
 }
 
-/** 바꿀 수 있는 명단 — 집계를 다시 하는 학기만. 지난 학기는 null. */
-export function editableRoster(semesterId: SemesterId): RosterRow[] | null {
-  return derivedSemesters.get(semesterId)?.roster ?? null;
+/** 명단을 바꾼 뒤 부른다. 지난 학기 요약을 다시 계산하게 한다. */
+export function markRosterChanged(semesterId: SemesterId) {
+  const past = staticSemesters.get(semesterId);
+  if (past) past.rosterChanged = true;
+}
+
+export function semesterRoster(semesterId: SemesterId): RosterMemberResponse[] | null {
+  return rosterRows(semesterId)?.map((row) => rosterMemberOf(row.memberId, row.applicable)) ?? null;
+}
+
+/** 이 학기에 이 회원에게 연결(CONFIRMED)된 장부 기록이 있는지. */
+export function hasLinkedEntries(semesterId: SemesterId, memberId: number) {
+  return linkedEntriesOf(semesterId, memberId).length > 0;
 }
