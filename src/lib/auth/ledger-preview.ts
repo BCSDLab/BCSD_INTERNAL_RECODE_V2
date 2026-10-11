@@ -20,7 +20,7 @@ export const LEDGER_PREVIEW_SESSION: Session = {
 
 /**
  * 로그인 없이 가짜 세션으로 여는 화면(개발용 편의). 데이터를 mock으로 줄지는 세션이 아니라
- * @/api/dues/mock-switch가 정한다 — 실제 로그인으로 /ledger를 열어도 mock 응답을 받는다.
+ * @/api/dues/mock-switch가 정한다(기본 live). 가짜 토큰은 실제 API에서 401이므로 `NEXT_PUBLIC_LEDGER_API=mock`과 함께 쓴다.
  */
 const PREVIEW_PATHS = ['/ledger'];
 
