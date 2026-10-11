@@ -2,7 +2,7 @@
 
 BE 설계 v3(`ledger-be-design.md`) 12절 "최종 API 계약 표"와 맞춘 FE 계약이다. 둘이 다르면 설계 12절이 맞다.
 요청·응답 타입은 `src/api/dues/types.ts`, `src/api/ledger/types.ts`가 원본이다.
-FE는 지금 mock "서버"(`src/api/dues/mock-db.ts`)로 이 계약대로 동작한다. BE가 배포되면 `NEXT_PUBLIC_LEDGER_API=live`로 바꾼다.
+BE가 배포돼 FE는 기본으로 실제 API를 부른다. 로컬 시연용으로 `NEXT_PUBLIC_LEDGER_API=mock`을 주면 mock "서버"(`src/api/dues/mock-db.ts`)가 같은 계약으로 응답한다.
 
 ## FE 구조 (iOS 대응)
 
@@ -16,8 +16,8 @@ FE는 지금 mock "서버"(`src/api/dues/mock-db.ts`)로 이 계약대로 동작
 | `api/dues/mock-switch.ts`                          | mock/live 스위치                                 | DI 플래그                   |
 | `components/dues/DuesUiProvider.tsx`               | 페이지 이동 뒤 토스트 같은 **UI 상태만** 둔다    | 화면 상태 `@State`          |
 
-- mock 여부는 **로그인 세션이 아니라 스위치**로 정한다. 실제 관리자로 로그인해도 없는 API를 부르지 않는다.
-- `NEXT_PUBLIC_LEDGER_PREVIEW=true`(dev 전용)는 로그인 없이 `/ledger`를 여는 편의 기능일 뿐이다.
+- mock 여부는 **로그인 세션이 아니라 스위치**로 정한다. 기본은 live이고, 운영 배포 설정에는 이 값이 없다.
+- `NEXT_PUBLIC_LEDGER_PREVIEW=true`(dev 전용)는 로그인 없이 `/ledger`를 여는 편의 기능일 뿐이다. 가짜 토큰이라 `NEXT_PUBLIC_LEDGER_API=mock`과 함께 쓴다.
 
 ## 원칙
 
@@ -149,6 +149,11 @@ FE는 지금 mock "서버"(`src/api/dues/mock-db.ts`)로 이 계약대로 동작
   - 메시지 발송은 `chat.postMessage`로 한다. 지금 봇 토큰에 발송 scope가 있는지는 확인이 필요하다. 이 문서는 아직 Slack 문서와 대조하지 않았다.
 - **발송 스위치는 회비·장부와 따로 둔다:** `NEXT_PUBLIC_DUES_NOTIFICATION_API`(기본 mock). 회비·장부를 live로 바꿔도 알림 발송은 mock으로 남는다. 실제 발송은 이 값을 `live`로 바꿀 때만 나간다.
 - `{담당자 멘션}` 토큰은 FE가 치환하지 않고 그대로 보낸다. 서버가 로그인한 관리자의 slackId로 `<@U…>`를 만든다.
+  관리자 slackId가 없는데 본문에 이 토큰이 있으면 400이다(보내기 전 거절). 모달은 서버 문구를 그대로 보인다.
+- **제한:** 수신자 1명 이상 50명 이하, 본문 1자 이상 4,000자 이하, 같은 회원 두 번 금지(모두 400). 모달이 50명·4,000자를 미리 막는다.
+- **본문 링크:** `<http(s)://…|라벨>`과 `<http(s)://…>`만 링크로 남고, 나머지 `&`, `<`, `>`는 글자 그대로 보인다(`<!channel>`, `<@U…>` 포함). 템플릿의 링크는 모두 http(s) URL만 넣는다.
+- **Idempotency-Key 헤더:** 실제 발송은 요청마다 키(UUID)가 필수다. 모달은 내용(종류·수신자·본문)이 같으면 같은 키를 다시 쓴다. 그래서 타임아웃·부분 실패 뒤 "전송"을 다시 누르면 서버가 아직 못 받은 회원에게만 보낸다. 내용을 바꾸거나 모달을 새로 열면 새 키다. 같은 키가 발송 중이거나 다른 내용이면 409다.
+- **나에게 테스트 발송:** 본문에 `testToSelf: true`를 넣으면 서버가 첫 번째 본문만 로그인한 관리자 DM으로 1건 보낸다. 키는 보지 않는다. 관리자 slackId가 없으면 400이다. 응답 모양은 같다(성공 `sentCount: 1`).
 
 ## 미결 질문 (BE와 합의 필요)
 
