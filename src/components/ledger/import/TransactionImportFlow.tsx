@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
+import { ApiError } from '@/api/client';
 import { previewImport, uploadEvidence } from '@/api/ledger/api';
 import { toEvidence, toImportTransaction } from '@/api/ledger/mappers';
 import { Button } from '@/components/ledger/LedgerUi';
@@ -15,6 +16,10 @@ interface TransactionImportFlowProps {
   onSave: (transactions: ImportTransaction[], fileName: string) => Promise<void>;
 }
 
+/** 서버 multipart 상한(1MB)과 같다. 넘는 파일은 보내기 전에 막는다(실제 신한 파일은 수십 KB). */
+const MAX_IMPORT_FILE_BYTES = 1024 * 1024;
+const IMPORT_FILE_TOO_LARGE = '거래내역 파일이 너무 큽니다. 1MB 이하 파일만 올릴 수 있습니다.';
+
 const STEPS: Array<{ id: ImportStep; number: number; label: string }> = [
   { id: 'upload', number: 1, label: 'Excel 업로드' },
   { id: 'review', number: 2, label: '신규 내역' },
@@ -22,7 +27,7 @@ const STEPS: Array<{ id: ImportStep; number: number; label: string }> = [
 ];
 
 function displayTime(value: string) {
-  const [, month, day, hour, minute] = value.match(/^\d{4}-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/) ?? [];
+  const [, month, day, hour, minute] = value.match(/^\d{4}-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::\d{2})?$/) ?? [];
   return month ? `${month}.${day} ${hour}:${minute}` : value;
 }
 
@@ -165,6 +170,11 @@ export function TransactionImportFlow({ onCancel, onSave }: TransactionImportFlo
 
   function chooseExcel(file?: File) {
     if (!file || !file.name.toLowerCase().endsWith('.xlsx')) return;
+    if (file.size > MAX_IMPORT_FILE_BYTES) {
+      setExcelFile(null);
+      setFlowError(IMPORT_FILE_TOO_LARGE);
+      return;
+    }
     setExcelFile(file);
     setFlowError('');
   }
@@ -209,8 +219,11 @@ export function TransactionImportFlow({ onCancel, onSave }: TransactionImportFlo
       const preview = await previewImport(excelFile);
       setTransactions(preview.transactions.map(toImportTransaction));
       setStep('review');
-    } catch {
-      setFlowError('거래내역 파일을 분석하지 못했습니다. 파일을 확인해 주세요.');
+    } catch (error) {
+      // 400(형식)·413(크기) 등 서버 문구가 있으면 그대로 보인다.
+      setFlowError(
+        error instanceof ApiError ? error.message : '거래내역 파일을 분석하지 못했습니다. 파일을 확인해 주세요.',
+      );
     } finally {
       setIsAnalyzing(false);
     }
