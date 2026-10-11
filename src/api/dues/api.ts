@@ -141,7 +141,13 @@ export function lookupSlackIds(body: SlackIdLookupRequest) {
   return lookupMemberSlackIds(body.memberIds);
 }
 
-export function sendDuesNotifications(semesterId: SemesterId, body: DuesNotificationRequest) {
+/**
+ * idempotencyKey: 같은 발송을 다시 시도할 때만 같은 값을 넘긴다(서버가 이미 보낸 회원은 건너뛴다).
+ * 테스트 발송(testToSelf)은 서버가 키를 보지 않는다.
+ */
+export function sendDuesNotifications(semesterId: SemesterId, body: DuesNotificationRequest, idempotencyKey?: string) {
   if (USE_DUES_NOTIFICATION_MOCK) return mockSendDuesNotifications(semesterId, body);
-  return apiClient.post<DuesNotificationResponse>(`${BASE}/semesters/${semesterId}/notifications`, body);
+  return apiClient.post<DuesNotificationResponse>(`${BASE}/semesters/${semesterId}/notifications`, body, {
+    headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined,
+  });
 }

@@ -19,6 +19,7 @@ import {
   semesterRoster,
   semesterSummary,
 } from './mock-db';
+import { DUES_NOTIFICATION_MAX_LENGTH, DUES_NOTIFICATION_MAX_RECIPIENTS } from './types';
 import type {
   DuesLinkBulkRequest,
   DuesLinkBulkResponse,
@@ -317,6 +318,21 @@ export function mockSendDuesNotifications(
   _semesterId: SemesterId,
   body: DuesNotificationRequest,
 ): Promise<DuesNotificationResponse> {
+  if (body.messages.length === 0) return Promise.reject(new ApiError(400, '보낼 회원을 선택하세요.'));
+  if (body.messages.length > DUES_NOTIFICATION_MAX_RECIPIENTS) {
+    return Promise.reject(new ApiError(400, '한 번에 50명까지 보낼 수 있습니다.'));
+  }
+  if (body.messages.some((item) => !item.message.trim())) {
+    return Promise.reject(new ApiError(400, '메시지를 입력하세요.'));
+  }
+  if (body.messages.some((item) => item.message.length > DUES_NOTIFICATION_MAX_LENGTH)) {
+    return Promise.reject(new ApiError(400, '메시지는 4,000자 이하여야 합니다.'));
+  }
+  if (new Set(body.messages.map((item) => item.memberId)).size !== body.messages.length) {
+    return Promise.reject(new ApiError(400, '같은 회원이 요청에 두 번 있습니다.'));
+  }
+  // 테스트 발송: 첫 번째 본문만 관리자 본인 DM으로 1건. mock은 관리자 Slack ID가 있다고 본다.
+  if (body.testToSelf) return respond({ sentCount: 1, failed: [] }, 500);
   const failed = body.messages
     .filter((item) => {
       const member = findMember(item.memberId);

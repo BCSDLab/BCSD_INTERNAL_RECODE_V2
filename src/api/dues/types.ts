@@ -228,11 +228,19 @@ export interface SlackIdLookupResponse {
  * POST /v1/admin/dues/semesters/{semesterId}/notifications
  * 본문은 FE가 템플릿으로 만들되 {담당자 멘션}은 그대로 두고 보낸다 — 서버가 로그인한 관리자의
  * Slack ID로 바꾼다. 수신자도 memberId로만 보내 서버가 인명부 slackId로 해석한다.
+ * 서버 제한: 수신자 50명, 본문 4,000자. 관리자 slack_id가 없는데 {담당자 멘션}이 있으면 400.
+ * 본문 링크는 http(s) `<URL|라벨>`만 살고, 나머지 <, >, &는 문자 그대로 보인다.
+ * 요청마다 `Idempotency-Key` 헤더(UUID)를 붙인다 — 같은 발송을 다시 시도할 때만 같은 키를 쓴다.
  */
 export interface DuesNotificationRequest {
   type: DuesNotificationType;
   messages: { memberId: number; message: string }[];
+  /** true면 서버가 첫 번째 본문만 로그인한 관리자 본인 DM으로 1건 보낸다. */
+  testToSelf?: boolean;
 }
+
+export const DUES_NOTIFICATION_MAX_RECIPIENTS = 50;
+export const DUES_NOTIFICATION_MAX_LENGTH = 4000;
 
 export interface DuesNotificationResponse {
   sentCount: number;

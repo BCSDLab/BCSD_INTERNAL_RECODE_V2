@@ -1,7 +1,13 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { ApiError } from '@/api/client';
 import { sendDuesNotifications } from '@/api/dues/api';
+import {
+  DUES_NOTIFICATION_MAX_LENGTH,
+  DUES_NOTIFICATION_MAX_RECIPIENTS,
+  type DuesNotificationRequest,
+} from '@/api/dues/types';
 import { SlackIdInputModal } from '@/components/dues/SlackIdInputModal';
 import {
   createDuesNotificationMessage,
@@ -105,10 +111,15 @@ export function DuesSlackNotificationModal({
   const [previewAmount, setPreviewAmount] = useState(() => duesAmounts[0] ?? 0);
   const [selectedUnpaidIds, setSelectedUnpaidIds] = useState<string[]>(() => unpaidTargets.map((member) => member.id));
   const [previewMemberId, setPreviewMemberId] = useState(() => unpaidTargets[0]?.id ?? '');
-  const [validationVisible, setValidationVisible] = useState(false);
+  const [validationVisible, setValidationVisible] = useState<false | 'send' | 'test'>(false);
   const [isSending, setIsSending] = useState(false);
+  const [isTesting, setIsTesting] = useState(false);
+  const [notice, setNotice] = useState<{ message: string; tone: 'success' | 'danger' } | null>(null);
   const selectAllRef = useRef<HTMLInputElement>(null);
   const sendingRef = useRef(false);
+  // 발송 한 건의 Idempotency-Key. 같은 내용을 다시 보내면(타임아웃·부분 실패 뒤 재시도) 같은 키를 쓰고,
+  // 내용(종류·수신자·본문)이 바뀌거나 모달을 새로 열면 새 키를 만든다.
+  const sendKeyRef = useRef<{ body: string; key: string } | null>(null);
 
   const admin = session?.member;
   const adminPhoneNumber = admin?.phoneNumber?.trim() ?? '';
@@ -151,28 +162,76 @@ export function DuesSlackNotificationModal({
           })
         : draft;
 
-  const errors: string[] = [];
-  if (!draft.trim()) errors.push('최종 메시지를 입력해 주세요.');
-  if (!isHttpUrl(duesListUrl)) errors.push('올바른 회비납부목록 URL을 입력해 주세요.');
+  function buildMessages(): SlackMessagePayload[] {
+    return type === 'payment'
+      ? paymentTargets.map((member) => ({
+          memberId: Number(member.id),
+          message: createDuesNotificationMessage({
+            template: draft,
+            semester,
+            amount: member.assessedAmount ?? 0,
+            senderName: admin?.name ?? '',
+            rulesUrl: withHttps(rulesUrl),
+            exemptionFormUrl: withHttps(exemptionFormUrl),
+            duesListUrl: withHttps(duesListUrl),
+            deadline,
+          }),
+        }))
+      : selectedUnpaidMembers.map((member) => ({
+          memberId: Number(member.id),
+          message: createUnpaidNotificationMessage({
+            template: draft,
+            semester,
+            member,
+            duesListUrl: withHttps(duesListUrl),
+            managerPhoneNumber: adminPhoneNumber,
+          }),
+        }));
+  }
+
+  const messages = buildMessages();
+  const longestMessage = Math.max(0, ...messages.map((item) => item.message.length));
+
+  // 수신자 Slack ID 누락은 실제 발송만 막는다 — 테스트 발송은 관리자 본인 DM이라 상관없다.
+  const contentErrors: string[] = [];
+  if (!draft.trim()) contentErrors.push('최종 메시지를 입력해 주세요.');
+  if (!isHttpUrl(duesListUrl)) contentErrors.push('올바른 회비납부목록 URL을 입력해 주세요.');
+  if (messages.length > DUES_NOTIFICATION_MAX_RECIPIENTS) {
+    contentErrors.push(
+      `한 번에 ${DUES_NOTIFICATION_MAX_RECIPIENTS}명까지 보낼 수 있습니다. 지금 ${messages.length}명입니다.`,
+    );
+  }
+  if (longestMessage > DUES_NOTIFICATION_MAX_LENGTH) {
+    contentErrors.push(
+      `메시지는 ${DUES_NOTIFICATION_MAX_LENGTH.toLocaleString('ko-KR')}자 이하여야 합니다. 지금 ${longestMessage.toLocaleString('ko-KR')}자입니다.`,
+    );
+  }
+  const slackErrors: string[] = [];
   if (type === 'payment') {
-    if (!admin?.name) errors.push('로그인한 관리자 정보를 확인할 수 없습니다.');
-    if (paymentTargets.length === 0) errors.push('부과 금액이 있는 회비 대상자가 없습니다.');
+    if (!admin?.name) contentErrors.push('로그인한 관리자 정보를 확인할 수 없습니다.');
+    if (paymentTargets.length === 0) contentErrors.push('부과 금액이 있는 회비 대상자가 없습니다.');
     if (missingPaymentSlack.length > 0) {
-      errors.push(`Slack ID가 없는 회원이 있습니다: ${missingPaymentSlack.map((member) => member.name).join(', ')}`);
+      slackErrors.push(
+        `Slack ID가 없는 회원이 있습니다: ${missingPaymentSlack.map((member) => member.name).join(', ')}`,
+      );
     }
-    if (!isValidDuesDate(deadline)) errors.push('유효한 납부 마감일을 yyyy-mm-dd 형식으로 입력해 주세요.');
-    if (!isHttpUrl(rulesUrl)) errors.push('올바른 회칙 URL을 입력해 주세요.');
-    if (!isHttpUrl(exemptionFormUrl)) errors.push('올바른 면제 신청서 URL을 입력해 주세요.');
+    if (!isValidDuesDate(deadline)) contentErrors.push('유효한 납부 마감일을 yyyy-mm-dd 형식으로 입력해 주세요.');
+    if (!isHttpUrl(rulesUrl)) contentErrors.push('올바른 회칙 URL을 입력해 주세요.');
+    if (!isHttpUrl(exemptionFormUrl)) contentErrors.push('올바른 면제 신청서 URL을 입력해 주세요.');
   } else {
-    if (selectedUnpaidMembers.length === 0) errors.push('알림을 전송할 미납 회원을 선택해 주세요.');
+    if (selectedUnpaidMembers.length === 0) contentErrors.push('알림을 전송할 미납 회원을 선택해 주세요.');
     if (missingUnpaidSlack.length > 0) {
-      errors.push(`Slack ID가 없는 회원이 있습니다: ${missingUnpaidSlack.map((member) => member.name).join(', ')}`);
+      slackErrors.push(
+        `Slack ID가 없는 회원이 있습니다: ${missingUnpaidSlack.map((member) => member.name).join(', ')}`,
+      );
     }
-    if (!adminPhoneNumber) errors.push('로그인한 관리자의 전화번호를 확인할 수 없습니다.');
+    if (!adminPhoneNumber) contentErrors.push('로그인한 관리자의 전화번호를 확인할 수 없습니다.');
     for (const token of ['{이름}', '{회비이름}', '{미납액}']) {
-      if (!draft.includes(token)) errors.push(`수신자별 메시지를 만들려면 ${token} 항목이 필요합니다.`);
+      if (!draft.includes(token)) contentErrors.push(`수신자별 메시지를 만들려면 ${token} 항목이 필요합니다.`);
     }
   }
+  const errors = [...contentErrors, ...slackErrors];
+  const usesManagerMention = draft.includes(MANAGER_MENTION_TOKEN);
 
   function requestType(nextType: NoticeType) {
     if (nextType === type) return;
@@ -205,73 +264,105 @@ export function DuesSlackNotificationModal({
     setValidationVisible(false);
   }
 
+  function requestBody(testToSelf: boolean): DuesNotificationRequest {
+    return {
+      type: type === 'payment' ? 'PAYMENT' : 'UNPAID',
+      // 테스트 발송은 서버가 첫 번째 본문만 쓴다.
+      messages: testToSelf ? messages.slice(0, 1) : messages,
+      ...(testToSelf ? { testToSelf: true } : {}),
+    };
+  }
+
+  /** 같은 본문이면 직전 키를, 바뀌었으면 새 키를 준다. */
+  function idempotencyKeyFor(body: DuesNotificationRequest) {
+    const serialized = JSON.stringify(body);
+    if (sendKeyRef.current?.body !== serialized) {
+      sendKeyRef.current = { body: serialized, key: crypto.randomUUID() };
+    }
+    return sendKeyRef.current.key;
+  }
+
+  function errorMessage(error: unknown, fallback: string) {
+    // 서버 400(관리자 Slack ID 없음 + {담당자 멘션}, 50명·4,000자 등)·409(같은 발송 진행 중)는 문구 그대로.
+    return error instanceof ApiError ? error.message : fallback;
+  }
+
   async function send() {
-    setValidationVisible(true);
+    setValidationVisible('send');
+    setNotice(null);
     if (errors.length > 0 || sendingRef.current) return;
     sendingRef.current = true;
     setIsSending(true);
+    const body = requestBody(false);
     try {
-      const messages: SlackMessagePayload[] =
-        type === 'payment'
-          ? paymentTargets.map((member) => ({
-              memberId: Number(member.id),
-              message: createDuesNotificationMessage({
-                template: draft,
-                semester,
-                amount: member.assessedAmount!,
-                senderName: admin!.name,
-                rulesUrl: withHttps(rulesUrl),
-                exemptionFormUrl: withHttps(exemptionFormUrl),
-                duesListUrl: withHttps(duesListUrl),
-                deadline,
-              }),
-            }))
-          : selectedUnpaidMembers.map((member) => ({
-              memberId: Number(member.id),
-              message: createUnpaidNotificationMessage({
-                template: draft,
-                semester,
-                member,
-                duesListUrl: withHttps(duesListUrl),
-                managerPhoneNumber: adminPhoneNumber,
-              }),
-            }));
-      const result = await sendDuesNotifications(semester.id, {
-        type: type === 'payment' ? 'PAYMENT' : 'UNPAID',
-        messages,
-      });
+      const result = await sendDuesNotifications(semester.id, body, idempotencyKeyFor(body));
+      if (result.failed.length > 0) {
+        // 같은 내용으로 다시 전송하면 같은 키로 가서 서버가 실패한 회원에게만 다시 보낸다.
+        sendingRef.current = false;
+        setIsSending(false);
+        setNotice({
+          message: `${result.sentCount}명에게 전송했고 ${result.failed.length}명은 실패했습니다. 내용을 바꾸지 않고 다시 전송하면 실패한 회원에게만 다시 보냅니다.`,
+          tone: 'danger',
+        });
+        return;
+      }
       onClose();
-      onResult(
-        result.failed.length > 0
-          ? `${result.sentCount}명에게 전송했고 ${result.failed.length}명은 실패했습니다.`
-          : `${result.sentCount}명에게 Slack 알림을 전송했습니다.`,
-        result.failed.length > 0 ? 'neutral' : 'success',
-      );
-    } catch {
+      onResult(`${result.sentCount}명에게 Slack 알림을 전송했습니다.`, 'success');
+    } catch (error) {
       sendingRef.current = false;
       setIsSending(false);
-      onResult('Slack 알림 전송에 실패했습니다. 잠시 후 다시 시도해 주세요.', 'neutral');
+      setNotice({
+        message: errorMessage(error, 'Slack 알림 전송에 실패했습니다. 내용을 바꾸지 않고 다시 전송해 주세요.'),
+        tone: 'danger',
+      });
     }
   }
+
+  async function sendTestToSelf() {
+    setValidationVisible('test');
+    setNotice(null);
+    if (contentErrors.length > 0 || sendingRef.current) return;
+    sendingRef.current = true;
+    setIsTesting(true);
+    try {
+      const result = await sendDuesNotifications(semester.id, requestBody(true));
+      setNotice(
+        result.sentCount > 0
+          ? { message: '내 Slack DM으로 테스트 1건을 보냈습니다.', tone: 'success' }
+          : { message: '테스트 발송에 실패했습니다. Slack 연결 상태를 확인해 주세요.', tone: 'danger' },
+      );
+    } catch (error) {
+      setNotice({ message: errorMessage(error, '테스트 발송에 실패했습니다.'), tone: 'danger' });
+    } finally {
+      sendingRef.current = false;
+      setIsTesting(false);
+    }
+  }
+
+  const isBusy = isSending || isTesting;
+  const visibleErrors = validationVisible === 'test' ? contentErrors : validationVisible ? errors : [];
 
   return (
     <>
       <Modal
         eyebrow={semester.title}
         title="Slack 알림 작성"
-        onClose={isSending ? () => undefined : onClose}
+        onClose={isBusy ? () => undefined : onClose}
         width="900px"
         footer={
           <>
+            <Button disabled={isBusy} onClick={sendTestToSelf}>
+              {isTesting ? '테스트 발송 중…' : '나에게 테스트 발송'}
+            </Button>
             {hasMissingSlack && (
               <span className="text-danger ml-auto text-right text-[11px] font-semibold">
                 Slack ID가 없는 회원이 있습니다.
               </span>
             )}
-            <Button className={hasMissingSlack ? '' : 'ml-auto'} disabled={isSending} onClick={onClose}>
+            <Button className={hasMissingSlack ? '' : 'ml-auto'} disabled={isBusy} onClick={onClose}>
               취소
             </Button>
-            <Button variant="primary" disabled={isSending || hasMissingSlack} onClick={send}>
+            <Button variant="primary" disabled={isBusy || hasMissingSlack} onClick={send}>
               {isSending ? '전송 중…' : '전송'}
             </Button>
           </>
@@ -408,6 +499,11 @@ export function DuesSlackNotificationModal({
                     <span className="text-muted ml-2">{MANAGER_MENTION_TOKEN}</span>
                     <span className="text-muted ml-2">{adminPhoneNumber || '전화번호 없음'}</span>
                   </div>
+                  {usesManagerMention && (
+                    <p className="text-faint text-[10.5px]">
+                      {MANAGER_MENTION_TOKEN}은 내 인명부 Slack ID로 바뀝니다. 비어 있으면 서버가 발송을 거절합니다.
+                    </p>
+                  )}
                 </div>
               </section>
 
@@ -467,7 +563,7 @@ export function DuesSlackNotificationModal({
                   {hasMissingSlack && (
                     <Button
                       className="ml-auto px-2.5 py-1 text-[11px]"
-                      disabled={isSending}
+                      disabled={isBusy}
                       onClick={() => setIsSlackIdModalOpen(true)}
                     >
                       Slack ID 입력
@@ -518,18 +614,30 @@ export function DuesSlackNotificationModal({
             </pre>
           </section>
 
-          {validationVisible && errors.length > 0 && (
+          {visibleErrors.length > 0 && (
             <div
               role="alert"
               className="border-danger-line bg-danger-soft text-danger rounded-[10px] border px-3.5 py-3"
             >
               <strong className="text-xs">전송 전에 다음 항목을 확인해 주세요.</strong>
               <ul className="mt-1.5 list-disc space-y-1 pl-4 text-[11px]">
-                {errors.map((error) => (
+                {visibleErrors.map((error) => (
                   <li key={error}>{error}</li>
                 ))}
               </ul>
             </div>
+          )}
+          {notice && (
+            <p
+              role="status"
+              className={`rounded-[10px] border px-3.5 py-3 text-xs ${
+                notice.tone === 'success'
+                  ? 'border-primary-line bg-primary-soft text-primary-text'
+                  : 'border-danger-line bg-danger-soft text-danger'
+              }`}
+            >
+              {notice.message}
+            </p>
           )}
         </div>
       </Modal>
