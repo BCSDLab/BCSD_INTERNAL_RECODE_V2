@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import { duesQueries } from '@/api/dues/queries';
-import { uploadEvidence as uploadEvidenceFile } from '@/api/ledger/api';
+import { describeEvidenceUploadError, uploadEvidence as uploadEvidenceFile } from '@/api/ledger/api';
 import { toEvidence } from '@/api/ledger/mappers';
 import type { MemberDues } from '@/components/dues/types';
 import { Button, Input, ModalFrame, Panel, Select } from '@/components/ledger/LedgerUi';
@@ -142,8 +142,8 @@ export function LedgerDetailView({ entry, onClose, onSave, onOpenEvidence }: Led
       const additions: Evidence[] = (await Promise.all(acceptedFiles.map(uploadEvidenceFile))).map(toEvidence);
       setEvidences((current) => [...current, ...additions].slice(0, MAX_EVIDENCE_COUNT));
       setError(exceededLimit ? `증빙은 최대 ${MAX_EVIDENCE_COUNT}개까지만 첨부했습니다.` : '');
-    } catch {
-      setError('증빙 파일을 올리지 못했습니다. 다시 선택해주세요.');
+    } catch (uploadError) {
+      setError(describeEvidenceUploadError(uploadError));
     } finally {
       event.target.value = '';
     }

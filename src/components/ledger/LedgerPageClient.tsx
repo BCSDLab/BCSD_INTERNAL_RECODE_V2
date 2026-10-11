@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ApiError } from '@/api/client';
 import { invalidateLedgerAndDues } from '@/api/dues/queries';
-import { commitImport, updateLedgerEntry, uploadEvidence } from '@/api/ledger/api';
+import { commitImport, describeEvidenceUploadError, updateLedgerEntry, uploadEvidence } from '@/api/ledger/api';
 import { toCategoryCode, toEvidence, toImportCategoryCode } from '@/api/ledger/mappers';
 import { ledgerQueries } from '@/api/ledger/queries';
 import { EvidenceViewer } from '@/components/ledger/EvidenceViewer';
@@ -107,8 +107,8 @@ export function LedgerPageClient() {
     let replacement: Evidence;
     try {
       replacement = toEvidence(await uploadEvidence(file));
-    } catch {
-      flash('증빙 파일을 올리지 못했습니다.');
+    } catch (error) {
+      flash(describeEvidenceUploadError(error));
       return;
     }
     try {
