@@ -116,6 +116,13 @@
   --danger: #d6455b;
   --danger-line: rgba(214, 69, 91, 0.35);
   --danger-soft: rgba(214, 69, 91, 0.05);
+  --success: #2ca86f;
+  --success-line: rgba(44, 168, 111, 0.35);
+  --success-soft: rgba(44, 168, 111, 0.08);
+  --dues-month-paid: #2ca86f;
+  --dues-month-unpaid: #d6455b;
+  --stock-up: #d6455b;
+  --stock-down: #2563eb;
 
   /* 인명부 트랙 뱃지 색. 시안 스크린샷(game/frontend/backend/ios/android/pm/design/data/security)에서
      그대로 뽑았다 — devops·ps는 시안에 없어 남은 팔레트에서 자연스러운 색으로 배정했다. */
@@ -170,6 +177,14 @@
   --danger: #ff8a8a;
   --danger-line: rgba(255, 138, 138, 0.35);
   --danger-soft: rgba(255, 138, 138, 0.05);
+  --success: #4ade9b;
+  --success-line: rgba(74, 222, 155, 0.35);
+  --success-soft: rgba(74, 222, 155, 0.1);
+  /* 회비 월별 상태는 넓은 면적을 채우므로 알림용 색상보다 어둡고 깊은 톤을 쓴다. */
+  --dues-month-paid: #28715a;
+  --dues-month-unpaid: #963848;
+  --stock-up: #ff8a8a;
+  --stock-down: #60a5fa;
 
   /* 라이트 값과 같은 색상환을 쓰되, 어두운 배경에서 읽히도록 배경은 투명도 있는 채우기로,
      글자는 더 밝은 톤으로 바꾼다(--primary-soft/--primary-text 다크 조정과 같은 방식). */
@@ -242,6 +257,9 @@
   --color-danger: var(--danger);
   --color-danger-line: var(--danger-line);
   --color-danger-soft: var(--danger-soft);
+  --color-success: var(--success);
+  --color-success-line: var(--success-line);
+  --color-success-soft: var(--success-soft);
 
   --font-sans: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, sans-serif;
 }

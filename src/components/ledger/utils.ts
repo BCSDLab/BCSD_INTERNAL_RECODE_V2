@@ -1,0 +1,100 @@
+import type { LedgerEntry } from '@/components/ledger/types';
+
+export function formatLedgerDateInput(value: string, previousValue: string) {
+  const isDeleting = value.length < previousValue.length;
+
+  if (isDeleting && /^20\d{2}-\d{2}-$/.test(previousValue) && value === previousValue.slice(0, -1)) {
+    return previousValue.slice(0, -2);
+  }
+
+  if (isDeleting && /^20\d{2}-$/.test(previousValue) && value === previousValue.slice(0, -1)) {
+    return previousValue.slice(0, -2);
+  }
+
+  const digits = value.replaceAll(/\D/g, '').slice(0, 8);
+  if (digits === '') return '';
+
+  if (digits[0] !== '2') return previousValue;
+  if (digits.length >= 2 && digits[1] !== '0') return previousValue;
+  if (digits.length >= 5 && !['0', '1'].includes(digits[4])) return previousValue;
+
+  if (digits.length >= 6) {
+    const month = Number(digits.slice(4, 6));
+    if (month < 1 || month > 12) return previousValue;
+  }
+
+  if (digits.length >= 7 && !['0', '1', '2', '3'].includes(digits[6])) return previousValue;
+  if (digits.length >= 8) {
+    const day = Number(digits.slice(6, 8));
+    if (day < 1 || day > 31) return previousValue;
+  }
+
+  if (digits.length < 4) return digits;
+  if (digits.length === 4) return `${digits}-`;
+  if (digits.length < 6) return `${digits.slice(0, 4)}-${digits.slice(4)}`;
+  if (digits.length === 6) return `${digits.slice(0, 4)}-${digits.slice(4)}-`;
+  return `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6)}`;
+}
+
+export function isCompleteLedgerDate(value: string) {
+  return /^20\d{2}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/.test(value);
+}
+
+export function formatWon(value: number) {
+  return `${new Intl.NumberFormat('ko-KR').format(value)}원`;
+}
+
+export function formatOccurredAt(value: string) {
+  const [date, time] = value.split('T');
+  return `${date.replaceAll('-', '.')} ${time}`;
+}
+
+export function entryTypeLabel(entry: LedgerEntry) {
+  return entry.type === 'deposit' ? '입금' : '출금';
+}
+
+export function signedAmount(entry: LedgerEntry) {
+  return `${entry.type === 'deposit' ? '+' : '-'}${formatWon(entry.amount)}`;
+}
+
+export function linkStatusLabel(entry: LedgerEntry) {
+  if (entry.linkStatus === 'confirmed') return '확정';
+  if (entry.linkStatus === 'pending') return '미정';
+  return '없음';
+}
+
+/** 증빙으로 받는 형식. HEIC 등은 브라우저·서버에서 미리보기가 안 돼 받지 않는다. */
+export const EVIDENCE_ACCEPT = 'image/png,image/jpeg,image/webp,application/pdf';
+
+export const EVIDENCE_TYPE_ERROR = 'PNG, JPG, WEBP, PDF(10MB 이하)만 첨부할 수 있습니다.';
+
+/** 서버 presigned-url 검증과 같은 상한(1B~10MB). */
+const MAX_EVIDENCE_BYTES = 10 * 1024 * 1024;
+
+/** 확장자 ↔ MIME 짝. 서버는 짝이 맞지 않으면 400이다. */
+const EVIDENCE_MIME_BY_EXTENSION: Record<string, string> = {
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  webp: 'image/webp',
+  pdf: 'application/pdf',
+};
+
+/**
+ * 서버에 보낼 증빙 MIME. 브라우저가 형식을 못 주면(file.type === '') 확장자 짝을 쓴다.
+ * presigned-url 요청과 S3 PUT의 Content-Type에 같은 값을 써야 서명이 맞는다.
+ */
+export function evidenceContentType(file: File) {
+  if (file.type) return file.type;
+  const extension = file.name.split('.').pop()?.toLowerCase() ?? '';
+  return EVIDENCE_MIME_BY_EXTENSION[extension] ?? '';
+}
+
+/** accept는 파일 선택 창의 거름일 뿐이라(드래그·"모든 파일" 선택) 확장자·MIME·크기를 다시 본다. */
+export function isAllowedEvidenceFile(file: File) {
+  const extension = file.name.split('.').pop()?.toLowerCase() ?? '';
+  const mimeType = EVIDENCE_MIME_BY_EXTENSION[extension];
+  return (
+    !!mimeType && (file.type === '' || file.type === mimeType) && file.size >= 1 && file.size <= MAX_EVIDENCE_BYTES
+  );
+}

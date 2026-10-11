@@ -21,5 +21,5 @@
     // @tiptap/* 는 default와 동명 named export를 함께 내보낸다. default import가 공식 사용법.
     "import/no-named-as-default": "off"
   },
-  "ignorePatterns": [".next/**", "out/**", "build/**", "next-env.d.ts"]
+  "ignorePatterns": [".next/**", "out/**", "build/**", "next-env.d.ts", "와이어프레임 기반 디자인 생성/**"]
 }
