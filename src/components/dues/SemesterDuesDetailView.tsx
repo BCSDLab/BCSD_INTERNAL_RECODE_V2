@@ -179,7 +179,9 @@ export function SemesterDuesDetailView({
   const unlinkedDuesCount = ledgerEntries.filter(
     (entry) => entry.category === '회비' && (!entry.duesLink || entry.linkStatus !== 'confirmed'),
   ).length;
-  const canLinkLedgerEntries = unlinkedDuesCount > 0 && (semester.unpaidMembers > 0 || semester.needsReview);
+  // 연결 버튼은 끄지 않는다 — 미납 0명 학기나 미래 학기에도 선납을 연결할 수 있어야 한다.
+  // 연결할 내역이 없으면 모달 안에서 빈 상태를 보여 준다. 강조만 연결할 내역이 있을 때 한다.
+  const hasUnlinkedDues = unlinkedDuesCount > 0;
 
   const nameOptions = useMemo(
     () => tableMembers.map((member) => ({ value: member.id, label: `${member.name} · ${member.studentNumber}` })),
@@ -236,10 +238,6 @@ export function SemesterDuesDetailView({
   }
 
   function openLinkModal() {
-    if (!canLinkLedgerEntries) {
-      flash('이 학기에 연결 가능한 입출금 내역이 없습니다.', 'neutral');
-      return;
-    }
     setIsLinkModalOpen(true);
   }
 
@@ -337,16 +335,7 @@ export function SemesterDuesDetailView({
         <div className="ml-auto flex items-center gap-2.5">
           <Button onClick={() => setIsRosterModalOpen(true)}>명단 관리</Button>
           <Button onClick={() => setIsSlackModalOpen(true)}>Slack 알림 전송</Button>
-          <Button
-            variant={canLinkLedgerEntries ? 'primary' : 'outline'}
-            aria-disabled={!canLinkLedgerEntries}
-            className={
-              canLinkLedgerEntries
-                ? ''
-                : 'border-line2 bg-panel2 text-faint hover:border-line2 hover:text-faint cursor-not-allowed'
-            }
-            onClick={openLinkModal}
-          >
+          <Button variant={hasUnlinkedDues ? 'primary' : 'outline'} onClick={openLinkModal}>
             입출금 내역 연결
           </Button>
         </div>

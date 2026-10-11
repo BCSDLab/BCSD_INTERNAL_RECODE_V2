@@ -79,7 +79,7 @@ export function DuesLedgerLinkModal({
       <div className="px-6 py-5">
         {candidates.length === 0 ? (
           <div className="border-dash text-muted rounded-[12px] border border-dashed px-8 py-10 text-center text-[13px]">
-            연결할 입출금 내역이 없습니다.
+            연결할 입출금 내역이 없습니다. 장부에서 분류를 회비로 바꾼 입출금이 여기에 나옵니다.
           </div>
         ) : (
           <div className="border-line overflow-hidden rounded-[12px] border">
