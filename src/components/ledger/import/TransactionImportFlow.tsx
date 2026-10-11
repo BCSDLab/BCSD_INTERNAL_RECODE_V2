@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react';
 import { ApiError } from '@/api/client';
-import { previewImport, uploadEvidence } from '@/api/ledger/api';
+import { describeEvidenceUploadError, previewImport, uploadEvidence } from '@/api/ledger/api';
 import { toEvidence, toImportTransaction } from '@/api/ledger/mappers';
 import { Button } from '@/components/ledger/LedgerUi';
 import type { ImportStep, ImportTransaction } from '@/components/ledger/import/types';
@@ -206,8 +206,8 @@ export function TransactionImportFlow({ onCancel, onSave }: TransactionImportFlo
         evidences: [...transaction.evidences, ...evidences].slice(0, MAX_EVIDENCE_COUNT),
       }));
       setEvidenceError(exceededLimit ? `증빙은 거래당 최대 ${MAX_EVIDENCE_COUNT}개까지만 첨부했습니다.` : '');
-    } catch {
-      setEvidenceError('증빙 파일을 올리지 못했습니다. 다시 선택해주세요.');
+    } catch (error) {
+      setEvidenceError(describeEvidenceUploadError(error));
     }
   }
 
