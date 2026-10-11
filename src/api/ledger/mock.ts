@@ -113,7 +113,7 @@ export function mockPreviewImport(file: File): Promise<ImportPreviewResponse> {
     .filter((transaction) => !importedRowKeys.has(transaction.id))
     .map((transaction) => ({
       rowKey: transaction.id,
-      occurredAt: `${transaction.occurredAt}:00`,
+      occurredAt: transaction.occurredAt,
       type: transaction.type === 'deposit' ? ('DEPOSIT' as const) : ('WITHDRAWAL' as const),
       counterparty: transaction.counterparty,
       amount: transaction.amount,
@@ -125,6 +125,20 @@ export function mockPreviewImport(file: File): Promise<ImportPreviewResponse> {
 }
 
 export function mockCommitImport(body: ImportCommitRequest): Promise<ImportCommitResponse> {
+  // 서버처럼 원본 값(초 포함 시각·금액·은행 잔액)이 미리보기와 다르면 거절한다(rowKey 재계산 흉내).
+  const previewed = new Map(createMockImportTransactions().map((transaction) => [transaction.id, transaction]));
+  const mismatched = body.transactions.some((transaction) => {
+    const original = previewed.get(transaction.rowKey);
+    return (
+      !original ||
+      original.occurredAt !== transaction.occurredAt ||
+      original.amount !== transaction.amount ||
+      original.bankBalance !== transaction.bankBalance
+    );
+  });
+  if (mismatched) {
+    return Promise.reject(new ApiError(400, '거래 정보가 미리보기 결과와 다릅니다. 파일을 다시 미리보기 하세요.'));
+  }
   const fresh = body.transactions.filter((transaction) => !importedRowKeys.has(transaction.rowKey));
   const semesterLabel = semesterLabelOf(semesterIds()[0]);
 

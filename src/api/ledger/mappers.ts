@@ -84,7 +84,8 @@ export function toLedgerEntry(dto: LedgerEntryResponse): LedgerEntry {
 export function toImportTransaction(dto: ImportTransactionResponse): ImportTransaction {
   return {
     id: dto.rowKey,
-    occurredAt: toMinute(dto.occurredAt),
+    // 초까지 그대로 둔다 — 커밋 때 서버가 이 값으로 rowKey를 다시 계산한다(초를 버리면 400 IMPORT_ROW_KEY_MISMATCH).
+    occurredAt: dto.occurredAt,
     type: dto.type === 'DEPOSIT' ? 'deposit' : 'withdrawal',
     counterparty: dto.counterparty,
     amount: dto.amount,

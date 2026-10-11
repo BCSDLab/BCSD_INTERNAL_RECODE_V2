@@ -6,7 +6,7 @@ export function createMockImportTransactions(): ImportTransaction[] {
   return [
     {
       id: 'import-001',
-      occurredAt: '2026-11-16T09:10',
+      occurredAt: '2026-11-16T09:10:37',
       type: 'deposit',
       counterparty: '김민준',
       amount: 40000,
@@ -18,7 +18,7 @@ export function createMockImportTransactions(): ImportTransaction[] {
     },
     {
       id: 'import-002',
-      occurredAt: '2026-11-17T18:22',
+      occurredAt: '2026-11-17T18:22:05',
       type: 'deposit',
       counterparty: '이서연',
       amount: 10000,
@@ -30,7 +30,7 @@ export function createMockImportTransactions(): ImportTransaction[] {
     },
     {
       id: 'import-003',
-      occurredAt: '2026-11-18T08:40',
+      occurredAt: '2026-11-18T08:40:00',
       type: 'withdrawal',
       counterparty: '박지안',
       amount: 15000,
@@ -42,7 +42,7 @@ export function createMockImportTransactions(): ImportTransaction[] {
     },
     {
       id: 'import-004',
-      occurredAt: '2026-11-18T08:41',
+      occurredAt: '2026-11-18T08:41:52',
       type: 'withdrawal',
       counterparty: '한소미',
       amount: 10000,

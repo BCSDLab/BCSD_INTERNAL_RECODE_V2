@@ -128,7 +128,7 @@ export function LedgerPageClient() {
       fileName,
       transactions: transactions.map((transaction) => ({
         rowKey: transaction.id,
-        occurredAt: `${transaction.occurredAt}:00`,
+        occurredAt: transaction.occurredAt,
         type: transaction.type === 'deposit' ? 'DEPOSIT' : 'WITHDRAWAL',
         counterparty: transaction.counterparty,
         amount: transaction.amount,

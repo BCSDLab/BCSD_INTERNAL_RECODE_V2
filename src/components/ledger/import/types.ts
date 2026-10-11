@@ -2,6 +2,7 @@ import type { Evidence, LedgerCategory } from '@/components/ledger/types';
 
 export interface ImportTransaction {
   id: string;
+  /** 미리보기 응답 원본(yyyy-MM-ddTHH:mm:ss). 화면은 분까지만 보이고, 커밋에는 그대로 돌려보낸다. */
   occurredAt: string;
   type: 'deposit' | 'withdrawal';
   counterparty: string;

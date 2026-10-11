@@ -221,3 +221,52 @@ test.describe('Switch (활동 여부 · 공개 토글 · 모집 상태 통일)',
     await expect(recruitSwitch).toHaveAttribute('aria-checked', 'false');
   });
 });
+
+test.describe('장부 거래내역 가져오기 (실제 API 계약)', () => {
+  test('미리보기의 occurredAt을 초까지 그대로 커밋에 돌려보낸다', async ({ page }) => {
+    // 서버는 커밋 때 rowKey를 초 단위 시각으로 다시 계산한다 — 초를 버리면 400 IMPORT_ROW_KEY_MISMATCH.
+    // 공통 목업(**/v1/**) 뒤에 등록해야 이 라우트가 먼저 잡힌다.
+    await installApiMocks(page);
+    await page.route('**/v1/admin/ledger/entries', (route) => route.fulfill({ json: { entries: [] } }));
+    await page.route('**/v1/admin/ledger/imports/preview', (route) =>
+      route.fulfill({
+        json: {
+          fileName: 'shinhan.xlsx',
+          transactions: [
+            {
+              rowKey: 'row-1',
+              occurredAt: '2026-09-10T13:05:47',
+              type: 'DEPOSIT',
+              counterparty: '합성입금',
+              amount: 20000,
+              bankBalance: 120000,
+              suggestedCategory: 'DUES',
+              suggestedMemberId: null,
+            },
+          ],
+        },
+      }),
+    );
+    let committed: { transactions: { occurredAt: string }[] } | undefined;
+    await page.route('**/v1/admin/ledger/imports', async (route) => {
+      committed = route.request().postDataJSON();
+      await route.fulfill({ json: { createdCount: 1, skippedDuplicateCount: 0 } });
+    });
+
+    await page.goto('/ledger');
+    await page.getByRole('button', { name: '거래내역 가져오기' }).click();
+    const flow = page.locator('[aria-label="신한 거래내역 가져오기"]');
+    await flow.locator('input[type="file"][accept=".xlsx"]').setInputFiles({
+      name: 'shinhan.xlsx',
+      mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      buffer: Buffer.from('x'),
+    });
+    await flow.getByRole('button', { name: '다음' }).click();
+    // 화면은 분까지만 보인다.
+    await expect(flow.getByText('09.10 13:05')).toBeVisible();
+    await flow.getByRole('button', { name: '다음' }).click();
+    await flow.getByRole('button', { name: '저장' }).click();
+
+    await expect.poll(() => committed?.transactions[0]?.occurredAt).toBe('2026-09-10T13:05:47');
+  });
+});
