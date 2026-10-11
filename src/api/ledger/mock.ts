@@ -20,7 +20,9 @@ import type {
   LedgerEntryResponse,
   LedgerEntryUpdateRequest,
 } from './types';
-import { evidenceLinkError } from '@/components/ledger/utils';
+import type { Evidence } from '@/components/ledger/types';
+import { MAX_EVIDENCE_COUNT } from '@/components/ledger/types';
+import { MAX_EVIDENCE_LABEL_LENGTH, evidenceLinkError } from '@/components/ledger/utils';
 import { createMockImportTransactions } from './mock-import-seed';
 
 /**
@@ -37,15 +39,23 @@ function isDuesCategory(category: LedgerEntryResponse['category']) {
   return category === 'DUES';
 }
 
+/** 이미 붙어 있던 링크는 개수·이름 길이·중복만 본다. */
+function keptEvidenceLinkError(link: EvidenceLinkRequest, current: Evidence[]) {
+  if (current.length >= MAX_EVIDENCE_COUNT) return `증빙은 최대 ${MAX_EVIDENCE_COUNT}개까지 첨부할 수 있습니다.`;
+  if ((link.label?.trim().length ?? 0) > MAX_EVIDENCE_LABEL_LENGTH) return '링크 이름은 50자 이하로 입력하세요.';
+  if (current.some((item) => item.url === link.url.trim())) return '같은 증빙 링크가 두 번 있습니다.';
+  return null;
+}
+
 /** 서버처럼 링크 목록을 검증하고 전체 교체할 증빙을 만든다. 첫 오류 하나만 400으로 던진다. */
-function toEvidenceLinks(links: EvidenceLinkRequest[]): EvidenceResponse[] {
+function toEvidenceLinks(links: EvidenceLinkRequest[], attachedUrls: string[] = []): EvidenceResponse[] {
   const accepted: EvidenceResponse[] = [];
   for (const link of links) {
-    const error = evidenceLinkError(
-      link.url,
-      link.label ?? '',
-      accepted.map((item) => ({ id: String(item.id), url: item.url, label: item.label })),
-    );
+    const current = accepted.map((item) => ({ id: String(item.id), url: item.url, label: item.label }));
+    // 이미 그 기록에 붙어 있던 링크(예전 S3 증빙을 옮긴 주소 포함)는 드라이브 규칙 없이 남긴다. 개수·중복만 본다.
+    const error = attachedUrls.includes(link.url.trim())
+      ? keptEvidenceLinkError(link, current)
+      : evidenceLinkError(link.url, link.label ?? '', current);
     if (error) throw new ApiError(400, error);
     accepted.push({ id: issueEvidenceId(), url: link.url.trim(), label: link.label?.trim() || null });
   }
@@ -61,7 +71,10 @@ export function mockUpdateLedgerEntry(entryId: number, body: LedgerEntryUpdateRe
   let nextEvidences: EvidenceResponse[];
   try {
     entry = findEntry(entryId);
-    nextEvidences = toEvidenceLinks(body.evidenceLinks);
+    nextEvidences = toEvidenceLinks(
+      body.evidenceLinks,
+      entry.evidences.map((item) => item.url),
+    );
   } catch (error) {
     return Promise.reject(error);
   }
