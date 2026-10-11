@@ -1,5 +1,6 @@
 import { apiClient, apiFetch } from '@/api/client';
 import { USE_LEDGER_MOCK } from '@/api/dues/mock-switch';
+import { evidenceContentType } from '@/components/ledger/utils';
 import {
   mockCommitImport,
   mockGetLedgerEntries,
@@ -50,15 +51,17 @@ export function unlinkLedgerEntry(entryId: number) {
  */
 export async function uploadEvidence(file: File): Promise<EvidenceResponse> {
   if (USE_LEDGER_MOCK) return mockUploadEvidence(file);
+  // presign 요청과 PUT에 같은 값을 쓴다(서명에 Content-Type이 들어간다).
+  const contentType = evidenceContentType(file);
   const presigned = await apiClient.post<EvidencePresignedUrlResponse>(`${BASE}/evidences/presigned-url`, {
     fileName: file.name,
-    contentType: file.type,
+    contentType,
     size: file.size,
   });
   const upload = await fetch(presigned.uploadUrl, {
     method: 'PUT',
     body: file,
-    headers: { 'Content-Type': file.type },
+    headers: { 'Content-Type': contentType },
   });
   if (!upload.ok) throw new Error('증빙 파일을 올리지 못했습니다.');
   return apiClient.post<EvidenceResponse>(`${BASE}/evidences/${presigned.evidenceId}/complete`);

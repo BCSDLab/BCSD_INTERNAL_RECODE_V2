@@ -80,6 +80,16 @@ const EVIDENCE_MIME_BY_EXTENSION: Record<string, string> = {
   pdf: 'application/pdf',
 };
 
+/**
+ * 서버에 보낼 증빙 MIME. 브라우저가 형식을 못 주면(file.type === '') 확장자 짝을 쓴다.
+ * presigned-url 요청과 S3 PUT의 Content-Type에 같은 값을 써야 서명이 맞는다.
+ */
+export function evidenceContentType(file: File) {
+  if (file.type) return file.type;
+  const extension = file.name.split('.').pop()?.toLowerCase() ?? '';
+  return EVIDENCE_MIME_BY_EXTENSION[extension] ?? '';
+}
+
 /** accept는 파일 선택 창의 거름일 뿐이라(드래그·"모든 파일" 선택) 확장자·MIME·크기를 다시 본다. */
 export function isAllowedEvidenceFile(file: File) {
   const extension = file.name.split('.').pop()?.toLowerCase() ?? '';
