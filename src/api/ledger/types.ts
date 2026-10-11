@@ -112,7 +112,7 @@ export interface ImportTransactionResponse {
   /** 은행 거래 후 잔액(엑셀 값 그대로). 장부 balance가 된다. */
   bankBalance: number;
   suggestedCategory: ImportCategory;
-  /** 입금자명·금액으로 서버가 찾은 회비 대상. */
+  /** 가장 최근 학기 명단에서 이름이 상대(counterparty)와 정확히 한 명만 같을 때 그 회원. 금액은 보지 않는다. */
   suggestedMemberId: number | null;
 }
 
@@ -126,6 +126,7 @@ export interface ImportPreviewResponse {
  * POST /v1/admin/ledger/imports — 미리보기의 모든 거래를 반영한다(1~5,000건, 0건이면 부르지 않는다).
  * 회비 분류는 PENDING으로 들어가고 연결은 회비 화면에서 한다. 서버가 미리보기 결과를 들고 있지 않도록
  * 거래 원본 값(bankBalance 포함)을 함께 돌려보내고, 서버는 rowKey를 다시 계산해 다르면 400이다.
+ * 요청 안에 같은 rowKey가 두 번 있으면 400 DUPLICATED_ROW_KEY_IN_REQUEST(미리보기 결과를 그대로 보내면 나지 않는다).
  */
 export interface ImportCommitRequest {
   fileName: string;

@@ -402,7 +402,10 @@ function deriveMemberDues(
   }
 
   // 면제는 겹칠 수 있다. 한 달에 몇 개가 걸려도 그 달 부과액은 0이다.
-  const memberExemptions = exemptionList.filter((exemption) => exemption.memberId === member.id);
+  // 서버처럼 그 달 면제를 (startMonth, id) 오름차순으로 담는다. 화면은 이 순서를 그대로 쓴다.
+  const memberExemptions = exemptionList
+    .filter((exemption) => exemption.memberId === member.id)
+    .sort((a, b) => a.startMonth.localeCompare(b.startMonth) || a.id - b.id);
   const exemptionsByMonth = months.map((month) =>
     memberExemptions
       .filter((item) => monthIsInExemption(month, item))

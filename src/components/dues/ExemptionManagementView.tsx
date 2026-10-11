@@ -706,7 +706,7 @@ function ImpactModal({
   onBack: () => void;
   onApply: () => void;
 }) {
-  const { data, isPending, isError } = useQuery(
+  const { data, isPending, error } = useQuery(
     duesQueries.exemptionPreview(semesterId, {
       ...toExemptionRequest(draft),
       editingId: editingId ? Number(editingId) : null,
@@ -733,7 +733,12 @@ function ImpactModal({
         <ImpactBody semesterId={semesterId} before={data.before} after={data.after} />
       ) : (
         <div className="text-muted px-[22px] py-8 text-center text-[13px]">
-          {isError && !isPending ? '변경 영향을 계산하지 못했습니다.' : '변경 영향을 계산하는 중…'}
+          {/* 404(없는 면제·명단 밖 회원), 400(월 형식·기간)은 서버 문구를 그대로 보여 준다. */}
+          {error && !isPending
+            ? error instanceof ApiError
+              ? error.message
+              : '변경 영향을 계산하지 못했습니다.'
+            : '변경 영향을 계산하는 중…'}
         </div>
       )}
     </Modal>
