@@ -284,9 +284,6 @@ function evidenceIdOf(key: string) {
   return id;
 }
 
-/** 업로드는 끝났지만 아직 장부 기록에 붙지 않은 증빙까지 포함한 저장소. */
-export const evidences = new Map<number, EvidenceResponse>();
-
 export const entries: LedgerEntryResponse[] = INITIAL_LEDGER_ENTRIES.map((entry) => ({
   id: seedNumber(entry.id),
   occurredAt: `${entry.occurredAt}:00`,
@@ -308,17 +305,11 @@ export const entries: LedgerEntryResponse[] = INITIAL_LEDGER_ENTRIES.map((entry)
         semesterId: entry.duesLink.semesterId,
       }
     : null,
-  evidences: entry.evidences.map((evidence) => {
-    const stored: EvidenceResponse = {
-      id: evidenceIdOf(evidence.id),
-      name: evidence.name,
-      url: evidence.url ?? null,
-      width: evidence.width ?? null,
-      height: evidence.height ?? null,
-    };
-    evidences.set(stored.id, stored);
-    return stored;
-  }),
+  evidences: entry.evidences.map((evidence): EvidenceResponse => ({
+    id: evidenceIdOf(evidence.id),
+    url: evidence.url,
+    label: evidence.label,
+  })),
 }));
 
 let nextEntryId = Math.max(0, ...entries.map((entry) => entry.id)) + 1;

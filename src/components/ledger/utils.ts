@@ -1,4 +1,5 @@
-import type { LedgerEntry } from '@/components/ledger/types';
+import type { Evidence, LedgerEntry } from '@/components/ledger/types';
+import { MAX_EVIDENCE_COUNT } from '@/components/ledger/types';
 
 export function formatLedgerDateInput(value: string, previousValue: string) {
   const isDeleting = value.length < previousValue.length;
@@ -63,38 +64,54 @@ export function linkStatusLabel(entry: LedgerEntry) {
   return '없음';
 }
 
-/** 증빙으로 받는 형식. HEIC 등은 브라우저·서버에서 미리보기가 안 돼 받지 않는다. */
-export const EVIDENCE_ACCEPT = 'image/png,image/jpeg,image/webp,application/pdf';
-
-export const EVIDENCE_TYPE_ERROR = 'PNG, JPG, WEBP, PDF(10MB 이하)만 첨부할 수 있습니다.';
-
-/** 서버 presigned-url 검증과 같은 상한(1B~10MB). */
-const MAX_EVIDENCE_BYTES = 10 * 1024 * 1024;
-
-/** 확장자 ↔ MIME 짝. 서버는 짝이 맞지 않으면 400이다. */
-const EVIDENCE_MIME_BY_EXTENSION: Record<string, string> = {
-  png: 'image/png',
-  jpg: 'image/jpeg',
-  jpeg: 'image/jpeg',
-  webp: 'image/webp',
-  pdf: 'application/pdf',
-};
+/** 증빙은 구글 드라이브 공유 링크다. 관리자가 드라이브에 영수증을 직접 올리고 링크만 붙인다. */
+export const EVIDENCE_LINK_GUIDE =
+  '구글 드라이브에 영수증을 올린 뒤 공유 링크를 붙여 넣으세요. 링크 공유 권한(링크가 있는 모든 사용자 또는 조직)을 확인하세요.';
 
 /**
- * 서버에 보낼 증빙 MIME. 브라우저가 형식을 못 주면(file.type === '') 확장자 짝을 쓴다.
- * presigned-url 요청과 S3 PUT의 Content-Type에 같은 값을 써야 서명이 맞는다.
+ * 서버 검증과 같은 규칙과 문구(https, drive.google.com·docs.google.com, url 2,048자, 이름 50자, 거래당 5개, 중복 금지).
+ * url은 앞뒤 공백만 지우고 그대로 비교한다(대소문자·슬래시·쿼리가 다르면 다른 링크).
  */
-export function evidenceContentType(file: File) {
-  if (file.type) return file.type;
-  const extension = file.name.split('.').pop()?.toLowerCase() ?? '';
-  return EVIDENCE_MIME_BY_EXTENSION[extension] ?? '';
+const EVIDENCE_LINK_HOSTS = ['drive.google.com', 'docs.google.com'];
+export const MAX_EVIDENCE_URL_LENGTH = 2048;
+export const MAX_EVIDENCE_LABEL_LENGTH = 50;
+
+/** 추가하려는 링크의 문제를 문구로 돌려준다. 문제가 없으면 null. */
+export function evidenceLinkError(url: string, label: string, current: Evidence[]): string | null {
+  const trimmedUrl = url.trim();
+  if (!trimmedUrl) return '증빙 링크를 입력하세요.';
+  if (current.length >= MAX_EVIDENCE_COUNT) return `증빙은 최대 ${MAX_EVIDENCE_COUNT}개까지 첨부할 수 있습니다.`;
+  if (trimmedUrl.length > MAX_EVIDENCE_URL_LENGTH) return '증빙 링크는 2,048자 이하여야 합니다.';
+  let parsed: URL;
+  try {
+    parsed = new URL(trimmedUrl);
+  } catch {
+    return '구글 드라이브 링크만 첨부할 수 있습니다.';
+  }
+  // 서버처럼 userinfo·포트 지정도 막는다. 호스트만 대소문자를 무시한다.
+  if (
+    parsed.protocol !== 'https:' ||
+    !EVIDENCE_LINK_HOSTS.includes(parsed.hostname.toLowerCase()) ||
+    parsed.username ||
+    parsed.password ||
+    parsed.port ||
+    /\s/.test(trimmedUrl)
+  ) {
+    return '구글 드라이브 링크만 첨부할 수 있습니다.';
+  }
+  if (label.trim().length > MAX_EVIDENCE_LABEL_LENGTH) return '링크 이름은 50자 이하로 입력하세요.';
+  if (current.some((evidence) => evidence.url === trimmedUrl)) return '같은 증빙 링크가 두 번 있습니다.';
+  return null;
 }
 
-/** accept는 파일 선택 창의 거름일 뿐이라(드래그·"모든 파일" 선택) 확장자·MIME·크기를 다시 본다. */
-export function isAllowedEvidenceFile(file: File) {
-  const extension = file.name.split('.').pop()?.toLowerCase() ?? '';
-  const mimeType = EVIDENCE_MIME_BY_EXTENSION[extension];
-  return (
-    !!mimeType && (file.type === '' || file.type === mimeType) && file.size >= 1 && file.size <= MAX_EVIDENCE_BYTES
-  );
+let nextDraftEvidenceId = 1;
+
+/** 저장 전 링크. id는 화면 key용이고 서버로 보내지 않는다(요청은 url·label만). */
+export function draftEvidenceLink(url: string, label: string): Evidence {
+  return { id: `draft-${nextDraftEvidenceId++}`, url: url.trim(), label: label.trim() || null };
+}
+
+/** 설명이 없으면 "증빙 1" 식으로 부른다. */
+export function evidenceLabel(evidence: Evidence, index: number) {
+  return evidence.label ?? `증빙 ${index + 1}`;
 }
