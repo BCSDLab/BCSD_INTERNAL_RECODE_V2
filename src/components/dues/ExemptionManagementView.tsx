@@ -94,13 +94,15 @@ function won(amount: number) {
   return `${amount.toLocaleString('ko-KR')}원`;
 }
 
-function defaultDraft(memberId: string): ExemptionDraft {
+/** 새 면제의 기본 기간은 최신 학기 전체다(고정 날짜면 학기가 지나면 이미 끝난 기간이 된다). */
+function defaultDraft(memberId: string, semesterId: string): ExemptionDraft {
+  const months = semesterMonths(semesterFromId(semesterId));
   return {
     memberId,
     reason: '',
     note: '',
-    startMonth: '2026-10',
-    endMonth: '2027-02',
+    startMonth: months[0],
+    endMonth: months[months.length - 1],
   };
 }
 
@@ -372,7 +374,7 @@ function ExemptionManagementContent({
     setFlow({
       name: 'form',
       editingId: null,
-      draft: defaultDraft(members[0]?.id ?? ''),
+      draft: defaultDraft(members[0]?.id ?? '', currentSemesterId),
       isNewReason: false,
       periodKind: 'closed',
       isEditing: true,

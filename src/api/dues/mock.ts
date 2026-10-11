@@ -248,34 +248,47 @@ export function mockGetExemptionReasons(): Promise<ExemptionReasonListResponse> 
   return respond({ reasons: exemptionReasons });
 }
 
+// toExemption·requireMembers는 동기로 던진다. 다른 mock처럼 거절된 Promise로 돌려준다.
 export function mockCreateExemption(body: ExemptionUpsertRequest): Promise<ExemptionResponse> {
-  const exemption = toExemption(issueExemptionId(), body);
-  exemptions.push(exemption);
-  rememberReason(exemption.reason);
-  return respond(exemption);
+  try {
+    const exemption = toExemption(issueExemptionId(), body);
+    exemptions.push(exemption);
+    rememberReason(exemption.reason);
+    return respond(exemption);
+  } catch (error) {
+    return Promise.reject(error);
+  }
 }
 
 export function mockUpdateExemption(exemptionId: number, body: ExemptionUpsertRequest): Promise<ExemptionResponse> {
   const index = exemptions.findIndex((item) => item.id === exemptionId);
   if (index < 0) return Promise.reject(new ApiError(404, '면제 기록을 찾을 수 없습니다.'));
-  const exemption = toExemption(exemptionId, body);
-  exemptions[index] = exemption;
-  rememberReason(exemption.reason);
-  return respond(exemption);
+  try {
+    const exemption = toExemption(exemptionId, body);
+    exemptions[index] = exemption;
+    rememberReason(exemption.reason);
+    return respond(exemption);
+  } catch (error) {
+    return Promise.reject(error);
+  }
 }
 
 export function mockPreviewExemption(
   semesterId: SemesterId,
   { editingId, ...body }: ExemptionPreviewRequest,
 ): Promise<ExemptionPreviewResponse> {
-  const draft = toExemption(editingId ?? -1, body);
-  const nextExemptions = editingId
-    ? exemptions.map((item) => (item.id === editingId ? draft : item))
-    : [...exemptions, draft];
-  const before = requireMembers(semesterId).find((member) => member.memberId === body.memberId);
-  const after = semesterMembers(semesterId, nextExemptions)?.find((member) => member.memberId === body.memberId);
-  if (!before || !after) return Promise.reject(new ApiError(404, '이 학기 회비 명단에 없는 회원입니다.'));
-  return respond({ before, after });
+  try {
+    const draft = toExemption(editingId ?? -1, body);
+    const nextExemptions = editingId
+      ? exemptions.map((item) => (item.id === editingId ? draft : item))
+      : [...exemptions, draft];
+    const before = requireMembers(semesterId).find((member) => member.memberId === body.memberId);
+    const after = semesterMembers(semesterId, nextExemptions)?.find((member) => member.memberId === body.memberId);
+    if (!before || !after) return Promise.reject(new ApiError(404, '이 학기 회비 명단에 없는 회원입니다.'));
+    return respond({ before, after });
+  } catch (error) {
+    return Promise.reject(error);
+  }
 }
 
 // ---------- Slack ----------

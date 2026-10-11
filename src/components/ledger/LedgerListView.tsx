@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
+import { USE_LEDGER_MOCK } from '@/api/dues/mock-switch';
 import { Button, Input } from '@/components/ledger/LedgerUi';
 import type { EntryType, LedgerCategory, LedgerEntry, LedgerFilters } from '@/components/ledger/types';
 import { LEDGER_CATEGORIES } from '@/components/ledger/types';
@@ -413,7 +414,9 @@ export function LedgerListView({
         </div>
       </section>
 
-      <p className="text-faint mt-3 text-[10.5px] leading-5">변경한 예시 데이터는 새로고침하면 초기화됩니다.</p>
+      {USE_LEDGER_MOCK && (
+        <p className="text-faint mt-3 text-[10.5px] leading-5">변경한 예시 데이터는 새로고침하면 초기화됩니다.</p>
+      )}
     </main>
   );
 }

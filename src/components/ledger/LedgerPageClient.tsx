@@ -104,17 +104,23 @@ export function LedgerPageClient() {
   }
 
   async function replaceEvidence(entry: LedgerEntry, target: Evidence, file: File) {
+    let replacement: Evidence;
     try {
-      const replacement = toEvidence(await uploadEvidence(file));
-      saveEvidences(
-        entry,
-        entry.evidences.map((item) => (item.id === target.id ? replacement : item)),
-        '증빙 파일을 교체했습니다.',
-      );
-      setEvidenceState({ entryId: entry.id, evidenceId: replacement.id });
+      replacement = toEvidence(await uploadEvidence(file));
     } catch {
       flash('증빙 파일을 올리지 못했습니다.');
+      return;
     }
+    try {
+      // 저장이 끝나고 캐시가 새 증빙을 가진 뒤에 뷰어를 옮긴다. 실패하면 이전 증빙을 그대로 보여 준다.
+      await updateMutation.mutateAsync({
+        entry: { ...entry, evidences: entry.evidences.map((item) => (item.id === target.id ? replacement : item)) },
+        message: '증빙 파일을 교체했습니다.',
+      });
+    } catch {
+      return; // 실패 문구는 updateMutation.onError가 띄운다.
+    }
+    setEvidenceState({ entryId: entry.id, evidenceId: replacement.id });
   }
 
   async function saveImportedTransactions(transactions: ImportTransaction[], fileName: string) {
