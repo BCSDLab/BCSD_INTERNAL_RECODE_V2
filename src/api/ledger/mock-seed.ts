@@ -159,7 +159,13 @@ export const INITIAL_LEDGER_ENTRIES: LedgerEntry[] = [
     source: '2026-09-21 신한 거래내역_202609.xlsx',
     linkStatus: 'confirmed',
     duesLink: linkedMembers.mentor,
-    evidences: [{ id: 'evidence-mentor-transfer', name: 'transfer_20260920.png', width: 1080, height: 1440 }],
+    evidences: [
+      {
+        id: 'evidence-mentor-transfer',
+        url: 'https://drive.google.com/file/d/mock-mentor-transfer/view',
+        label: '이체 확인',
+      },
+    ],
   },
   {
     id: 'ledger-006',
@@ -217,7 +223,9 @@ export const INITIAL_LEDGER_ENTRIES: LedgerEntry[] = [
     balance: 1777000,
     source: '2026-11-11 신한 거래내역_202611.xlsx',
     linkStatus: 'none',
-    evidences: [{ id: 'evidence-receipt', name: 'receipt_20261110.jpg', width: 960, height: 1280 }],
+    evidences: [
+      { id: 'evidence-receipt', url: 'https://drive.google.com/file/d/mock-receipt-20261110/view', label: '영수증' },
+    ],
   },
   {
     id: 'ledger-010',
@@ -231,7 +239,13 @@ export const INITIAL_LEDGER_ENTRIES: LedgerEntry[] = [
     balance: 1657000,
     source: '2026-11-13 신한 거래내역_202611.xlsx',
     linkStatus: 'none',
-    evidences: [{ id: 'evidence-server-invoice', name: 'aws_invoice_202611.pdf' }],
+    evidences: [
+      {
+        id: 'evidence-server-invoice',
+        url: 'https://drive.google.com/file/d/mock-server-invoice-202611/view',
+        label: null,
+      },
+    ],
   },
   {
     id: 'ledger-011',
@@ -245,7 +259,13 @@ export const INITIAL_LEDGER_ENTRIES: LedgerEntry[] = [
     balance: 1577000,
     source: '2026-11-15 신한 거래내역_202611.xlsx',
     linkStatus: 'none',
-    evidences: [{ id: 'evidence-venue-receipt', name: 'venue_receipt_20261114.jpg', width: 1080, height: 1440 }],
+    evidences: [
+      {
+        id: 'evidence-venue-receipt',
+        url: 'https://docs.google.com/document/d/mock-venue-receipt/edit',
+        label: '대관 영수증',
+      },
+    ],
   },
   {
     id: 'ledger-012',
@@ -363,7 +383,9 @@ export const INITIAL_LEDGER_ENTRIES: LedgerEntry[] = [
     balance: 2090000,
     source: '2026-12-06 신한 거래내역_202612.xlsx',
     linkStatus: 'pending',
-    evidences: [{ id: 'evidence-somi-transfer', name: 'transfer_20261205.png', width: 1080, height: 1440 }],
+    evidences: [
+      { id: 'evidence-somi-transfer', url: 'https://drive.google.com/file/d/mock-transfer-20261205/view', label: null },
+    ],
   },
   {
     id: 'ledger-020',
@@ -377,6 +399,12 @@ export const INITIAL_LEDGER_ENTRIES: LedgerEntry[] = [
     balance: 1837000,
     source: '2026-11-10 신한 거래내역_202611.xlsx',
     linkStatus: 'pending',
-    evidences: [{ id: 'evidence-yuna-transfer', name: 'transfer_20261109.png', width: 1080, height: 1440 }],
+    evidences: [
+      {
+        id: 'evidence-yuna-transfer',
+        url: 'https://drive.google.com/file/d/mock-transfer-20261109/view',
+        label: '이체 확인',
+      },
+    ],
   },
 ];

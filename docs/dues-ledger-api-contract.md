@@ -102,22 +102,26 @@ BE가 배포돼 FE는 기본으로 실제 API를 부른다. 로컬 시연용으�
 
 ## 장부
 
-| Method | Path                                       | 화면                                                                              | 타입                                                           |
-| ------ | ------------------------------------------ | --------------------------------------------------------------------------------- | -------------------------------------------------------------- |
-| GET    | `/v1/admin/ledger/entries`                 | 장부 목록 (헤더 필터는 지금 클라이언트에서 처리)                                  | `LedgerEntryListResponse`                                      |
-| PATCH  | `/v1/admin/ledger/entries/{id}`            | 상세 수정, 증빙 교체·삭제                                                         | `LedgerEntryUpdateRequest` → `LedgerEntryResponse`             |
-| PUT    | `/v1/admin/ledger/entries/{id}/dues-link`  | 단건 회비 연결 (입금·출금 공통)                                                   | `DuesLinkRequest` → `LedgerEntryResponse`                      |
-| DELETE | `/v1/admin/ledger/entries/{id}/dues-link`  | 연결 해제 (회원 회비 모달 "수정" → "연결 해제"). 회비 분류면 PENDING으로 돌아간다 | –                                                              |
-| POST   | `/v1/admin/ledger/evidences/presigned-url` | 증빙 업로드 1단계                                                                 | `EvidencePresignedUrlRequest` → `EvidencePresignedUrlResponse` |
-| POST   | `/v1/admin/ledger/evidences/{id}/complete` | 증빙 업로드 완료                                                                  | `EvidenceResponse`                                             |
-| POST   | `/v1/admin/ledger/imports/preview`         | 신한 .xlsx 분석 (multipart)                                                       | `ImportPreviewResponse`                                        |
-| POST   | `/v1/admin/ledger/imports`                 | 미리보기의 모든 거래 반영                                                         | `ImportCommitRequest` → `ImportCommitResponse`                 |
+| Method | Path                                      | 화면                                                                              | 타입                                               |
+| ------ | ----------------------------------------- | --------------------------------------------------------------------------------- | -------------------------------------------------- |
+| GET    | `/v1/admin/ledger/entries`                | 장부 목록 (헤더 필터는 지금 클라이언트에서 처리)                                  | `LedgerEntryListResponse`                          |
+| PATCH  | `/v1/admin/ledger/entries/{id}`           | 상세 수정, 증빙 링크 추가·삭제(전체 교체)                                         | `LedgerEntryUpdateRequest` → `LedgerEntryResponse` |
+| PUT    | `/v1/admin/ledger/entries/{id}/dues-link` | 단건 회비 연결 (입금·출금 공통)                                                   | `DuesLinkRequest` → `LedgerEntryResponse`          |
+| DELETE | `/v1/admin/ledger/entries/{id}/dues-link` | 연결 해제 (회원 회비 모달 "수정" → "연결 해제"). 회비 분류면 PENDING으로 돌아간다 | –                                                  |
+| POST   | `/v1/admin/ledger/imports/preview`        | 신한 .xlsx 분석 (multipart)                                                       | `ImportPreviewResponse`                            |
+| POST   | `/v1/admin/ledger/imports`                | 미리보기의 모든 거래 반영                                                         | `ImportCommitRequest` → `ImportCommitResponse`     |
 
-- 증빙은 먼저 업로드해 ID를 받는다. 장부 기록에는 `PATCH`의 `evidenceIds`로 붙인다. 교체와 삭제도 같은 PATCH로 처리한다.
+- **증빙 = 구글 드라이브 링크.** 관리자가 드라이브에 영수증을 직접 올리고 공유 링크를 붙인다(S3 업로드 API는 없어졌다). 장부 기록에는 `PATCH`의 `evidenceLinks: [{ url, label? }]`로 붙인다. **전체 교체**다: 보낸 목록이 최종 상태이고 `[]`이면 모두 지운다. 생략·null은 400 "증빙 목록을 입력하세요."다.
+- 응답 `evidences: [{ id, url, label | null }]`은 첨부 순서(id 오름차순)다. 화면은 label이 없으면 "증빙 N"으로 부르고, 링크는 새 탭(`target=_blank`, `rel=noopener noreferrer`)으로 연다.
 - 분류를 바꾸면 서버가 연결을 끊는다. 회비 분류(DUES)면 PENDING, 그 밖의 분류면 NONE으로 되돌린다.
 - 입금·출금 모두 회비에 연결하면 분류가 DUES가 된다. 출금은 납부액에서 빠진다.
 - 단건 연결(`PUT …/dues-link`) 오류: 404 `ENTRY_NOT_FOUND`·`SEMESTER_NOT_FOUND`·`NOT_ROSTER_MEMBER`, 409 `ROSTER_MEMBER_NOT_APPLICABLE`. 연결 해제(`DELETE`)는 연결이 없어도 204다.
-- **증빙 형식:** png·jpg(jpeg)·webp·pdf, 확장자와 MIME 짝이 맞아야 하고 1B~10MB다. GIF·SVG·HEIC는 받지 않는다. 선택 창 accept는 `image/png,image/jpeg,image/webp,application/pdf`이고, 선택 뒤 확장자·MIME·크기를 다시 본다. 기록당 최대 5개.
+- **증빙 링크 규칙**(FE가 같은 규칙·문구로 미리 막는다. 서버는 첫 오류 하나만 400으로 준다)
+  - url은 앞뒤 공백만 지우고 그대로 저장·비교한다(대소문자·슬래시·쿼리가 다르면 다른 링크). 빈 값은 "증빙 링크를 입력하세요."다.
+  - https만, 호스트는 `drive.google.com`·`docs.google.com`만(호스트만 대소문자 무시). userinfo·포트 지정도 안 된다. 어기면 "구글 드라이브 링크만 첨부할 수 있습니다."다.
+  - url은 2,048자 이하다("증빙 링크는 2,048자 이하여야 합니다."). 링크 이름(label)은 선택이고 50자 이하다("링크 이름은 50자 이하로 입력하세요."). 빈 이름은 null이다.
+  - 기록당 최대 5개다("증빙은 최대 5개까지 첨부할 수 있습니다."). 같은 기록 안에 같은 url은 안 된다("같은 증빙 링크가 두 번 있습니다."). 다른 기록끼리는 같은 url도 된다.
+  - 안내 문구: "구글 드라이브에 영수증을 올린 뒤 공유 링크를 붙여 넣으세요. 링크 공유 권한(링크가 있는 모든 사용자 또는 조직)을 확인하세요."
 - 장부 `balance`는 서버가 계산하지 않고 **은행 거래 후 잔액**(`bank_balance`)을 그대로 쓴다.
 
 ### 거래내역 가져오기
@@ -125,7 +129,7 @@ BE가 배포돼 FE는 기본으로 실제 API를 부른다. 로컬 시연용으�
 - 미리보기(`POST …/imports/preview`)는 multipart(파트 이름 `file`, `.xlsx`, 1MB 이하)다. `apiFetch`는 본문이 `FormData`면 `Content-Type`을 붙이지 않아 브라우저가 `multipart/form-data; boundary=…`를 넣는다.
 - 미리보기 거래마다 `bankBalance`(은행 거래 후 잔액)가 온다. FE는 이 값을 커밋 요청에 그대로 돌려보낸다. 서버는 `(occurredAt, type, amount, bankBalance, counterparty)`로 `rowKey`를 다시 계산해 다르면 400 `IMPORT_ROW_KEY_MISMATCH`다.
 - **미리보기의 모든 거래를 반영한다**(1~5,000건). 거래 선택 체크박스는 없다. 거래를 빼면 은행 잔액 흐름에 구멍이 생긴다. 새 거래가 0건이면 커밋을 부르지 않는다.
-- 증빙 없는 출금은 저장을 막지 않고 경고만 띄운다. 반영 뒤 장부 상세(PATCH `evidenceIds`)에서 붙인다.
+- 증빙 없는 출금은 저장을 막지 않고 경고만 띄운다. 가져오기 증빙 단계에서 링크를 붙이거나(커밋 거래 항목의 `evidenceLinks`, 같은 규칙), 반영 뒤 장부 상세(PATCH `evidenceLinks`)에서 붙인다.
 
 ## 인명부 Slack ID (main #71에 반영됨)
 

@@ -5,21 +5,18 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ApiError } from '@/api/client';
 import { invalidateLedgerAndDues } from '@/api/dues/queries';
-import { commitImport, describeEvidenceUploadError, updateLedgerEntry, uploadEvidence } from '@/api/ledger/api';
-import { toCategoryCode, toEvidence, toImportCategoryCode } from '@/api/ledger/mappers';
+import { commitImport, updateLedgerEntry } from '@/api/ledger/api';
+import { toCategoryCode, toEvidenceLinkRequest, toImportCategoryCode } from '@/api/ledger/mappers';
 import { ledgerQueries } from '@/api/ledger/queries';
-import { EvidenceViewer } from '@/components/ledger/EvidenceViewer';
 import { LedgerDetailView } from '@/components/ledger/LedgerDetailView';
 import { LedgerListView } from '@/components/ledger/LedgerListView';
 import { Toast } from '@/components/ledger/LedgerUi';
 import { TransactionImportFlow } from '@/components/ledger/import/TransactionImportFlow';
 import type { ImportTransaction } from '@/components/ledger/import/types';
-import type { Evidence, LedgerEntry, LedgerFilters, LedgerScreen } from '@/components/ledger/types';
+import type { LedgerEntry, LedgerFilters, LedgerScreen } from '@/components/ledger/types';
 import { EMPTY_LEDGER_FILTERS } from '@/components/ledger/types';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { isCompleteLedgerDate } from '@/components/ledger/utils';
-
-type EvidenceState = { entryId: string; evidenceId: string } | null;
 
 const EMPTY_ENTRIES: LedgerEntry[] = [];
 
@@ -28,7 +25,6 @@ export function LedgerPageClient() {
   const { data: entries = EMPTY_ENTRIES, isPending, isError } = useQuery(ledgerQueries.entries());
   const [filters, setFilters] = useState<LedgerFilters>(EMPTY_LEDGER_FILTERS);
   const [screen, setScreen] = useState<LedgerScreen>({ name: 'list' });
-  const [evidenceState, setEvidenceState] = useState<EvidenceState>(null);
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [toast, setToast] = useState('');
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -75,8 +71,6 @@ export function LedgerPageClient() {
   }, [entries, filters]);
 
   const detailEntry = screen.name === 'detail' ? entries.find((entry) => entry.id === screen.entryId) : undefined;
-  const evidenceEntry = evidenceState ? entries.find((entry) => entry.id === evidenceState.entryId) : undefined;
-  const evidence = evidenceEntry?.evidences.find((item) => item.id === evidenceState?.evidenceId);
 
   const updateMutation = useMutation({
     mutationFn: ({ entry }: { entry: LedgerEntry; message: string }) =>
@@ -85,7 +79,7 @@ export function LedgerPageClient() {
         category: toCategoryCode(entry.category),
         description: entry.description,
         note: entry.note,
-        evidenceIds: entry.evidences.map((item) => Number(item.id)),
+        evidenceLinks: entry.evidences.map(toEvidenceLinkRequest),
       }),
     onSuccess: async (_, { message }) => {
       await invalidateLedgerAndDues(queryClient);
@@ -94,33 +88,9 @@ export function LedgerPageClient() {
     onError: (error) => flash(error instanceof ApiError ? error.message : '장부 기록을 저장하지 못했습니다.'),
   });
 
-  function saveEvidences(entry: LedgerEntry, evidences: Evidence[], message: string) {
-    updateMutation.mutate({ entry: { ...entry, evidences }, message });
-  }
-
   function saveEntry(nextEntry: LedgerEntry) {
     updateMutation.mutate({ entry: nextEntry, message: '장부 기록을 수정했습니다' });
     setScreen({ name: 'detail', entryId: nextEntry.id });
-  }
-
-  async function replaceEvidence(entry: LedgerEntry, target: Evidence, file: File) {
-    let replacement: Evidence;
-    try {
-      replacement = toEvidence(await uploadEvidence(file));
-    } catch (error) {
-      flash(describeEvidenceUploadError(error));
-      return;
-    }
-    try {
-      // 저장이 끝나고 캐시가 새 증빙을 가진 뒤에 뷰어를 옮긴다. 실패하면 이전 증빙을 그대로 보여 준다.
-      await updateMutation.mutateAsync({
-        entry: { ...entry, evidences: entry.evidences.map((item) => (item.id === target.id ? replacement : item)) },
-        message: '증빙 파일을 교체했습니다.',
-      });
-    } catch {
-      return; // 실패 문구는 updateMutation.onError가 띄운다.
-    }
-    setEvidenceState({ entryId: entry.id, evidenceId: replacement.id });
   }
 
   async function saveImportedTransactions(transactions: ImportTransaction[], fileName: string) {
@@ -135,7 +105,7 @@ export function LedgerPageClient() {
         bankBalance: transaction.bankBalance,
         category: toImportCategoryCode(transaction.category),
         note: transaction.note,
-        evidenceIds: transaction.evidences.map((item) => Number(item.id)),
+        evidenceLinks: transaction.evidences.map(toEvidenceLinkRequest),
       })),
     });
     await invalidateLedgerAndDues(queryClient);
@@ -190,30 +160,7 @@ export function LedgerPageClient() {
       )}
 
       {detailEntry && (
-        <LedgerDetailView
-          entry={detailEntry}
-          onClose={() => setScreen({ name: 'list' })}
-          onSave={saveEntry}
-          onOpenEvidence={(evidenceId) => setEvidenceState({ entryId: detailEntry.id, evidenceId })}
-        />
-      )}
-
-      {evidenceState && evidenceEntry && evidence && (
-        <EvidenceViewer
-          entry={evidenceEntry}
-          evidence={evidence}
-          onClose={() => setEvidenceState(null)}
-          onReplace={(file) => replaceEvidence(evidenceEntry, evidence, file)}
-          onDelete={() => {
-            saveEvidences(
-              evidenceEntry,
-              evidenceEntry.evidences.filter((item) => item.id !== evidence.id),
-              '증빙을 삭제했습니다.',
-            );
-            setEvidenceState(null);
-          }}
-          onDownloaded={() => flash('증빙 다운로드를 시작했습니다.')}
-        />
+        <LedgerDetailView entry={detailEntry} onClose={() => setScreen({ name: 'list' })} onSave={saveEntry} />
       )}
 
       {isImportOpen && (

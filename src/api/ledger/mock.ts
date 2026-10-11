@@ -1,7 +1,6 @@
 import { ApiError } from '@/api/client';
 import {
   entries,
-  evidences,
   importedRowKeys,
   issueEntryId,
   issueEvidenceId,
@@ -12,6 +11,7 @@ import {
 import { linkEntryToMember } from '@/api/dues/mock';
 import type {
   DuesLinkRequest,
+  EvidenceLinkRequest,
   EvidenceResponse,
   ImportCommitRequest,
   ImportCommitResponse,
@@ -20,6 +20,7 @@ import type {
   LedgerEntryResponse,
   LedgerEntryUpdateRequest,
 } from './types';
+import { evidenceLinkError } from '@/components/ledger/utils';
 import { createMockImportTransactions } from './mock-import-seed';
 
 /**
@@ -36,11 +37,19 @@ function isDuesCategory(category: LedgerEntryResponse['category']) {
   return category === 'DUES';
 }
 
-function attachEvidences(evidenceIds: number[]) {
-  return evidenceIds.flatMap((id) => {
-    const evidence = evidences.get(id);
-    return evidence ? [evidence] : [];
-  });
+/** 서버처럼 링크 목록을 검증하고 전체 교체할 증빙을 만든다. 첫 오류 하나만 400으로 던진다. */
+function toEvidenceLinks(links: EvidenceLinkRequest[]): EvidenceResponse[] {
+  const accepted: EvidenceResponse[] = [];
+  for (const link of links) {
+    const error = evidenceLinkError(
+      link.url,
+      link.label ?? '',
+      accepted.map((item) => ({ id: String(item.id), url: item.url, label: item.label })),
+    );
+    if (error) throw new ApiError(400, error);
+    accepted.push({ id: issueEvidenceId(), url: link.url.trim(), label: link.label?.trim() || null });
+  }
+  return accepted;
 }
 
 export function mockGetLedgerEntries(): Promise<LedgerEntryListResponse> {
@@ -48,14 +57,21 @@ export function mockGetLedgerEntries(): Promise<LedgerEntryListResponse> {
 }
 
 export function mockUpdateLedgerEntry(entryId: number, body: LedgerEntryUpdateRequest): Promise<LedgerEntryResponse> {
-  const entry = findEntry(entryId);
+  let entry: LedgerEntryResponse;
+  let nextEvidences: EvidenceResponse[];
+  try {
+    entry = findEntry(entryId);
+    nextEvidences = toEvidenceLinks(body.evidenceLinks);
+  } catch (error) {
+    return Promise.reject(error);
+  }
   const categoryChanged = entry.category !== body.category;
   Object.assign(entry, {
     counterparty: body.counterparty,
     category: body.category,
     description: body.description,
     note: body.note,
-    evidences: attachEvidences(body.evidenceIds),
+    evidences: nextEvidences,
   });
   if (!isDuesCategory(body.category)) {
     entry.linkStatus = 'NONE';
@@ -83,28 +99,6 @@ export function mockUnlinkLedgerEntry(entryId: number): Promise<void> {
   entry.linkStatus = isDuesCategory(entry.category) ? 'PENDING' : 'NONE';
   entry.duesLink = null;
   return respond(undefined);
-}
-
-function readAsDataUrl(file: File) {
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(file);
-  });
-}
-
-/** 실제로는 presigned URL → S3 PUT → complete. mock은 파일을 data URL로 들고 있는다. */
-export async function mockUploadEvidence(file: File): Promise<EvidenceResponse> {
-  const evidence: EvidenceResponse = {
-    id: issueEvidenceId(),
-    name: file.name,
-    url: await readAsDataUrl(file),
-    width: null,
-    height: null,
-  };
-  evidences.set(evidence.id, evidence);
-  return respond(evidence);
 }
 
 /** 신한 .xlsx를 파싱했다고 치고 시드 거래를 돌려준다. 이미 반영한 거래는 빠진다. */
@@ -139,6 +133,15 @@ export function mockCommitImport(body: ImportCommitRequest): Promise<ImportCommi
   if (mismatched) {
     return Promise.reject(new ApiError(400, '거래 정보가 미리보기 결과와 다릅니다. 파일을 다시 미리보기 하세요.'));
   }
+  // 증빙 링크도 서버처럼 먼저 전부 검증한다(하나라도 틀리면 아무것도 반영하지 않는다).
+  const evidenceLinksByRow = new Map<string, EvidenceResponse[]>();
+  try {
+    for (const transaction of body.transactions) {
+      evidenceLinksByRow.set(transaction.rowKey, toEvidenceLinks(transaction.evidenceLinks));
+    }
+  } catch (error) {
+    return Promise.reject(error);
+  }
   const fresh = body.transactions.filter((transaction) => !importedRowKeys.has(transaction.rowKey));
   const semesterLabel = semesterLabelOf(semesterIds()[0]);
 
@@ -158,7 +161,7 @@ export function mockCommitImport(body: ImportCommitRequest): Promise<ImportCommi
       source: body.fileName,
       linkStatus: isDuesCategory(transaction.category) ? 'PENDING' : 'NONE',
       duesLink: null,
-      evidences: attachEvidences(transaction.evidenceIds),
+      evidences: evidenceLinksByRow.get(transaction.rowKey) ?? [],
     });
   }
 

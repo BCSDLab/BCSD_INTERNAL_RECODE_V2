@@ -3,6 +3,7 @@ import type { ImportTransaction } from '@/components/ledger/import/types';
 import type { Evidence, LedgerCategory, LedgerEntry } from '@/components/ledger/types';
 import { TRACK_LABELS } from '@/lib/member-labels';
 import type {
+  EvidenceLinkRequest,
   EvidenceResponse,
   ImportCategory,
   ImportTransactionResponse,
@@ -44,13 +45,12 @@ function toMinute(value: string) {
 }
 
 export function toEvidence(dto: EvidenceResponse): Evidence {
-  return {
-    id: String(dto.id),
-    name: dto.name,
-    url: dto.url ?? undefined,
-    width: dto.width ?? undefined,
-    height: dto.height ?? undefined,
-  };
+  return { id: String(dto.id), url: dto.url, label: dto.label };
+}
+
+/** 요청에는 url·label만 보낸다(id는 화면용). 빈 label은 보내지 않는다. */
+export function toEvidenceLinkRequest(evidence: Evidence): EvidenceLinkRequest {
+  return evidence.label ? { url: evidence.url, label: evidence.label } : { url: evidence.url };
 }
 
 export function toLedgerEntry(dto: LedgerEntryResponse): LedgerEntry {

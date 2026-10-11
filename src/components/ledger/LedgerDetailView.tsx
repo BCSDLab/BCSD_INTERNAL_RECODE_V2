@@ -2,29 +2,19 @@
 
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
-import { useRef, useState } from 'react';
-import type { ChangeEvent } from 'react';
+import { useState } from 'react';
 import { duesQueries } from '@/api/dues/queries';
-import { describeEvidenceUploadError, uploadEvidence as uploadEvidenceFile } from '@/api/ledger/api';
-import { toEvidence } from '@/api/ledger/mappers';
 import type { MemberDues } from '@/components/dues/types';
+import { EvidenceLinkChips, EvidenceLinkForm } from '@/components/ledger/EvidenceLinks';
 import { Button, Input, ModalFrame, Panel, Select } from '@/components/ledger/LedgerUi';
 import type { Evidence, LedgerCategory, LedgerEntry } from '@/components/ledger/types';
 import { LEDGER_CATEGORIES, MAX_EVIDENCE_COUNT } from '@/components/ledger/types';
-import {
-  EVIDENCE_ACCEPT,
-  EVIDENCE_TYPE_ERROR,
-  entryTypeLabel,
-  formatOccurredAt,
-  formatWon,
-  isAllowedEvidenceFile,
-} from '@/components/ledger/utils';
+import { entryTypeLabel, formatOccurredAt, formatWon } from '@/components/ledger/utils';
 
 interface LedgerDetailViewProps {
   entry: LedgerEntry;
   onClose: () => void;
   onSave: (entry: LedgerEntry) => void;
-  onOpenEvidence: (evidenceId: string) => void;
 }
 
 type PaymentStatus = '완료' | '미납' | '초과납부' | '면제' | '확인필요';
@@ -74,7 +64,7 @@ function StatusBadge({ status }: { status: PaymentStatus }) {
   );
 }
 
-export function LedgerDetailView({ entry, onClose, onSave, onOpenEvidence }: LedgerDetailViewProps) {
+export function LedgerDetailView({ entry, onClose, onSave }: LedgerDetailViewProps) {
   const linkedSemesterId = entry.duesLink?.semesterId;
   const { data: semesters } = useQuery(duesQueries.semesters());
   const { data: linkedSemester } = useQuery({
@@ -83,7 +73,6 @@ export function LedgerDetailView({ entry, onClose, onSave, onOpenEvidence }: Led
   });
   const linkedMembers = linkedSemester?.members ?? [];
 
-  const evidenceInput = useRef<HTMLInputElement>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [counterparty, setCounterparty] = useState(entry.counterparty);
   const [category, setCategory] = useState<LedgerCategory>(entry.category);
@@ -117,36 +106,6 @@ export function LedgerDetailView({ entry, onClose, onSave, onOpenEvidence }: Led
   function changeCategory(nextCategory: LedgerCategory) {
     setCategory(nextCategory);
     setError('');
-  }
-
-  async function uploadEvidence(event: ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(event.target.files ?? []);
-    if (files.length === 0) return;
-    if (!files.every(isAllowedEvidenceFile)) {
-      setError(EVIDENCE_TYPE_ERROR);
-      event.target.value = '';
-      return;
-    }
-
-    const remainingCount = MAX_EVIDENCE_COUNT - evidences.length;
-    if (remainingCount <= 0) {
-      setError(`증빙은 최대 ${MAX_EVIDENCE_COUNT}개까지 첨부할 수 있습니다.`);
-      event.target.value = '';
-      return;
-    }
-
-    const acceptedFiles = files.slice(0, remainingCount);
-    const exceededLimit = acceptedFiles.length < files.length;
-
-    try {
-      const additions: Evidence[] = (await Promise.all(acceptedFiles.map(uploadEvidenceFile))).map(toEvidence);
-      setEvidences((current) => [...current, ...additions].slice(0, MAX_EVIDENCE_COUNT));
-      setError(exceededLimit ? `증빙은 최대 ${MAX_EVIDENCE_COUNT}개까지만 첨부했습니다.` : '');
-    } catch (uploadError) {
-      setError(describeEvidenceUploadError(uploadError));
-    } finally {
-      event.target.value = '';
-    }
   }
 
   function save() {
@@ -240,55 +199,28 @@ export function LedgerDetailView({ entry, onClose, onSave, onOpenEvidence }: Led
                   <dt className="text-faint self-start pt-1.5">증빙</dt>
                   <dd>
                     {displayedEvidences.length > 0 ? (
-                      <div className="flex flex-wrap gap-2">
-                        {displayedEvidences.map((evidence) => (
-                          <span
-                            key={evidence.id}
-                            className="border-line2 bg-panel2 text-muted inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[10.5px]"
-                          >
-                            <button
-                              type="button"
-                              onClick={() => onOpenEvidence(evidence.id)}
-                              className="hover:text-primary-text cursor-pointer bg-transparent"
-                            >
-                              {evidence.name}
-                            </button>
-                            {isEditing && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setEvidences((current) => current.filter((item) => item.id !== evidence.id));
-                                  setError('');
-                                }}
-                                aria-label={`${evidence.name} 삭제`}
-                                className="text-faint hover:text-danger cursor-pointer bg-transparent text-sm"
-                              >
-                                &times;
-                              </button>
-                            )}
-                          </span>
-                        ))}
-                      </div>
+                      <EvidenceLinkChips
+                        evidences={displayedEvidences}
+                        onRemove={
+                          isEditing
+                            ? (removed) => {
+                                setEvidences((current) => current.filter((item) => item.id !== removed.id));
+                                setError('');
+                              }
+                            : undefined
+                        }
+                      />
                     ) : !isEditing ? (
                       <span className="text-danger font-semibold">미첨부</span>
                     ) : null}
                     {isEditing && (
                       <div className={displayedEvidences.length > 0 ? 'mt-2' : ''}>
-                        <button
-                          type="button"
-                          onClick={() => evidenceInput.current?.click()}
-                          disabled={evidences.length >= MAX_EVIDENCE_COUNT}
-                          className="text-primary-text cursor-pointer bg-transparent text-[11.5px] font-semibold hover:underline disabled:cursor-default disabled:no-underline disabled:opacity-45"
-                        >
-                          증빙 추가 ({evidences.length}/{MAX_EVIDENCE_COUNT})
-                        </button>
-                        <input
-                          ref={evidenceInput}
-                          type="file"
-                          accept={EVIDENCE_ACCEPT}
-                          multiple
-                          onChange={uploadEvidence}
-                          className="hidden"
+                        <EvidenceLinkForm
+                          evidences={evidences}
+                          onAdd={(added) => {
+                            setEvidences((current) => [...current, added]);
+                            setError('');
+                          }}
                         />
                       </div>
                     )}

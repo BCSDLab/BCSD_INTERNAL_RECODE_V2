@@ -2,13 +2,13 @@
 
 import { useRef, useState } from 'react';
 import { ApiError } from '@/api/client';
-import { describeEvidenceUploadError, previewImport, uploadEvidence } from '@/api/ledger/api';
-import { toEvidence, toImportTransaction } from '@/api/ledger/mappers';
+import { previewImport } from '@/api/ledger/api';
+import { toImportTransaction } from '@/api/ledger/mappers';
+import { EvidenceLinkChips, EvidenceLinkForm } from '@/components/ledger/EvidenceLinks';
 import { Button } from '@/components/ledger/LedgerUi';
 import type { ImportStep, ImportTransaction } from '@/components/ledger/import/types';
-import type { Evidence } from '@/components/ledger/types';
 import { MAX_EVIDENCE_COUNT } from '@/components/ledger/types';
-import { EVIDENCE_ACCEPT, EVIDENCE_TYPE_ERROR, formatWon, isAllowedEvidenceFile } from '@/components/ledger/utils';
+import { formatWon } from '@/components/ledger/utils';
 
 interface TransactionImportFlowProps {
   onCancel: () => void;
@@ -152,9 +152,7 @@ export function TransactionImportFlow({ onCancel, onSave }: TransactionImportFlo
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [evidenceTarget, setEvidenceTarget] = useState<string | null>(null);
-  const [evidenceError, setEvidenceError] = useState('');
   const excelInput = useRef<HTMLInputElement>(null);
-  const evidenceInput = useRef<HTMLInputElement>(null);
 
   // 미리보기의 모든 거래를 반영한다. 거래를 빼면 은행 잔액 흐름에 구멍이 생긴다.
   const canReview = transactions.length > 0;
@@ -177,38 +175,6 @@ export function TransactionImportFlow({ onCancel, onSave }: TransactionImportFlo
     }
     setExcelFile(file);
     setFlowError('');
-  }
-
-  async function addEvidences(fileList: FileList | null) {
-    const files = Array.from(fileList ?? []);
-    const target = evidenceTarget;
-    if (files.length === 0 || !target) return;
-    if (!files.every(isAllowedEvidenceFile)) {
-      setEvidenceError(EVIDENCE_TYPE_ERROR);
-      return;
-    }
-
-    const currentCount = transactions.find((transaction) => transaction.id === target)?.evidences.length ?? 0;
-    const remainingCount = MAX_EVIDENCE_COUNT - currentCount;
-    if (remainingCount <= 0) {
-      setEvidenceError(`증빙은 거래당 최대 ${MAX_EVIDENCE_COUNT}개까지 첨부할 수 있습니다.`);
-      return;
-    }
-
-    const acceptedFiles = files.slice(0, remainingCount);
-    const exceededLimit = acceptedFiles.length < files.length;
-
-    try {
-      const evidences: Evidence[] = (await Promise.all(acceptedFiles.map(uploadEvidence))).map(toEvidence);
-
-      updateTransaction(target, (transaction) => ({
-        ...transaction,
-        evidences: [...transaction.evidences, ...evidences].slice(0, MAX_EVIDENCE_COUNT),
-      }));
-      setEvidenceError(exceededLimit ? `증빙은 거래당 최대 ${MAX_EVIDENCE_COUNT}개까지만 첨부했습니다.` : '');
-    } catch (error) {
-      setEvidenceError(describeEvidenceUploadError(error));
-    }
   }
 
   async function analyzeFile() {
@@ -236,26 +202,13 @@ export function TransactionImportFlow({ onCancel, onSave }: TransactionImportFlo
     try {
       await onSave(transactions, fileName);
       onCancel();
-    } catch {
-      setFlowError('장부에 반영하지 못했습니다. 잠시 후 다시 시도해 주세요.');
+    } catch (error) {
+      // 증빙 링크 400 등 서버 문구가 있으면 그대로 보인다.
+      setFlowError(
+        error instanceof ApiError ? error.message : '장부에 반영하지 못했습니다. 잠시 후 다시 시도해 주세요.',
+      );
       setIsSaving(false);
     }
-  }
-
-  function openEvidenceInNewTab(evidence: Evidence) {
-    if (!evidence.url) return;
-    const imageWindow = window.open('', '_blank');
-    if (!imageWindow) return;
-
-    imageWindow.opener = null;
-    imageWindow.document.title = evidence.name;
-    imageWindow.document.body.style.cssText =
-      'margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#111018';
-    const image = imageWindow.document.createElement('img');
-    image.src = evidence.url;
-    image.alt = evidence.name;
-    image.style.cssText = 'display:block;max-width:100vw;max-height:100vh;object-fit:contain';
-    imageWindow.document.body.append(image);
   }
 
   return (
@@ -409,25 +362,11 @@ export function TransactionImportFlow({ onCancel, onSave }: TransactionImportFlo
 
         {step === 'evidence' && (
           <>
-            <input
-              ref={evidenceInput}
-              type="file"
-              accept={EVIDENCE_ACCEPT}
-              multiple
-              className="hidden"
-              onChange={(event) => {
-                void addEvidences(event.target.files);
-                event.target.value = '';
-              }}
-            />
             <div className="px-[22px] pt-4 pb-5">
               <div className="mb-2 flex items-center gap-3 text-[11px]">
-                <span className="text-faint">거래당 증빙 최대 {MAX_EVIDENCE_COUNT}개</span>
-                {evidenceError && (
-                  <span role="alert" className="text-danger ml-auto font-semibold">
-                    {evidenceError}
-                  </span>
-                )}
+                <span className="text-faint">
+                  출금 증빙은 구글 드라이브 링크로 붙입니다. 거래당 최대 {MAX_EVIDENCE_COUNT}개
+                </span>
               </div>
               <div className="border-line overflow-x-auto rounded-[13px] border">
                 <table className="w-full min-w-[680px] table-fixed border-collapse text-center">
@@ -454,48 +393,39 @@ export function TransactionImportFlow({ onCancel, onSave }: TransactionImportFlo
                         <td className="p-2.5 text-xs whitespace-nowrap">{transaction.category}</td>
                         <td className="flex flex-wrap items-center gap-1.5 p-2.5 text-left">
                           {transaction.type === 'withdrawal' && (
-                            <>
-                              {transaction.evidences.map((evidence) => (
-                                <span
-                                  key={evidence.id}
-                                  className="border-line2 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11.5px]"
+                            <div className="flex w-full flex-col gap-2">
+                              {transaction.evidences.length > 0 && (
+                                <EvidenceLinkChips
+                                  evidences={transaction.evidences}
+                                  onRemove={(removed) =>
+                                    updateTransaction(transaction.id, (current) => ({
+                                      ...current,
+                                      evidences: current.evidences.filter((item) => item.id !== removed.id),
+                                    }))
+                                  }
+                                />
+                              )}
+                              {evidenceTarget === transaction.id ? (
+                                <EvidenceLinkForm
+                                  evidences={transaction.evidences}
+                                  onAdd={(added) =>
+                                    updateTransaction(transaction.id, (current) => ({
+                                      ...current,
+                                      evidences: [...current.evidences, added],
+                                    }))
+                                  }
+                                />
+                              ) : (
+                                <button
+                                  type="button"
+                                  disabled={transaction.evidences.length >= MAX_EVIDENCE_COUNT}
+                                  onClick={() => setEvidenceTarget(transaction.id)}
+                                  className="border-dash text-muted w-fit cursor-pointer rounded-full border border-dashed px-2.5 py-1 text-[11.5px] disabled:cursor-default disabled:opacity-45"
                                 >
-                                  <button
-                                    type="button"
-                                    onClick={() => openEvidenceInNewTab(evidence)}
-                                    className="cursor-pointer"
-                                  >
-                                    {evidence.name}
-                                  </button>
-                                  <button
-                                    type="button"
-                                    aria-label={`${evidence.name} 제거`}
-                                    onClick={() => {
-                                      updateTransaction(transaction.id, (current) => ({
-                                        ...current,
-                                        evidences: current.evidences.filter((item) => item.id !== evidence.id),
-                                      }));
-                                      setEvidenceError('');
-                                    }}
-                                    className="text-faint cursor-pointer"
-                                  >
-                                    ×
-                                  </button>
-                                </span>
-                              ))}
-                              <button
-                                type="button"
-                                disabled={transaction.evidences.length >= MAX_EVIDENCE_COUNT}
-                                onClick={() => {
-                                  setEvidenceTarget(transaction.id);
-                                  setEvidenceError('');
-                                  evidenceInput.current?.click();
-                                }}
-                                className="border-dash text-muted cursor-pointer rounded-full border border-dashed px-2.5 py-1 text-[11.5px] disabled:cursor-default disabled:opacity-45"
-                              >
-                                + 추가 ({transaction.evidences.length}/{MAX_EVIDENCE_COUNT})
-                              </button>
-                            </>
+                                  + 링크 추가 ({transaction.evidences.length}/{MAX_EVIDENCE_COUNT})
+                                </button>
+                              )}
+                            </div>
                           )}
                         </td>
                       </tr>

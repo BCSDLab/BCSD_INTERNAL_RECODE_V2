@@ -14,12 +14,20 @@ export type LedgerCategory = 'DUES' | 'EVENT' | 'OPERATION' | 'ETC';
 /** DUES만 PENDING/CONFIRMED가 될 수 있고, 나머지 분류는 항상 NONE이다. */
 export type LinkStatus = 'CONFIRMED' | 'PENDING' | 'NONE';
 
+/** 증빙 링크(구글 드라이브). url은 https이고 호스트는 drive.google.com·docs.google.com뿐이다. */
 export interface EvidenceResponse {
   id: number;
-  name: string;
-  url: string | null;
-  width: number | null;
-  height: number | null;
+  url: string;
+  label: string | null;
+}
+
+/**
+ * 증빙 링크 요청 항목. 서버가 앞뒤 공백을 지우고, 빈 label은 null로 저장한다.
+ * 400: 구글 드라이브가 아닌 링크, url 2,048자·label 50자 초과, 거래당 5개 초과, 같은 거래 안 같은 url.
+ */
+export interface EvidenceLinkRequest {
+  url: string;
+  label?: string;
 }
 
 export interface DuesLinkResponse {
@@ -77,25 +85,14 @@ export interface LedgerEntryUpdateRequest {
   category: LedgerCategory;
   description: string;
   note: string;
-  evidenceIds: number[];
+  /** 전체 교체 — 보낸 목록이 최종 상태다([]면 모두 삭제). */
+  evidenceLinks: EvidenceLinkRequest[];
 }
 
 /** PUT /v1/admin/ledger/entries/{id}/dues-link — 단건 연결(입금·출금 공통). DELETE는 연결 해제. */
 export interface DuesLinkRequest {
   memberId: number;
   semesterId: SemesterId;
-}
-
-/** POST /v1/admin/ledger/evidences/presigned-url → S3 PUT → POST /v1/admin/ledger/evidences/{id}/complete. */
-export interface EvidencePresignedUrlRequest {
-  fileName: string;
-  contentType: string;
-  size: number;
-}
-
-export interface EvidencePresignedUrlResponse {
-  evidenceId: number;
-  uploadUrl: string;
 }
 
 // ---------- 거래내역 가져오기 (신한 .xlsx) ----------
@@ -139,7 +136,7 @@ export interface ImportCommitRequest {
     bankBalance: number;
     category: ImportCategory;
     note: string;
-    evidenceIds: number[];
+    evidenceLinks: EvidenceLinkRequest[];
   }[];
 }
 

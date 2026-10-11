@@ -4,12 +4,11 @@ export type LedgerCategory = '회비' | '행사' | '운영비' | '기타';
 
 export type LinkStatus = 'confirmed' | 'pending' | 'none';
 
+/** 증빙 = 구글 드라이브 공유 링크. label이 없으면 화면은 "증빙 N"으로 부른다. */
 export interface Evidence {
   id: string;
-  name: string;
-  width?: number;
-  height?: number;
-  url?: string;
+  url: string;
+  label: string | null;
 }
 
 export const MAX_EVIDENCE_COUNT = 5;

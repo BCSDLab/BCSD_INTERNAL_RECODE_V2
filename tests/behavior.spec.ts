@@ -270,3 +270,55 @@ test.describe('장부 거래내역 가져오기 (실제 API 계약)', () => {
     await expect.poll(() => committed?.transactions[0]?.occurredAt).toBe('2026-09-10T13:05:47');
   });
 });
+
+test.describe('장부 증빙 링크 (구글 드라이브)', () => {
+  test('드라이브가 아닌 링크는 막고, 추가한 링크를 evidenceLinks로 PATCH한다', async ({ page }) => {
+    const entry = {
+      id: 7,
+      occurredAt: '2026-09-12T18:22:59',
+      type: 'WITHDRAWAL',
+      category: 'OPERATION',
+      counterparty: '합성가게',
+      description: '비품',
+      note: '',
+      amount: 5000,
+      balance: 150300,
+      source: null,
+      linkStatus: 'NONE',
+      duesLink: null,
+      evidences: [{ id: 1, url: 'https://drive.google.com/file/d/existing/view', label: null }],
+    };
+    await installApiMocks(page);
+    await page.route('**/v1/admin/ledger/entries', (route) => route.fulfill({ json: { entries: [entry] } }));
+    let patched: { evidenceLinks: { url: string; label?: string }[] } | undefined;
+    await page.route('**/v1/admin/ledger/entries/7', async (route) => {
+      patched = route.request().postDataJSON();
+      await route.fulfill({ json: entry });
+    });
+
+    await page.goto('/ledger');
+    await page.getByText('합성가게').first().click();
+    // 이름이 없는 증빙은 "증빙 1"로 부르고 새 탭으로 연다.
+    const existing = page.getByRole('link', { name: '증빙 1' });
+    await expect(existing).toHaveAttribute('target', '_blank');
+    await expect(existing).toHaveAttribute('rel', 'noopener noreferrer');
+
+    await page.getByRole('button', { name: '수정', exact: true }).click();
+    await page.getByLabel('증빙 링크').fill('https://example.com/receipt');
+    await page.getByRole('button', { name: /^추가/ }).click();
+    await expect(page.getByText('구글 드라이브 링크만 첨부할 수 있습니다.')).toBeVisible();
+
+    await page.getByLabel('증빙 링크').fill('  https://drive.google.com/file/d/new-receipt/view  ');
+    await page.getByLabel('링크 이름(선택)').fill('영수증');
+    await page.getByRole('button', { name: /^추가/ }).click();
+    await expect(page.getByRole('link', { name: '영수증' })).toBeVisible();
+    await page.getByRole('button', { name: '저장', exact: true }).click();
+
+    await expect
+      .poll(() => patched?.evidenceLinks)
+      .toEqual([
+        { url: 'https://drive.google.com/file/d/existing/view' },
+        { url: 'https://drive.google.com/file/d/new-receipt/view', label: '영수증' },
+      ]);
+  });
+});
