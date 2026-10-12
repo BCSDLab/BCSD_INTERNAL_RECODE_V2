@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test';
+import { QueryClient } from '@tanstack/react-query';
 
+import { reservationKeys } from '../src/entities/reservation/api/queries';
 import { ApiError, getApiErrorMessage } from '../src/shared/api/error';
 import { uploadFile } from '../src/shared/api/upload-file';
 import { validateImageFile } from '../src/shared/lib/image-file';
@@ -37,5 +39,27 @@ test('presigned upload omits credentials and authorization and reports storage f
     await expect(uploadFile('https://storage.example/upload', file, '업로드 실패')).rejects.toThrow('업로드 실패');
   } finally {
     globalThis.fetch = originalFetch;
+  }
+});
+
+test('예약 루트 무효화는 다른 월·날짜·상세·과거 목록 캐시까지 갱신 대상으로 표시한다', async () => {
+  const client = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity } } });
+  const keys = [
+    reservationKeys.monthlyOccupancy('2026-10'),
+    reservationKeys.monthlyOccupancy('2026-11'),
+    reservationKeys.myMonthlyOccupancy('2026-11'),
+    reservationKeys.daily('2026-11-01'),
+    reservationKeys.daily('2026-11-08'),
+    reservationKeys.myReservations('past'),
+    reservationKeys.detail(7),
+  ];
+  try {
+    for (const key of keys) client.setQueryData(key, {});
+    client.setQueryData(['unrelated'], {});
+    await client.invalidateQueries({ queryKey: reservationKeys.all() });
+    for (const key of keys) expect(client.getQueryState(key)?.isInvalidated).toBe(true);
+    expect(client.getQueryState(['unrelated'])?.isInvalidated).toBe(false);
+  } finally {
+    client.clear();
   }
 });
