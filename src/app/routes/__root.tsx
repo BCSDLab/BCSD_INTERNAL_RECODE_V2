@@ -1,4 +1,5 @@
-import { createRootRoute, Link, Outlet, useLocation } from '@tanstack/react-router';
+import { type QueryClient } from '@tanstack/react-query';
+import { createRootRouteWithContext, Link, Outlet, useLocation } from '@tanstack/react-router';
 import { useEffect } from 'react';
 
 function RootLayout() {
@@ -19,7 +20,7 @@ function RootLayout() {
   return <Outlet />;
 }
 
-export const Route = createRootRoute({
+export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   component: RootLayout,
   notFoundComponent: () => (
     <main className="text-text p-10">

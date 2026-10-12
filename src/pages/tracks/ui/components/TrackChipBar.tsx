@@ -2,7 +2,7 @@ import { DndContext, closestCenter } from '@dnd-kit/core';
 import { SortableContext, horizontalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from '@tanstack/react-router';
+import { useNavigate, useRouterState } from '@tanstack/react-router';
 import { useState } from 'react';
 
 import { useSession } from '@/entities/session';
@@ -33,6 +33,9 @@ export function TrackChipBar({ selectedId }: { selectedId: number | null }) {
   const { session } = useSession();
   const isAdmin = session?.member.role === 'ADMIN';
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const isTransitioning = useRouterState({
+    select: (state) => state.isLoading && state.location.pathname.startsWith('/tracks/'),
+  });
 
   const { data: trackPages } = useQuery(trackQueries.trackPages());
 
@@ -48,8 +51,13 @@ export function TrackChipBar({ selectedId }: { selectedId: number | null }) {
   return (
     <div className="border-line border-b px-8 pt-5 pb-3.5">
       <div className="flex w-full flex-wrap gap-2">
-        <div className="text-faint w-full pb-1 text-[11px] tracking-[.14em] whitespace-nowrap uppercase">
-          Tracks · 드래그로 랜딩 순서
+        <div className="text-faint flex w-full items-center justify-between pb-1 text-[11px] tracking-[.14em] whitespace-nowrap uppercase">
+          <span>Tracks · 드래그로 랜딩 순서</span>
+          {isTransitioning && (
+            <span role="status" className="tracking-normal">
+              트랙 전환 중…
+            </span>
+          )}
         </div>
         <DndContext
           sensors={sensors}
