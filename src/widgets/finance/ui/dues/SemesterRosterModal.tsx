@@ -10,6 +10,7 @@ import {
   type SemesterDuesSummary,
 } from '@/entities/finance';
 import { getApiErrorMessage } from '@/shared/api/error';
+import { confirmDiscardChanges, useDraftGuard } from '@/shared/lib/router/use-draft-guard';
 import { Button } from '@/shared/ui/button';
 import { Modal } from '@/shared/ui/modal';
 
@@ -108,6 +109,12 @@ export function SemesterRosterModal({
     setError('');
   }
 
+  useDraftGuard(changeCount > 0, undefined, undefined, saveMutation.isPending);
+  function close() {
+    if (saveMutation.isPending || (changeCount > 0 && !confirmDiscardChanges())) return;
+    onClose();
+  }
+
   function save() {
     if (changeCount === 0 || saveMutation.isPending) return;
     setError('');
@@ -127,7 +134,7 @@ export function SemesterRosterModal({
     <Modal
       eyebrow={semester.title}
       title="명단 관리"
-      onClose={onClose}
+      onClose={close}
       width="720px"
       footer={
         <>
@@ -140,7 +147,7 @@ export function SemesterRosterModal({
               {changeCount > 0 ? `변경 ${changeCount}건 · 저장하면 학기 회비를 다시 계산합니다.` : '변경 없음'}
             </span>
           )}
-          <Button className="ml-auto" onClick={onClose}>
+          <Button className="ml-auto" onClick={close}>
             취소
           </Button>
           <Button variant="primary" disabled={changeCount === 0 || saveMutation.isPending} onClick={save}>

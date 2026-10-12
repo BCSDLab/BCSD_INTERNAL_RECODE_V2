@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link, useNavigate } from '@tanstack/react-router';
+import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import {
@@ -13,6 +13,7 @@ import {
   type SemesterDuesSummary,
 } from '@/entities/finance';
 import { getApiErrorMessage } from '@/shared/api/error';
+import { confirmDiscardChanges, useDraftGuard } from '@/shared/lib/router/use-draft-guard';
 import { Button } from '@/shared/ui/button';
 import { Field, INPUT_CLASS_COMPACT } from '@/shared/ui/field';
 import { Toast } from '@/shared/ui/legacy-forms';
@@ -159,8 +160,26 @@ export function SemesterDuesDetailView({
   const [isRosterModalOpen, setIsRosterModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [monthlyAmountInput, setMonthlyAmountInput] = useState('');
+  const createDraftDirty =
+    isCreateModalOpen && monthlyAmountInput !== String(semesters[0]?.monthlyAmount ?? DEFAULT_MONTHLY_DUES);
+  useDraftGuard(createDraftDirty);
+  function closeCreate() {
+    if (createDraftDirty && !confirmDiscardChanges()) return;
+    setIsCreateModalOpen(false);
+  }
+
   const monthlyAmount = parseMonthlyAmount(monthlyAmountInput);
-  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
+  const search = useSearch({ from: '/_admin/ledger/dues' });
+  const selectedMemberId = search.memberId;
+  function updateSearch(patch: Partial<typeof search>) {
+    void navigate({
+      to: '/ledger/dues/$semesterId',
+      params: { semesterId: semester.id },
+      search: (prev) => ({ ...prev, ...patch }),
+      resetScroll: false,
+    });
+  }
+  const setSelectedMemberId = (memberId: string | null) => updateSearch({ memberId: memberId ?? undefined });
   const [toast, setToast] = useState<{ message: string; tone: 'success' | 'neutral' } | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const monthLabels = semesterMonthLabels(semester.id);
@@ -174,10 +193,14 @@ export function SemesterDuesDetailView({
     : null;
   const canCreateNextSemester = creatable?.creatable ?? false;
   const [nameQuery, setNameQuery] = useState('');
-  const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
-  const [selectedTracks, setSelectedTracks] = useState<string[]>([]);
-  const [selectedErrors, setSelectedErrors] = useState<ErrorKind[]>([]);
-  const [selectedStates, setSelectedStates] = useState<StateFilter[]>([]);
+  const selectedMembers = search.members ?? [];
+  const setSelectedMembers = (nextMembers: string[]) => updateSearch({ members: nextMembers });
+  const selectedTracks = search.tracks ?? [];
+  const setSelectedTracks = (tracks: string[]) => updateSearch({ tracks });
+  const selectedErrors = search.errors ?? [];
+  const setSelectedErrors = (errors: ErrorKind[]) => updateSearch({ errors });
+  const selectedStates = search.states ?? [];
+  const setSelectedStates = (states: StateFilter[]) => updateSearch({ states });
   const tableMembers = useMemo(
     () => members.filter((member) => member.months.some((month) => month.status !== 'not-applicable')),
     [members],
@@ -275,10 +298,7 @@ export function SemesterDuesDetailView({
   }
 
   function resetFilters() {
-    setSelectedMembers([]);
-    setSelectedTracks([]);
-    setSelectedErrors([]);
-    setSelectedStates([]);
+    updateSearch({ members: undefined, tracks: undefined, errors: undefined, states: undefined });
     setNameQuery('');
     setOpenFilter(null);
   }
@@ -543,11 +563,11 @@ export function SemesterDuesDetailView({
       {isCreateModalOpen && createTarget && (
         <Modal
           title={`${createTarget.label} 회비를 생성할까요?`}
-          onClose={() => setIsCreateModalOpen(false)}
+          onClose={closeCreate}
           width="440px"
           footer={
             <>
-              <Button className="ml-auto" onClick={() => setIsCreateModalOpen(false)}>
+              <Button className="ml-auto" onClick={closeCreate}>
                 취소
               </Button>
               <Button
@@ -588,7 +608,7 @@ export function SemesterDuesDetailView({
           </div>
         </Modal>
       )}
-      {selectedMemberId && (
+      {selectedMemberId && tableMembers.some((member) => member.id === selectedMemberId) && (
         <MemberDuesLedgerModal
           semester={semester}
           member={tableMembers.find((member) => member.id === selectedMemberId)!}

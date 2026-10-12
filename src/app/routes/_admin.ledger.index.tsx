@@ -1,4 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
 
 import { LedgerPage as Screen } from '@/pages/finance';
-export const Route = createFileRoute('/_admin/ledger/')({ component: Screen });
+import { validateLedgerSearch } from '@/widgets/finance';
+export const Route = createFileRoute('/_admin/ledger/')({ validateSearch: validateLedgerSearch, component: Screen });

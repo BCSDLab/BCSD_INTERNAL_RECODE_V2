@@ -17,7 +17,7 @@ function SemesterDues({ semesterId }: { semesterId: string }) {
   const { data, isPending, isError } = useQuery(duesQueries.semester(semesterId));
   if (isError) return <LoadingState message="학기 회비를 불러오지 못했습니다." />;
   if (isPending) return <LoadingState />;
-  return <SemesterDuesDetailView semester={data.semester} members={data.members} />;
+  return <SemesterDuesDetailView key={data.semester.id} semester={data.semester} members={data.members} />;
 }
 
 export function LatestSemesterDuesPage() {

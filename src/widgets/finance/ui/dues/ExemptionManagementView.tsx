@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import {
@@ -14,6 +15,7 @@ import {
   type MemberDues,
 } from '@/entities/finance';
 import { getApiErrorMessage } from '@/shared/api/error';
+import { confirmDiscardChanges, useDraftGuard } from '@/shared/lib/router/use-draft-guard';
 import { Button } from '@/shared/ui/button';
 import { Toast } from '@/shared/ui/legacy-forms';
 import { Modal } from '@/shared/ui/modal';
@@ -256,12 +258,30 @@ function ExemptionManagementContent({
 }) {
   const queryClient = useQueryClient();
   const [flow, setFlow] = useState<Flow>(null);
+  const hasDraft = flow !== null && (flow.name !== 'form' || flow.isEditing);
+  useDraftGuard(hasDraft, undefined, () => setFlow(null));
+  function closeFlow() {
+    if (hasDraft && !confirmDiscardChanges()) return;
+    setFlow(null);
+  }
+
   const [toast, setToast] = useState<{ message: string; tone: 'success' | 'neutral' } | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [viewMode, setViewMode] = useState<ViewMode>('member');
-  const [semester, setSemester] = useState<Semester>(() => semesterFromId(currentSemesterId));
+  const search = useSearch({ from: '/_admin/ledger/exemptions' });
+  const navigate = useNavigate({ from: '/ledger/exemptions' });
+  const viewMode = search.view ?? 'member';
+  const semester = semesterFromId(search.semester ?? currentSemesterId);
+  function updateSearch(patch: Partial<typeof search>) {
+    void navigate({ search: (prev) => ({ ...prev, ...patch }), resetScroll: false });
+  }
+  const setViewMode = (view: ViewMode) => updateSearch({ view });
+  const setSemester = (update: (current: Semester) => Semester) => {
+    const next = update(semester);
+    updateSearch({ semester: `${next.year}-${next.term}` });
+  };
   const [openFilter, setOpenFilter] = useState<ExemptionFilterKey | null>(null);
-  const [filters, setFilters] = useState<ExemptionFilterState>(emptyFilterState);
+  const filters: ExemptionFilterState = search.filters ?? emptyFilterState();
+  const setFilters = (value: ExemptionFilterState) => updateSearch({ filters: value });
   const [filterQueries, setFilterQueries] = useState<ExemptionFilterQueries>(emptyFilterQueries);
   const memberById = useMemo(() => new Map(members.map((member) => [member.id, member])), [members]);
   const memberOrder = useMemo(() => new Map(members.map((member, index) => [member.id, index])), [members]);
@@ -366,7 +386,7 @@ function ExemptionManagementContent({
   }
 
   function setFilterValues(key: ExemptionFilterKey, values: string[]) {
-    setFilters((current) => ({ ...current, [key]: values }));
+    setFilters({ ...filters, [key]: values });
   }
 
   function resetFilters() {
@@ -639,8 +659,10 @@ function ExemptionManagementContent({
           members={members}
           reasons={exemptionReasons}
           onChange={setFlow}
-          onClose={() => setFlow(null)}
-          onCancelEdit={() => flow.editingId && resetToDetail(flow.editingId)}
+          onClose={closeFlow}
+          onCancelEdit={() => {
+            if (flow.editingId && (!hasDraft || confirmDiscardChanges())) resetToDetail(flow.editingId);
+          }}
           onContinue={continueFromForm}
         />
       )}
@@ -648,7 +670,7 @@ function ExemptionManagementContent({
       {flow?.name === 'new-reason' && (
         <SimpleDialog
           title="새로운 면제 사유"
-          onClose={() => setFlow(null)}
+          onClose={closeFlow}
           onBack={() =>
             setFlow({
               ...flow,
@@ -675,7 +697,7 @@ function ExemptionManagementContent({
           editingId={flow.editingId}
           draft={flow.draft}
           isApplying={saveMutation.isPending}
-          onClose={() => setFlow(null)}
+          onClose={closeFlow}
           onBack={() =>
             setFlow({
               name: 'form',

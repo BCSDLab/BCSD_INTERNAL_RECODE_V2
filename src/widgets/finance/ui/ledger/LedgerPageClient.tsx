@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link } from '@tanstack/react-router';
+import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import {
@@ -13,7 +13,6 @@ import {
   type ImportTransaction,
   type LedgerEntry,
   type LedgerFilters,
-  type LedgerScreen,
   EMPTY_LEDGER_FILTERS,
   isCompleteLedgerDate,
 } from '@/entities/finance';
@@ -30,8 +29,15 @@ const EMPTY_ENTRIES: LedgerEntry[] = [];
 export function LedgerPageClient() {
   const queryClient = useQueryClient();
   const { data: entries = EMPTY_ENTRIES, isPending, isError } = useQuery(ledgerQueries.entries());
-  const [filters, setFilters] = useState<LedgerFilters>(EMPTY_LEDGER_FILTERS);
-  const [screen, setScreen] = useState<LedgerScreen>({ name: 'list' });
+  const search = useSearch({ from: '/_admin/ledger/' });
+  const navigate = useNavigate({ from: '/ledger' });
+  const filters = search.filters ?? EMPTY_LEDGER_FILTERS;
+  function setFilters(nextFilters: LedgerFilters) {
+    void navigate({ search: (prev) => ({ ...prev, filters: nextFilters }), resetScroll: false });
+  }
+  function selectEntry(entryId?: string) {
+    void navigate({ search: (prev) => ({ ...prev, entryId }), resetScroll: false });
+  }
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [toast, setToast] = useState('');
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -77,7 +83,7 @@ export function LedgerPageClient() {
     });
   }, [entries, filters]);
 
-  const detailEntry = screen.name === 'detail' ? entries.find((entry) => entry.id === screen.entryId) : undefined;
+  const detailEntry = entries.find((entry) => entry.id === search.entryId);
 
   const updateMutation = useMutation({
     mutationFn: ({ entry }: { entry: LedgerEntry; message: string }) =>
@@ -97,7 +103,6 @@ export function LedgerPageClient() {
 
   function saveEntry(nextEntry: LedgerEntry) {
     updateMutation.mutate({ entry: nextEntry, message: '장부 기록을 수정했습니다' });
-    setScreen({ name: 'detail', entryId: nextEntry.id });
   }
 
   async function saveImportedTransactions(transactions: ImportTransaction[], fileName: string) {
@@ -161,13 +166,13 @@ export function LedgerPageClient() {
           filters={filters}
           onFiltersChange={setFilters}
           onResetFilters={() => setFilters(EMPTY_LEDGER_FILTERS)}
-          onOpenEntry={(entryId) => setScreen({ name: 'detail', entryId })}
+          onOpenEntry={selectEntry}
           onOpenImport={() => setIsImportOpen(true)}
         />
       )}
 
       {detailEntry && (
-        <LedgerDetailView entry={detailEntry} onClose={() => setScreen({ name: 'list' })} onSave={saveEntry} />
+        <LedgerDetailView key={detailEntry.id} entry={detailEntry} onClose={() => selectEntry()} onSave={saveEntry} />
       )}
 
       {isImportOpen && (

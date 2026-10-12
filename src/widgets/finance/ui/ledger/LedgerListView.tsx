@@ -8,6 +8,7 @@ import {
   type LedgerFilters,
   LEDGER_CATEGORIES,
   formatLedgerDateInput,
+  isCompleteLedgerDate,
   formatOccurredAt,
   formatWon,
   signedAmount,
@@ -154,6 +155,17 @@ export function LedgerListView({
   onOpenImport,
 }: LedgerListViewProps) {
   const [openFilter, setOpenFilter] = useState<FilterKey | null>(null);
+  const dateSource = `${filters.from}|${filters.to}`;
+  const [dateDraft, setDateDraft] = useState({ source: dateSource, from: filters.from, to: filters.to });
+  if (dateDraft.source !== dateSource) {
+    setDateDraft({ source: dateSource, from: filters.from, to: filters.to });
+  }
+  function changeDate(key: 'from' | 'to', value: string) {
+    const next = formatLedgerDateInput(value, dateDraft[key]);
+    setDateDraft((current) => ({ ...current, [key]: next }));
+    if (!next || isCompleteLedgerDate(next)) onFiltersChange({ ...filters, [key]: next });
+  }
+
   const counterpartyOptions = useMemo(
     () =>
       [...new Set(allEntries.map((entry) => entry.counterparty))]
@@ -238,8 +250,8 @@ export function LedgerListView({
                         type="text"
                         inputMode="numeric"
                         maxLength={10}
-                        value={filters.from}
-                        onChange={(event) => update('from', formatLedgerDateInput(event.target.value, filters.from))}
+                        value={dateDraft.from}
+                        onChange={(event) => changeDate('from', event.target.value)}
                         aria-label="시작일"
                         placeholder="YYYY-MM-DD"
                         title="2000~2099년, 월 01~12, 일 01~31"
@@ -251,14 +263,21 @@ export function LedgerListView({
                         type="text"
                         inputMode="numeric"
                         maxLength={10}
-                        value={filters.to}
-                        onChange={(event) => update('to', formatLedgerDateInput(event.target.value, filters.to))}
+                        value={dateDraft.to}
+                        onChange={(event) => changeDate('to', event.target.value)}
                         aria-label="종료일"
                         placeholder="YYYY-MM-DD"
                         title="2000~2099년, 월 01~12, 일 01~31"
                       />
                     </label>
-                    <Button compact tone="ghost" onClick={() => onFiltersChange({ ...filters, from: '', to: '' })}>
+                    <Button
+                      compact
+                      tone="ghost"
+                      onClick={() => {
+                        setDateDraft({ source: '|', from: '', to: '' });
+                        onFiltersChange({ ...filters, from: '', to: '' });
+                      }}
+                    >
                       초기화
                     </Button>
                   </div>

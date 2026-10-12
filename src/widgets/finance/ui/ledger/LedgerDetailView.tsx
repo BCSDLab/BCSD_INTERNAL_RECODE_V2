@@ -14,6 +14,7 @@ import {
   formatOccurredAt,
   formatWon,
 } from '@/entities/finance';
+import { confirmDiscardChanges, useDraftGuard } from '@/shared/lib/router/use-draft-guard';
 import { Button, Input, ModalFrame, Panel, Select } from '@/shared/ui/legacy-forms';
 
 import { EvidenceLinkChips, EvidenceLinkForm } from './EvidenceLinks';
@@ -89,6 +90,14 @@ export function LedgerDetailView({ entry, onClose, onSave }: LedgerDetailViewPro
   const [note, setNote] = useState(entry.note);
   const [evidences, setEvidences] = useState<Evidence[]>(entry.evidences);
   const [error, setError] = useState('');
+  const dirty =
+    isEditing &&
+    (counterparty !== entry.counterparty ||
+      category !== entry.category ||
+      description !== entry.description ||
+      note !== entry.note ||
+      JSON.stringify(evidences) !== JSON.stringify(entry.evidences));
+  useDraftGuard(dirty);
 
   const displayedEvidences = isEditing ? evidences : entry.evidences;
   const status = paymentStatus(entry, linkedMembers);
@@ -108,6 +117,7 @@ export function LedgerDetailView({ entry, onClose, onSave }: LedgerDetailViewPro
   }
 
   function cancelEditing() {
+    if (dirty && !confirmDiscardChanges()) return;
     resetDraft();
     setIsEditing(false);
   }
