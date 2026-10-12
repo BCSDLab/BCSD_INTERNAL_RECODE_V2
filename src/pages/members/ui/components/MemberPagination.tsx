@@ -26,8 +26,10 @@ function buildPages(current: number, totalPages: number): (number | 'gap')[] {
 export function MemberPagination({
   page,
   onPageChange,
+  disabled = false,
 }: {
   page: MemberDirectoryPageInfo;
+  disabled?: boolean;
   onPageChange: (page: number) => void;
 }) {
   const totalPages = Math.max(1, page.totalPages);
@@ -42,7 +44,7 @@ export function MemberPagination({
       </span>
 
       <div className="ml-auto flex flex-none items-center gap-1">
-        <PageButton disabled={current <= 0} onClick={() => onPageChange(current - 1)}>
+        <PageButton disabled={disabled || current <= 0} onClick={() => onPageChange(current - 1)}>
           ‹
         </PageButton>
         {buildPages(current, totalPages).map((item, index) =>
@@ -51,12 +53,12 @@ export function MemberPagination({
               …
             </span>
           ) : (
-            <PageButton key={item} selected={item === current} onClick={() => onPageChange(item)}>
+            <PageButton key={item} disabled={disabled} selected={item === current} onClick={() => onPageChange(item)}>
               {item + 1}
             </PageButton>
           ),
         )}
-        <PageButton disabled={current >= totalPages - 1} onClick={() => onPageChange(current + 1)}>
+        <PageButton disabled={disabled || current >= totalPages - 1} onClick={() => onPageChange(current + 1)}>
           ›
         </PageButton>
       </div>

@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
-import { installApiMocks } from './mocks';
+import { installApiMocks, memberDirectory } from './mocks';
 
 /**
  * visual.spec.ts는 "그림이 그대로인가"만 본다. 여기는 각 Phase가 실제로 바꾸는
@@ -353,5 +353,103 @@ test.describe('내 정보 Slack ID (읽기 전용)', () => {
     await page.reload();
     await page.locator('aside', { hasText: 'BCSD Internal' }).waitFor();
     await expect(page.getByText('U012ABCDEF')).toBeVisible();
+  });
+});
+
+test.describe('인명부 조회 전환', () => {
+  for (const action of ['필터', '검색', '정렬'] as const) {
+    test(`${action} 응답을 기다리는 동안 목록·집계·페이지 높이를 유지한다`, async ({ page }) => {
+      await gotoAsAdmin(page, '/members');
+      const list = page.getByRole('region', { name: '부원 목록' });
+      await expect(list.getByRole('cell', { name: /^홍길동/ })).toBeVisible();
+      const before = await list.boundingBox();
+      const gate = Promise.withResolvers<void>();
+      await page.route('**/v1/admin/members?**', async (route) => {
+        if (new URL(route.request().url()).searchParams.get('size') === '1') return route.fallback();
+        await gate.promise;
+        await route.fulfill({
+          json: {
+            ...memberDirectory,
+            members: [memberDirectory.members[1]],
+            page: { ...memberDirectory.page, totalElements: 1 },
+          },
+        });
+      });
+      try {
+        if (action === '필터') {
+          await page
+            .locator('aside', { hasText: '활동 여부' })
+            .getByRole('button', { name: /^활동/ })
+            .click();
+        } else if (action === '검색') {
+          await page.getByRole('textbox', { name: '부원 검색' }).fill('김철수');
+        } else {
+          await list.getByRole('button', { name: /^이름/ }).click();
+        }
+        await expect(list).toHaveAttribute('aria-busy', 'true');
+        await expect(list.getByRole('cell', { name: /^홍길동/ })).toBeVisible();
+        await expect(list.getByText('조건에 맞는 부원이 없습니다.')).toHaveCount(0);
+        await expect(page.getByText('총원', { exact: true }).locator('..')).toHaveText('총원3');
+        expect((await list.boundingBox())?.height).toBe(before?.height);
+        gate.resolve();
+        await expect(list).toHaveAttribute('aria-busy', 'false');
+        await expect(list.getByRole('cell', { name: /^홍길동/ })).toHaveCount(0);
+        await expect(list.getByRole('cell', { name: '김철수', exact: true })).toBeVisible();
+      } finally {
+        gate.resolve();
+      }
+    });
+  }
+
+  test('페이지 전환 중 목록을 유지하고 추가 페이지 이동을 막는다', async ({ page }) => {
+    await installApiMocks(page);
+    const gate = Promise.withResolvers<void>();
+    const requestedPages: number[] = [];
+    await page.route('**/v1/admin/members?**', async (route) => {
+      const params = new URL(route.request().url()).searchParams;
+      if (params.get('size') === '1') return route.fallback();
+      const number = Number(params.get('page'));
+      requestedPages.push(number);
+      if (number > 0) await gate.promise;
+      await route.fulfill({
+        json: {
+          ...memberDirectory,
+          members: number === 0 ? memberDirectory.members : [memberDirectory.members[1]],
+          page: { number, size: 8, totalElements: 24, totalPages: 3 },
+        },
+      });
+    });
+    await page.goto('/members');
+    const list = page.getByRole('region', { name: '부원 목록' });
+    await expect(list.getByRole('cell', { name: /^홍길동/ })).toBeVisible();
+    try {
+      await list.getByRole('button', { name: '2', exact: true }).click();
+      await expect(list).toHaveAttribute('aria-busy', 'true');
+      await expect(list.getByRole('button', { name: '3', exact: true })).toBeDisabled();
+      await expect(list.getByRole('cell', { name: /^홍길동/ })).toBeVisible();
+      gate.resolve();
+      await expect(list).toHaveAttribute('aria-busy', 'false');
+      await expect(list.getByRole('button', { name: '2', exact: true })).toHaveAttribute('aria-current', 'page');
+      expect(requestedPages).toEqual([0, 1]);
+    } finally {
+      gate.resolve();
+    }
+  });
+
+  test('조회가 끝난 빈 결과는 이전 목록 대신 빈 상태를 표시한다', async ({ page }) => {
+    await gotoAsAdmin(page, '/members');
+    await page.route('**/v1/admin/members?**', async (route) => {
+      if (new URL(route.request().url()).searchParams.get('size') === '1') return route.fallback();
+      await route.fulfill({
+        json: { ...memberDirectory, members: [], page: { number: 0, size: 8, totalElements: 0, totalPages: 0 } },
+      });
+    });
+    await page
+      .locator('aside', { hasText: '활동 여부' })
+      .getByRole('button', { name: /^비활동/ })
+      .click();
+    const list = page.getByRole('region', { name: '부원 목록' });
+    await expect(list.getByText('조건에 맞는 부원이 없습니다.')).toBeVisible();
+    await expect(list.getByRole('cell', { name: /^홍길동/ })).toHaveCount(0);
   });
 });

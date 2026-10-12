@@ -163,7 +163,7 @@ const recruitLinkHistory = [
   },
 ];
 
-const memberDirectory = {
+export const memberDirectory = {
   members: [
     {
       id: 1,
