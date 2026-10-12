@@ -29,7 +29,7 @@ const techStacks = [
   { id: 2, name: 'Spring', iconUrl: 'https://placehold.co/24' },
 ];
 
-const trackPageDetail = {
+export const trackPageDetail = {
   id: 1,
   trackId: 1,
   trackCode: 'FRONTEND',
