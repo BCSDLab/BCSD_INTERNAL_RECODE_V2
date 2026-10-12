@@ -2,12 +2,15 @@ import '@/app/providers/api-auth';
 import { RouterProvider } from '@tanstack/react-router';
 import { createRoot } from 'react-dom/client';
 
-import { QueryProvider } from '@/app/providers/query-provider';
-import { router } from '@/app/router/router';
+import { createQueryClient, QueryProvider } from '@/app/providers/query-provider';
+import { createAppRouter } from '@/app/router/router';
 import '@/app/styles/globals.css';
 
+const queryClient = createQueryClient();
+const router = createAppRouter(queryClient);
+
 createRoot(document.getElementById('root')!).render(
-  <QueryProvider>
+  <QueryProvider client={queryClient}>
     <RouterProvider router={router} />
   </QueryProvider>,
 );
