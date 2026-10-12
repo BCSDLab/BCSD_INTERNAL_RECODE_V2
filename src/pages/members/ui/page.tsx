@@ -65,7 +65,7 @@ export default function MembersPage() {
     return () => clearTimeout(timer);
   }, [keywordInput, filters.keyword]);
 
-  const { data, isLoading, isFetching } = useQuery(
+  const { data, isLoading, isFetching, isPlaceholderData } = useQuery(
     memberQueries.directory({
       ...filters,
       page,
@@ -78,7 +78,7 @@ export default function MembersPage() {
 
   // 마지막 줄을 지워 페이지가 범위를 벗어나면 한 장 앞으로 당긴다.
   const totalPages = data?.page.totalPages ?? 0;
-  if (data && totalPages > 0 && page > totalPages - 1) {
+  if (data && !isPlaceholderData && totalPages > 0 && page > totalPages - 1) {
     setPage(totalPages - 1);
   }
 
@@ -121,7 +121,9 @@ export default function MembersPage() {
       <div className="border-line flex flex-wrap items-center gap-2.5 border-b px-8 pt-5 pb-3">
         <MemberStats counts={data?.counts} />
         {isFetching && !isLoading && (
-          <span className="text-faint ml-auto flex-none text-[11px] whitespace-nowrap">불러오는 중…</span>
+          <span role="status" className="text-faint ml-auto flex-none text-[11px] whitespace-nowrap">
+            불러오는 중…
+          </span>
         )}
       </div>
 
@@ -138,7 +140,11 @@ export default function MembersPage() {
             onCreate={() => setModal({ kind: 'create' })}
           />
 
-          <section className="border-line bg-panel overflow-hidden rounded-2xl border">
+          <section
+            aria-label="부원 목록"
+            aria-busy={isFetching}
+            className="border-line bg-panel overflow-hidden rounded-2xl border"
+          >
             <MemberTable
               members={members}
               isLoading={isLoading}
@@ -157,7 +163,7 @@ export default function MembersPage() {
                 onWithdraw: (member) => setModal({ kind: 'withdrawal', member }),
               }}
             />
-            {data && <MemberPagination page={data.page} onPageChange={setPage} />}
+            {data && <MemberPagination page={data.page} disabled={isPlaceholderData} onPageChange={setPage} />}
           </section>
 
           {error && <p className="text-danger m-0 pt-0.5 text-[11px]">{error}</p>}

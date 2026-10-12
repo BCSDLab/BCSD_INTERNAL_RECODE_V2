@@ -17,7 +17,13 @@ function totalParams(isAdmin: boolean): MemberDirectoryParams {
 
 export const memberQueries = {
   directory: (params: MemberDirectoryParams) =>
-    queryOptions({ queryKey: memberKeys.directory(params), queryFn: () => getMemberDirectory(params) }),
+    queryOptions({
+      queryKey: memberKeys.directory(params),
+      queryFn: () => getMemberDirectory(params),
+      // 필터·검색·페이지 변경 중에도 목록과 집계를 유지한다. 권한이 바뀌면 재사용하지 않는다.
+      placeholderData: (previousData, previousQuery) =>
+        previousQuery?.queryKey[2].isAdmin === params.isAdmin ? previousData : undefined,
+    }),
   total: (isAdmin: boolean) =>
     queryOptions({ queryKey: memberKeys.total(isAdmin), queryFn: () => getMemberDirectory(totalParams(isAdmin)) }),
 };

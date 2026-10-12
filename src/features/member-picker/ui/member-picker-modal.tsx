@@ -49,7 +49,7 @@ export function MemberPickerModal({
     return () => clearTimeout(timer);
   }, [keywordInput]);
 
-  const { data, isLoading } = useQuery(
+  const { data, isLoading, isPlaceholderData, isFetching } = useQuery(
     memberQueries.directory({
       ...EMPTY_MEMBER_FILTERS,
       keyword,
@@ -128,7 +128,10 @@ export function MemberPickerModal({
           ))}
         </div>
 
-        <div className="border-line flex max-h-80 flex-col gap-1 overflow-y-auto rounded-[11px] border p-1.5">
+        <div
+          aria-busy={isFetching}
+          className="border-line flex max-h-80 flex-col gap-1 overflow-y-auto rounded-[11px] border p-1.5"
+        >
           {isLoading ? (
             <p className="text-faint m-0 p-3 text-[13px]">불러오는 중…</p>
           ) : candidates.length === 0 ? (
@@ -157,7 +160,7 @@ export function MemberPickerModal({
           <div className="flex items-center justify-center gap-3 text-[12px]">
             <button
               type="button"
-              disabled={page === 0}
+              disabled={isPlaceholderData || page === 0}
               onClick={() => setPage((p) => p - 1)}
               className="text-muted disabled:text-faint cursor-pointer disabled:cursor-not-allowed"
             >
@@ -168,7 +171,7 @@ export function MemberPickerModal({
             </span>
             <button
               type="button"
-              disabled={page >= totalPages - 1}
+              disabled={isPlaceholderData || page >= totalPages - 1}
               onClick={() => setPage((p) => p + 1)}
               className="text-muted disabled:text-faint cursor-pointer disabled:cursor-not-allowed"
             >
