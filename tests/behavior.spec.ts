@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
-import { installApiMocks, memberDirectory } from './mocks';
+import { installApiMocks, memberDirectory, trackPageDetail } from './mocks';
 
 /**
  * visual.spec.ts는 "그림이 그대로인가"만 본다. 여기는 각 Phase가 실제로 바꾸는
@@ -451,5 +451,119 @@ test.describe('인명부 조회 전환', () => {
     const list = page.getByRole('region', { name: '부원 목록' });
     await expect(list.getByText('조건에 맞는 부원이 없습니다.')).toBeVisible();
     await expect(list.getByRole('cell', { name: /^홍길동/ })).toHaveCount(0);
+  });
+});
+
+test.describe('편집 초안과 서버 캐시', () => {
+  test('트랙 저장 응답으로 제목·탭을 갱신하고 재방문 시 저장한 초안을 복원한다', async ({ page }) => {
+    await installApiMocks(page);
+    await page.clock.install();
+    await page.route('**/v1/admin/track-pages/1', async (route) => {
+      if (route.request().method() !== 'PUT') return route.fallback();
+      await route.fulfill({ json: { ...trackPageDetail, ...route.request().postDataJSON(), slug: 'new-frontend' } });
+    });
+    await page.route('**/v1/admin/track-pages/2', (route) =>
+      route.fulfill({
+        json: { ...trackPageDetail, id: 2, trackId: 2, displayName: '백엔드' },
+      }),
+    );
+    await page.route('**/v1/admin/track-pages/1/study-points', (route) => route.fulfill({ json: [] }));
+    await page.goto('/tracks/1');
+    await page.getByRole('button', { name: '펼치기 ⌄' }).click();
+    await page.getByRole('button', { name: '삭제', exact: true }).click();
+    await expect(page.getByText('항목이 없습니다.', { exact: true })).toBeVisible();
+    await page.getByLabel(/^트랙명/).fill('새 프론트');
+    await page.clock.runFor(750);
+    await expect(page.getByRole('heading', { name: '새 프론트 트랙' })).toBeVisible();
+    await expect(page.getByRole('button', { name: '새 프론트', exact: true })).toBeVisible();
+    const gate = Promise.withResolvers<void>();
+    await page.route('**/v1/admin/track-pages', async (route) => {
+      await gate.promise;
+      await route.fallback();
+    });
+    await page.getByRole('button', { name: '백엔드', exact: true }).click();
+    await expect(page.getByRole('heading', { name: '백엔드 트랙' })).toBeVisible();
+    await page.route('**/v1/admin/track-pages/1', async (route) => {
+      await gate.promise;
+      await route.fulfill({ json: trackPageDetail });
+    });
+    try {
+      await page.getByRole('button', { name: '새 프론트', exact: true }).click();
+      await expect(page.getByLabel(/^트랙명/)).toHaveValue('새 프론트');
+      // 헤더 응답에 오래된 학습 항목이 있어도 다른 섹션의 캐시를 덮어쓰면 안 된다.
+      await expect(page.getByText('항목이 없습니다.', { exact: true })).toBeVisible();
+    } finally {
+      gate.resolve();
+    }
+  });
+
+  test('학습 항목 수정 직후 삭제하면 대기 중인 저장이 항목을 복원하지 않는다', async ({ page }) => {
+    await installApiMocks(page);
+    await page.clock.install();
+    const saves: unknown[] = [];
+    await page.route('**/v1/admin/track-pages/1/study-points', async (route) => {
+      const points = route.request().postDataJSON().studyPoints;
+      saves.push(points);
+      await route.fulfill({ json: points });
+    });
+    await page.goto('/tracks/1');
+    await page.getByRole('button', { name: '펼치기 ⌄' }).click();
+    await page.getByPlaceholder('제목', { exact: true }).fill('삭제할 초안');
+    await page.getByRole('button', { name: '삭제', exact: true }).click();
+    await expect.poll(() => saves).toEqual([[]]);
+    await page.clock.runFor(1000);
+    expect(saves).toEqual([[]]);
+    await expect(page.getByText('항목이 없습니다.', { exact: true })).toBeVisible();
+  });
+
+  test('트랙 자동 저장은 응답을 기다린 뒤 다음 요청을 전송한다', async ({ page }) => {
+    await installApiMocks(page);
+    await page.clock.install();
+    const gate = Promise.withResolvers<void>();
+    const saves: string[] = [];
+    await page.route('**/v1/admin/track-pages/1', async (route) => {
+      if (route.request().method() !== 'PUT') return route.fallback();
+      const body = route.request().postDataJSON();
+      saves.push(body.displayName);
+      if (saves.length === 1) await gate.promise;
+      await route.fulfill({ json: { ...trackPageDetail, ...body } });
+    });
+    await page.goto('/tracks/1');
+    try {
+      await page.getByLabel(/^트랙명/).fill('첫 저장');
+      await page.clock.runFor(750);
+      await expect.poll(() => saves).toEqual(['첫 저장']);
+      await page.getByLabel(/^트랙명/).fill('마지막 저장');
+      await page.clock.runFor(750);
+      expect(saves).toEqual(['첫 저장']);
+      gate.resolve();
+      await expect.poll(() => saves).toEqual(['첫 저장', '마지막 저장']);
+      await expect(page.getByRole('heading', { name: '마지막 저장 트랙' })).toBeVisible();
+      await expect(page.getByLabel(/^트랙명/)).toHaveValue('마지막 저장');
+    } finally {
+      gate.resolve();
+    }
+  });
+
+  test('활동 카테고리 전환 시 이전 초안과 자동 저장을 새 편집기로 넘기지 않는다', async ({ page }) => {
+    await installApiMocks(page);
+    await page.clock.install();
+    const saves: string[] = [];
+    await page.route('**/v1/admin/activity-categories/*', async (route) => {
+      if (route.request().method() !== 'PUT') return route.fallback();
+      saves.push(new URL(route.request().url()).pathname);
+      await route.fulfill({ status: 204 });
+    });
+    await page.goto('/activities');
+    await expect(page.getByRole('heading', { name: '스터디 활동' })).toBeVisible();
+    await page.getByLabel(/헤드라인/).fill('스터디 초안');
+    await page.getByRole('button', { name: /^행사/ }).click();
+    await expect(page.getByRole('heading', { name: '행사 활동' })).toBeVisible();
+    await expect(page.getByLabel(/헤드라인/)).toHaveValue('');
+    await page.clock.runFor(1000);
+    expect(saves).toEqual([]);
+    await page.getByLabel(/헤드라인/).fill('행사 소개');
+    await page.clock.runFor(750);
+    await expect.poll(() => saves).toEqual(['/v1/admin/activity-categories/2']);
   });
 });
