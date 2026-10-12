@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+
 import { installApiMocks } from './mocks';
 
 /**
@@ -40,10 +41,7 @@ for (const theme of THEMES) {
 
     for (const { name, path } of PAGES) {
       test(`${name}`, async ({ page }) => {
-        await page.addInitScript(
-          (t) => window.localStorage.setItem('bcsd-internal-theme', t),
-          theme,
-        );
+        await page.addInitScript((t) => window.localStorage.setItem('bcsd-internal-theme', t), theme);
         await gotoAsAdmin(page, path);
         await expect(page).toHaveScreenshot(`${name}-${theme}.png`, { fullPage: true });
       });
@@ -100,10 +98,7 @@ for (const theme of THEMES) {
 
     for (const { name, path, open } of INTERACTION_CASES) {
       test(name, async ({ page }) => {
-        await page.addInitScript(
-          (t) => window.localStorage.setItem('bcsd-internal-theme', t),
-          theme,
-        );
+        await page.addInitScript((t) => window.localStorage.setItem('bcsd-internal-theme', t), theme);
         await gotoAsAdmin(page, path);
         await open(page);
         await expect(page).toHaveScreenshot(`${name}-${theme}.png`, { fullPage: true });

@@ -1,6 +1,5 @@
 {
-  // prettier + prettier-plugin-tailwindcss를 대체한다. 아래 값은 기존 .prettierrc.json을
-  // `oxfmt --migrate prettier`로 옮긴 것이라 임의로 바꾸지 않는다.
+  // 기존 포맷을 유지하고 KOIN_WEB_RECODE의 import 그룹 정렬을 적용한다.
   "printWidth": 120,
   "singleQuote": true,
   "semi": true,
@@ -11,5 +10,18 @@
   "sortTailwindcss": {},
   // package.json 키 순서는 건드리지 않는다(prettier도 하지 않았다).
   "sortPackageJson": false,
-  "ignorePatterns": [".next/**", "out/**", "build/**", "pnpm-lock.yaml", "와이어프레임 기반 디자인 생성/**"]
+  "sortImports": {
+    "groups": [["builtin", "external"], "internal", ["parent", "sibling", "index"], "unknown"],
+    "internalPattern": ["@/"],
+    "newlinesBetween": true,
+    "sortSideEffects": false
+  },
+  "ignorePatterns": [
+    "dist/**",
+    "src/app/router/routeTree.gen.ts",
+    "out/**",
+    "build/**",
+    "pnpm-lock.yaml",
+    "와이어프레임 기반 디자인 생성/**"
+  ]
 }

@@ -41,8 +41,24 @@ const trackPageDetail = {
   studyPoints: [{ title: '컴포넌트 설계', description: '재사용 가능한 UI를 만든다', iconImageUrl: null }],
   techStacks,
   members: [
-    { id: 1, memberId: 1, name: '홍길동', memberType: 'REGULAR', profileImageUrl: null, isVisible: true, displayOrder: 0 },
-    { id: 2, memberId: 2, name: '김철수', memberType: 'MENTOR', profileImageUrl: null, isVisible: true, displayOrder: 1 },
+    {
+      id: 1,
+      memberId: 1,
+      name: '홍길동',
+      memberType: 'REGULAR',
+      profileImageUrl: null,
+      isVisible: true,
+      displayOrder: 0,
+    },
+    {
+      id: 2,
+      memberId: 2,
+      name: '김철수',
+      memberType: 'MENTOR',
+      profileImageUrl: null,
+      isVisible: true,
+      displayOrder: 1,
+    },
   ],
 };
 
@@ -126,7 +142,9 @@ const mentorSlots = [
   { id: 1, memberId: 1, name: '홍길동', trackName: '프론트엔드', profileImageUrl: null, displayOrder: 0 },
 ];
 
-const qnaItems = [{ id: 1, question: '가입 방법은?', answer: '지원서를 제출하세요', isPublished: true, displayOrder: 0 }];
+const qnaItems = [
+  { id: 1, question: '가입 방법은?', answer: '지원서를 제출하세요', isPublished: true, displayOrder: 0 },
+];
 
 const recruitLink = {
   googleFormUrl: 'https://forms.gle/example',
@@ -137,7 +155,12 @@ const recruitLink = {
 };
 
 const recruitLinkHistory = [
-  { googleFormUrl: 'https://forms.gle/example', isOpen: true, changedByName: '관리자', changedAt: '2026-01-01T00:00:00Z' },
+  {
+    googleFormUrl: 'https://forms.gle/example',
+    isOpen: true,
+    changedByName: '관리자',
+    changedAt: '2026-01-01T00:00:00Z',
+  },
 ];
 
 const memberDirectory = {
@@ -228,7 +251,16 @@ const monthlyOccupancy = {
 
 const myReservations = {
   reservations: [
-    { id: 1, date: '2026-01-01', start: 600, end: 720, purpose: '스터디', headcount: 4, groupId: null, repeating: false },
+    {
+      id: 1,
+      date: '2026-01-01',
+      start: 600,
+      end: 720,
+      purpose: '스터디',
+      headcount: 4,
+      groupId: null,
+      repeating: false,
+    },
   ],
 };
 

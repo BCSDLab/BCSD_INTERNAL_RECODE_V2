@@ -1,25 +1,72 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  // eslint-config-next + eslint-plugin-import 조합을 대체한다. 기존 eslint 설정이
-  // 잡던 것만 그대로 옮겼고, 새 규칙군(unicorn·jsx-a11y)은 팀원 코드까지 새로 걸려서
-  // 별건으로 남겼다.
-  "plugins": ["react", "nextjs", "import", "typescript", "oxc"],
+  "plugins": ["react", "import", "typescript", "oxc"],
+  "jsPlugins": [
+    {
+      "name": "@tanstack/query",
+      "specifier": "@tanstack/eslint-plugin-query"
+    }
+  ],
   "categories": {
     "correctness": "error",
     "suspicious": "warn"
   },
   "rules": {
-    "no-restricted-imports": ["error", { "patterns": ["../*"] }],
-    // oxlint 기본은 warning이지만 eslint의 react-hooks/rules-of-hooks는 error였다.
     "react/hooks": "error",
-    // jsx: react-jsx(자동 런타임)라 React를 import하지 않는다. 오탐.
     "react/react-in-jsx-scope": "off",
-    // react-hooks/exhaustive-deps와 완전히 겹쳐 같은 줄이 두 번 보고된다.
     "react/exhaustive-effect-dependencies": "off",
-    // `import './globals.css'` 같은 side-effect import가 정상이다. 오탐.
     "import/no-unassigned-import": "off",
-    // @tiptap/* 는 default와 동명 named export를 함께 내보낸다. default import가 공식 사용법.
-    "import/no-named-as-default": "off"
+    "import/no-named-as-default": "off",
+    "import/no-duplicates": [
+      "error",
+      {
+        "prefer-inline": true
+      }
+    ],
+    "typescript/consistent-type-imports": [
+      "error",
+      {
+        "prefer": "type-imports",
+        "fixStyle": "inline-type-imports"
+      }
+    ],
+    "typescript/no-explicit-any": "error",
+    "eqeqeq": [
+      "error",
+      "always",
+      {
+        "null": "ignore"
+      }
+    ],
+    "no-console": [
+      "error",
+      {
+        "allow": ["warn", "error"]
+      }
+    ],
+    "@tanstack/query/exhaustive-deps": "error",
+    "@tanstack/query/no-rest-destructuring": "error",
+    "@tanstack/query/stable-query-client": "error",
+    "@tanstack/query/no-unstable-deps": "error",
+    "@tanstack/query/infinite-query-property-order": "error",
+    "@tanstack/query/no-void-query-fn": "error",
+    "@tanstack/query/mutation-property-order": "error"
   },
-  "ignorePatterns": [".next/**", "out/**", "build/**", "next-env.d.ts", "와이어프레임 기반 디자인 생성/**"]
+  "overrides": [
+    {
+      "files": ["scripts/**"],
+      "rules": {
+        "no-console": "off"
+      }
+    }
+  ],
+  "ignorePatterns": [
+    "dist/**",
+    "src/app/router/routeTree.gen.ts",
+    "out/**",
+    "build/**",
+    "test-results/**",
+    "playwright-report/**",
+    "와이어프레임 기반 디자인 생성/**"
+  ]
 }

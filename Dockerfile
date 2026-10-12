@@ -1,24 +1,19 @@
-FROM node:24-alpine AS deps
-WORKDIR /app
-# corepack은 node:20 번들 버전이 최신 pnpm 서명을 검증하지 못하는 경우가 있어 직접 설치한다.
-RUN npm install -g pnpm@10.33.0
-COPY package.json pnpm-lock.yaml .npmrc ./
-RUN pnpm install --frozen-lockfile
-
 FROM node:24-alpine AS builder
 WORKDIR /app
+ENV HUSKY=0
 RUN npm install -g pnpm@10.33.0
-COPY --from=deps /app/node_modules ./node_modules
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
 COPY . .
-ARG API_ORIGIN
-ENV API_ORIGIN=$API_ORIGIN
+ARG VITE_HOMEPAGE_URL=https://bcsdlab.com
+ENV VITE_HOMEPAGE_URL=$VITE_HOMEPAGE_URL
 RUN pnpm build
 
-FROM node:24-alpine AS runner
-WORKDIR /app
-ENV NODE_ENV=production
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
+FROM nginx:stable-alpine AS runner
+ENV API_ORIGIN=http://bcsd-internal-api:8081
+ENV NGINX_ENVSUBST_FILTER=API_ORIGIN
+COPY nginx/default.conf.template /etc/nginx/templates/default.conf.template
+COPY --from=builder /app/dist /usr/share/nginx/html
 EXPOSE 3000
-CMD ["node", "server.js"]
+HEALTHCHECK --interval=10s --timeout=3s --start-period=5s --retries=3 \
+  CMD wget -q -O /dev/null http://127.0.0.1:3000/healthz || exit 1

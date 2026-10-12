@@ -1,23 +1,23 @@
 # 회비·장부 API 계약
 
 BE 설계 v3(`ledger-be-design.md`) 12절 "최종 API 계약 표"와 맞춘 FE 계약이다. 둘이 다르면 설계 12절이 맞다.
-요청·응답 타입은 `src/api/dues/types.ts`, `src/api/ledger/types.ts`가 원본이다.
-BE가 배포돼 FE는 기본으로 실제 API를 부른다. 로컬 시연용으로 `NEXT_PUBLIC_LEDGER_API=mock`을 주면 mock "서버"(`src/api/dues/mock-db.ts`)가 같은 계약으로 응답한다.
+요청·응답 타입은 `src/entities/finance/api/dues/types.ts`, `src/entities/finance/api/ledger/types.ts`가 원본이다.
+BE가 배포돼 FE는 기본으로 실제 API를 부른다. 로컬 시연용으로 `VITE_LEDGER_API=mock`을 주면 mock "서버"(`src/entities/finance/api/dues/mock-db.ts`)가 같은 계약으로 응답한다.
 
 ## FE 구조 (iOS 대응)
 
-| 파일                                               | 역할                                             | iOS로 치면                  |
-| -------------------------------------------------- | ------------------------------------------------ | --------------------------- |
-| `api/{dues,ledger}/types.ts`                       | 요청·응답 DTO (이 문서의 계약)                   | `Codable` DTO               |
-| `api/{dues,ledger}/api.ts`                         | 엔드포인트 함수. `USE_LEDGER_MOCK`이면 mock 호출 | Repository (Live/Mock 분기) |
-| `api/{dues,ledger}/mock.ts`, `api/dues/mock-db.ts` | 메모리 저장소. 서버가 할 집계를 흉내 낸다        | MockRepository              |
-| `api/{dues,ledger}/mappers.ts`                     | DTO → 화면 뷰 모델 변환                          | DTO → Entity 매퍼           |
-| `api/{dues,ledger}/queries.ts`                     | react-query 키·조회                              | ViewModel의 fetch/캐시      |
-| `api/dues/mock-switch.ts`                          | mock/live 스위치                                 | DI 플래그                   |
-| `components/dues/DuesUiProvider.tsx`               | 페이지 이동 뒤 토스트 같은 **UI 상태만** 둔다    | 화면 상태 `@State`          |
+| 파일                                                                                 | 역할                                             | iOS로 치면                  |
+| ------------------------------------------------------------------------------------ | ------------------------------------------------ | --------------------------- |
+| `entities/finance/api/{dues,ledger}/types.ts`                                        | 요청·응답 DTO (이 문서의 계약)                   | `Codable` DTO               |
+| `entities/finance/api/{dues,ledger}/api.ts`                                          | 엔드포인트 함수. `USE_LEDGER_MOCK`이면 mock 호출 | Repository (Live/Mock 분기) |
+| `entities/finance/api/{dues,ledger}/mock.ts`, `entities/finance/api/dues/mock-db.ts` | 메모리 저장소. 서버가 할 집계를 흉내 낸다        | MockRepository              |
+| `entities/finance/api/{dues,ledger}/mappers.ts`                                      | DTO → 화면 뷰 모델 변환                          | DTO → Entity 매퍼           |
+| `entities/finance/api/{dues,ledger}/queries.ts`                                      | react-query 키·조회                              | ViewModel의 fetch/캐시      |
+| `entities/finance/api/dues/mock-switch.ts`                                           | mock/live 스위치                                 | DI 플래그                   |
+| `widgets/finance/model/dues-ui-provider.tsx`                                         | 페이지 이동 뒤 토스트 같은 **UI 상태만** 둔다    | 화면 상태 `@State`          |
 
 - mock 여부는 **로그인 세션이 아니라 스위치**로 정한다. 기본은 live이고, 운영 배포 설정에는 이 값이 없다.
-- `NEXT_PUBLIC_LEDGER_PREVIEW=true`(dev 전용)는 로그인 없이 `/ledger`를 여는 편의 기능일 뿐이다. 가짜 토큰이라 `NEXT_PUBLIC_LEDGER_API=mock`과 함께 쓴다.
+- `VITE_LEDGER_PREVIEW=true`(dev 전용)는 로그인 없이 `/ledger`를 여는 편의 기능일 뿐이다. 가짜 토큰이라 `VITE_LEDGER_API=mock`과 함께 쓴다.
 
 ## 원칙
 
@@ -81,16 +81,16 @@ BE가 배포돼 FE는 기본으로 실제 API를 부른다. 로컬 시연용으�
 
 #### 반환 제거로 바뀐 계약 (설계 v3에 반영됨)
 
-| 위치                 | 제거                                                                                                                  | 대신                                                    |
-| -------------------- | --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
-| `SemesterDuesStatus` | `PARTIAL`                                                                                                             | 부족분은 모두 `UNPAID`                                  |
-| `MemberDuesResponse` | `refundStatus`, `refundReason`, `refundedAmount`                                                                      | `excessAmount`(차이가 양수일 때 그 값, 아니면 0)만 남김 |
-| `api/dues/types.ts`  | `RefundStatus`, `RefundReason` 타입                                                                                   | –                                                       |
-| `MonthDuesResponse`  | `exemption: MonthExemption \| null`                                                                                   | `exemptions: MonthExemption[]` (겹친 면제 전부)         |
-| `DuesLinkResponse`   | `refundReason`, `refundAmount`, `requiredAmount`                                                                      | –                                                       |
-| `LedgerCategory`     | `DUES_REFUND`(회비 반환)                                                                                              | 회비 출금도 `DUES`                                      |
-| `ImportCategory`     | `DUES_REFUND`                                                                                                         | `DUES` \| `ETC`                                         |
-| FE 화면              | 환불 마법사(`RefundFlowAssistant`), 장부 "반환 출금을 찾고 있습니다" 배너·연결 확정 모달, `DuesUiProvider.refundFlow` | 출금도 "입출금 내역 연결" 모달로 연결                   |
+| 위치                                 | 제거                                                                                                                  | 대신                                                    |
+| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| `SemesterDuesStatus`                 | `PARTIAL`                                                                                                             | 부족분은 모두 `UNPAID`                                  |
+| `MemberDuesResponse`                 | `refundStatus`, `refundReason`, `refundedAmount`                                                                      | `excessAmount`(차이가 양수일 때 그 값, 아니면 0)만 남김 |
+| `entities/finance/api/dues/types.ts` | `RefundStatus`, `RefundReason` 타입                                                                                   | –                                                       |
+| `MonthDuesResponse`                  | `exemption: MonthExemption \| null`                                                                                   | `exemptions: MonthExemption[]` (겹친 면제 전부)         |
+| `DuesLinkResponse`                   | `refundReason`, `refundAmount`, `requiredAmount`                                                                      | –                                                       |
+| `LedgerCategory`                     | `DUES_REFUND`(회비 반환)                                                                                              | 회비 출금도 `DUES`                                      |
+| `ImportCategory`                     | `DUES_REFUND`                                                                                                         | `DUES` \| `ETC`                                         |
+| FE 화면                              | 환불 마법사(`RefundFlowAssistant`), 장부 "반환 출금을 찾고 있습니다" 배너·연결 확정 모달, `DuesUiProvider.refundFlow` | 출금도 "입출금 내역 연결" 모달로 연결                   |
 
 ### 회비 생성 제한
 
@@ -135,7 +135,7 @@ BE가 배포돼 FE는 기본으로 실제 API를 부른다. 로컬 시연용으�
 
 - 인명부 Slack ID 열·수정 입력과 `PATCH /v1/admin/members/{memberId}/slack-id`는 main에 실제 API로 들어가 있다.
   예전 FE 래퍼 mock(`slack-id-mock.ts`)은 쓰지 않는다.
-- 입력 형식은 `src/lib/slack-id.ts`가 원본이다: U 또는 W로 시작하는 영문 대문자·숫자 9~20자(`^[UW][A-Z0-9]{8,19}$`).
+- 입력 형식은 `src/shared/lib/slack-id.ts`가 원본이다: U 또는 W로 시작하는 영문 대문자·숫자 9~20자(`^[UW][A-Z0-9]{8,19}$`).
 
 ## Slack 알림
 
@@ -151,7 +151,7 @@ BE가 배포돼 FE는 기본으로 실제 API를 부른다. 로컬 시연용으�
   - `SlackClient.findProfileImageUrlByEmail()`은 사진 URL만 돌려주고 응답의 `user.id`는 버린다. 같은 호출을 쓰는 `findSlackIdByEmail(email)`을 추가한다.
   - 위 lookup 엔드포인트와 인명부 slackId 컬럼·API를 만든다(앞 절 참고).
   - 메시지 발송은 `chat.postMessage`로 한다. 지금 봇 토큰에 발송 scope가 있는지는 확인이 필요하다. 이 문서는 아직 Slack 문서와 대조하지 않았다.
-- **발송 스위치는 회비·장부와 따로 둔다:** `NEXT_PUBLIC_DUES_NOTIFICATION_API`(기본 mock). 회비·장부를 live로 바꿔도 알림 발송은 mock으로 남는다. 실제 발송은 이 값을 `live`로 바꿀 때만 나간다.
+- **발송 스위치는 회비·장부와 따로 둔다:** `VITE_DUES_NOTIFICATION_API`(기본 mock). 회비·장부를 live로 바꿔도 알림 발송은 mock으로 남는다. 실제 발송은 이 값을 `live`로 바꿀 때만 나간다.
 - `{담당자 멘션}` 토큰은 FE가 치환하지 않고 그대로 보낸다. 서버가 로그인한 관리자의 slackId로 `<@U…>`를 만든다.
   관리자 slackId가 없는데 본문에 이 토큰이 있으면 400이다(보내기 전 거절). 모달은 서버 문구를 그대로 보인다.
 - **제한:** 수신자 1명 이상 50명 이하, 본문 1자 이상 4,000자 이하, 같은 회원 두 번 금지(모두 400). 모달이 50명·4,000자를 미리 막는다.
