@@ -8,13 +8,15 @@ export function useDebouncedSave<T>(mutationFn: (value: T) => void, delayMs = 70
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingValueRef = useRef<T | null>(null);
 
-  useEffect(() => {
-    return () => {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-      }
-    };
+  const cancel = useCallback(() => {
+    if (timerRef.current !== null) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    pendingValueRef.current = null;
   }, []);
+
+  useEffect(() => cancel, [cancel]);
 
   const save = useCallback(
     (value: T) => {
@@ -23,8 +25,9 @@ export function useDebouncedSave<T>(mutationFn: (value: T) => void, delayMs = 70
         clearTimeout(timerRef.current);
       }
       timerRef.current = setTimeout(() => {
-        mutationFn(value);
+        timerRef.current = null;
         pendingValueRef.current = null;
+        mutationFn(value);
       }, delayMs);
     },
     [mutationFn, delayMs],
@@ -41,5 +44,5 @@ export function useDebouncedSave<T>(mutationFn: (value: T) => void, delayMs = 70
     }
   }, [mutationFn]);
 
-  return { save, flush };
+  return { save, flush, cancel };
 }

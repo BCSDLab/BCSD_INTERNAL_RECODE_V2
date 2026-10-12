@@ -1,4 +1,4 @@
-import { queryOptions } from '@tanstack/react-query';
+import { queryOptions, skipToken } from '@tanstack/react-query';
 
 import { getActivitiesTotal, getActivity, listActivities, listActivityCategories } from './api';
 
@@ -14,12 +14,12 @@ export const activityQueries = {
   list: (categoryId: number | null) =>
     queryOptions({
       queryKey: activityKeys.list(categoryId),
-      queryFn: () => listActivities(categoryId as number),
+      queryFn: categoryId === null ? skipToken : () => listActivities(categoryId),
     }),
   detail: (activityId: number | null) =>
     queryOptions({
       queryKey: activityKeys.detail(activityId),
-      queryFn: () => getActivity(activityId as number),
+      queryFn: activityId === null ? skipToken : () => getActivity(activityId),
     }),
   total: () => queryOptions({ queryKey: activityKeys.total(), queryFn: getActivitiesTotal }),
 };
