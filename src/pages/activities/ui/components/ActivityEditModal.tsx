@@ -91,24 +91,25 @@ export function ActivityEditModal({
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const { upload, isUploading } = useImageUpload('ACTIVITY');
 
-  function invalidate() {
-    queryClient.invalidateQueries({ queryKey: activityKeys.list(categoryId) });
-    queryClient.invalidateQueries({ queryKey: activityKeys.total() });
-    if (!isNew) {
-      queryClient.invalidateQueries({ queryKey: activityKeys.detail(activityId) });
-    }
+  function invalidate(includeDetail = !isNew) {
+    return Promise.all([
+      queryClient.invalidateQueries({ queryKey: activityKeys.list(categoryId) }),
+      queryClient.invalidateQueries({ queryKey: activityKeys.total() }),
+      ...(includeDetail ? [queryClient.invalidateQueries({ queryKey: activityKeys.detail(activityId) })] : []),
+    ]);
   }
 
   const publishMutation = useMutation({
     mutationFn: (isPublished: boolean) => publishActivity(activityId as number, isPublished),
-    onSuccess: invalidate,
+    onSuccess: () => invalidate(),
     onError: (e) => setError(getApiErrorMessage(e, '공개 설정에 실패했습니다.')),
   });
 
   const deleteMutation = useMutation({
     mutationFn: () => deleteActivity(activityId as number),
-    onSuccess: () => {
-      invalidate();
+    onSuccess: async () => {
+      await invalidate(false);
+      queryClient.removeQueries({ queryKey: activityKeys.detail(activityId), exact: true });
       onClose();
     },
     onError: (e) => setError(getApiErrorMessage(e, '삭제에 실패했습니다.')),
@@ -132,8 +133,8 @@ export function ActivityEditModal({
       const id = isNew ? (await createActivity(body)).id : (await updateActivity(activityId as number, body)).id;
       await putActivityImages(id, form.images);
     },
-    onSuccess: () => {
-      invalidate();
+    onSuccess: async () => {
+      await invalidate();
       onClose();
     },
     onError: (e) =>

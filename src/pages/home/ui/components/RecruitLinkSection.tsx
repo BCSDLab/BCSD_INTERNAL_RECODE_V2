@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 
-import { updateRecruitLink, homeKeys, homeQueries } from '@/entities/home';
+import { updateRecruitLink, homeKeys, homeQueries, type AdminRecruitLinkResponse } from '@/entities/home';
 import { getApiErrorMessage } from '@/shared/api/error';
 import { Button } from '@/shared/ui/button';
 import { Field, INPUT_CLASS } from '@/shared/ui/field';
@@ -15,28 +15,30 @@ interface FormValues {
   closedMessage: string;
 }
 
-const EMPTY_FORM: FormValues = { googleFormUrl: '', isOpen: false, closeDate: '', closedMessage: '모집 예정' };
-
 /**
  * 유일하게 변경 이력을 남기는 콘텐츠다(백엔드 AdminRecruitLinkService) — 자동저장이
  * 아니라 명시적 "저장" 버튼으로만 반영해 이력이 타이핑마다 쌓이지 않게 한다.
  */
 export function RecruitLinkSection() {
-  const queryClient = useQueryClient();
-  const { data: current } = useQuery(homeQueries.recruitLink());
-  const { data: history } = useQuery(homeQueries.recruitLinkHistory());
+  const { data: current, isError } = useQuery(homeQueries.recruitLink());
+  if (!current)
+    return (
+      <SectionCard title="모집 링크" caption="메인과 모집 페이지 버튼이 이 링크를 씁니다">
+        <p className="text-faint text-xs">{isError ? '모집 링크를 불러오지 못했습니다.' : '불러오는 중…'}</p>
+      </SectionCard>
+    );
+  return <RecruitLinkEditor initial={current} />;
+}
 
-  const [form, setForm] = useState<FormValues>(EMPTY_FORM);
-  const [initialized, setInitialized] = useState(false);
-  if (current && !initialized) {
-    setInitialized(true);
-    setForm({
-      googleFormUrl: current.googleFormUrl,
-      isOpen: current.isOpen,
-      closeDate: current.closeDate ?? '',
-      closedMessage: current.closedMessage,
-    });
-  }
+function RecruitLinkEditor({ initial }: { initial: AdminRecruitLinkResponse }) {
+  const queryClient = useQueryClient();
+  const { data: history } = useQuery(homeQueries.recruitLinkHistory());
+  const [form, setForm] = useState<FormValues>(() => ({
+    googleFormUrl: initial.googleFormUrl,
+    isOpen: initial.isOpen,
+    closeDate: initial.closeDate ?? '',
+    closedMessage: initial.closedMessage,
+  }));
 
   const [error, setError] = useState<string | null>(null);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
@@ -49,10 +51,12 @@ export function RecruitLinkSection() {
         closeDate: form.closeDate || null,
         closedMessage: form.closedMessage.trim(),
       }),
-    onSuccess: () => {
+    onSuccess: async () => {
       setError(null);
-      queryClient.invalidateQueries({ queryKey: homeKeys.recruitLink() });
-      queryClient.invalidateQueries({ queryKey: homeKeys.recruitLinkHistory() });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: homeKeys.recruitLink() }),
+        queryClient.invalidateQueries({ queryKey: homeKeys.recruitLinkHistory() }),
+      ]);
     },
     onError: (e) => setError(getApiErrorMessage(e, '저장에 실패했습니다.')),
   });

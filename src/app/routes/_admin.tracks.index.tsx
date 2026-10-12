@@ -5,7 +5,7 @@ import { TracksPage as Screen } from '@/pages/tracks';
 
 export const Route = createFileRoute('/_admin/tracks/')({
   loader: async ({ context }) => {
-    const tracks = await context.queryClient.ensureQueryData(trackQueries.trackPages());
+    const tracks = await context.queryClient.fetchQuery(trackQueries.trackPages());
     if (tracks[0]) {
       throw redirect({ to: '/tracks/$trackPageId', params: { trackPageId: String(tracks[0].id) }, replace: true });
     }

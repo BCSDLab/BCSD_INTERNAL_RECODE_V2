@@ -10,4 +10,4 @@ export {
   updateRecruitLink,
 } from './api/api';
 export { homeKeys, homeQueries } from './api/queries';
-export { type AdminMentorSlotResponse, type AdminQnaResponse } from './api/types';
+export { type AdminRecruitLinkResponse, type AdminMentorSlotResponse, type AdminQnaResponse } from './api/types';
