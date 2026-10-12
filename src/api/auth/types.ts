@@ -35,6 +35,8 @@ export interface MemberDetail extends MemberSummary {
   githubId: string | null;
   status: MemberStatus;
   photoUrl: string | null;
+  /** 인명부 Slack ID. BE 배포 전에는 응답에 없을 수 있어 선택 필드로 둔다(없으면 빈 값으로 보인다). */
+  slackId?: string | null;
 }
 
 export interface LoginRequest {

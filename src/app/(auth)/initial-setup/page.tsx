@@ -135,6 +135,8 @@ export default function InitialSetupPage() {
             <ReadOnlyField label="기수" value={info.generation} />
             <ReadOnlyField label="구분" value={MEMBER_TYPE_LABELS[info.memberType]} />
             <ReadOnlyField label="소속" value={info.university} />
+            {/* Slack ID는 로그인 응답(info)에 없어 상세(detail)에서 읽는다. */}
+            <ReadOnlyField label="Slack ID" value={detail?.slackId || '—'} />
           </div>
 
           <div className="mb-4 border-b border-white/10 pb-2 text-[11px] font-semibold tracking-[.04em] text-white/35 uppercase">

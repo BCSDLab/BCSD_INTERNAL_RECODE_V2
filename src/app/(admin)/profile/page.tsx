@@ -220,6 +220,7 @@ export default function ProfilePage() {
             <ReadOnlyField label="기수" value={detail.generation} />
             <ReadOnlyField label="구분" value={MEMBER_TYPE_LABELS[detail.memberType]} />
             <ReadOnlyField label="소속" value={detail.university} />
+            <ReadOnlyField label="Slack ID" value={detail.slackId || '—'} />
           </div>
           <p className="text-faint mt-3 text-[11px] leading-[1.6]">
             위 정보는 관리자만 수정할 수 있어요. 변경이 필요하면 운영진에게 문의해주세요.
