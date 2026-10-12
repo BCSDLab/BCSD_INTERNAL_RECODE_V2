@@ -322,3 +322,37 @@ test.describe('장부 증빙 링크 (구글 드라이브)', () => {
       ]);
   });
 });
+
+test.describe('내 정보 Slack ID (읽기 전용)', () => {
+  test('응답에 slackId가 없으면 —, 있으면 그 값을 관리자 등록 정보에 보인다', async ({ page }) => {
+    // BE 배포 전(필드 없음)에도 깨지지 않아야 한다 — 공통 목업의 /members/me에는 slackId가 없다.
+    await gotoAsAdmin(page, '/profile');
+    const section = page.getByText('관리자 등록 정보').locator('xpath=ancestor::section[1]');
+    await expect(section.getByText('Slack ID')).toBeVisible();
+    await expect(section.getByText('—')).toBeVisible();
+
+    await page.route('**/v1/members/me', async (route) => {
+      if (route.request().method() !== 'GET') return route.fallback();
+      await route.fulfill({
+        json: {
+          id: 1,
+          name: '홍길동',
+          studentNumber: '2000123456',
+          track: 'FRONTEND',
+          generation: '10',
+          memberType: 'REGULAR',
+          university: '한밭대학교',
+          role: 'ADMIN',
+          email: 'a@example.com',
+          phoneNumber: '01012345678',
+          githubId: 'octocat',
+          status: 'ACTIVE',
+          slackId: 'U012ABCDEF',
+        },
+      });
+    });
+    await page.reload();
+    await page.locator('aside', { hasText: 'BCSD Internal' }).waitFor();
+    await expect(page.getByText('U012ABCDEF')).toBeVisible();
+  });
+});
