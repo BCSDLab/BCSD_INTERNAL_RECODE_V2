@@ -1,10 +1,10 @@
 import { DndContext, closestCenter, type DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 
-import { putStudyPoints, type StudyPointResponse, type TrackPageDetailResponse } from '@/entities/track';
+import { trackMutations, type StudyPointResponse, type TrackPageDetailResponse } from '@/entities/track';
 import { useImageUpload } from '@/features/image-upload';
 import { getApiErrorMessage } from '@/shared/api/error';
 import { useDebouncedSave } from '@/shared/lib/hooks/useDebouncedSave';
@@ -33,35 +33,26 @@ export function StudyPointsSection({
   detail: TrackPageDetailResponse;
   canManage: boolean;
 }) {
+  const queryClient = useQueryClient();
   const [items, setItems] = useState<Draft[]>(() =>
     detail.studyPoints.map((point, index) => ({ ...point, key: index })),
   );
   const [nextKey, setNextKey] = useState(items.length);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
-  const [error, setError] = useState<string | null>(null);
-
-  const mutation = useMutation({
-    mutationFn: (next: Draft[]) =>
-      putStudyPoints(
-        trackPageId,
-        next.map(({ title, description, iconImageUrl }) => ({ title, description, iconImageUrl })),
-      ),
-    onError: (e) => setError(getApiErrorMessage(e, '저장에 실패했습니다.')),
-    onSuccess: () => setError(null),
-  });
-  const { save: debouncedSave } = useDebouncedSave<Draft[]>((next) => mutation.mutate(next));
+  const mutation = useMutation(trackMutations.studyPoints(queryClient, trackPageId));
+  const error = mutation.isError ? getApiErrorMessage(mutation.error, '저장에 실패했습니다.') : null;
+  const { save: debouncedSave, cancel: cancelSave } = useDebouncedSave<Draft[]>((next) => mutation.mutate(next));
 
   function persist(next: Draft[]) {
+    cancelSave();
     setItems(next);
     mutation.mutate(next);
   }
 
   function updateItem(key: number, patch: Partial<StudyPointResponse>) {
-    setItems((prev) => {
-      const next = prev.map((item) => (item.key === key ? { ...item, ...patch } : item));
-      debouncedSave(next);
-      return next;
-    });
+    const next = items.map((item) => (item.key === key ? { ...item, ...patch } : item));
+    setItems(next);
+    debouncedSave(next);
   }
 
   function toggleExpanded(key: number) {
