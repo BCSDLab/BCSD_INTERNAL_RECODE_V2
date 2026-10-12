@@ -8,12 +8,15 @@ import {
   getReservationDetail,
 } from './api';
 
+const RESERVATION_KEY = ['reservations'] as const;
+
 export const reservationKeys = {
-  monthlyOccupancy: (month: string) => ['reservation-monthly-occupancy', month] as const,
-  myMonthlyOccupancy: (month: string) => ['reservation-my-monthly-occupancy', month] as const,
-  daily: (date: string) => ['reservation-daily', date] as const,
-  myReservations: (status: 'upcoming' | 'past') => ['reservation-mine', status] as const,
-  detail: (id: number) => ['reservation-detail', id] as const,
+  all: () => RESERVATION_KEY,
+  monthlyOccupancy: (month: string) => [...RESERVATION_KEY, 'monthly-occupancy', month] as const,
+  myMonthlyOccupancy: (month: string) => [...RESERVATION_KEY, 'my-monthly-occupancy', month] as const,
+  daily: (date: string) => [...RESERVATION_KEY, 'daily', date] as const,
+  myReservations: (status: 'upcoming' | 'past') => [...RESERVATION_KEY, 'mine', status] as const,
+  detail: (id: number) => [...RESERVATION_KEY, 'detail', id] as const,
 };
 
 export const reservationQueries = {

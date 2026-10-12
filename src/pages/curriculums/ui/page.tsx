@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useNavigate, useSearch } from '@tanstack/react-router';
 
 import { curriculumQueries, type CurriculumSummaryResponse } from '@/entities/curriculum';
 import { canManageTrack } from '@/entities/member';
@@ -19,11 +19,15 @@ const EMPTY_SETS: CurriculumSummaryResponse[] = [];
  */
 export default function CurriculumsPage() {
   const { session } = useSession();
-  const [trackPageId, setTrackPageId] = useState<number | ''>('');
-  const [curriculumId, setCurriculumId] = useState<number | ''>('');
-  const [selectedWeekId, setSelectedWeekId] = useState<number | null>(null);
+  const search = useSearch({ from: '/_admin/curriculums' });
+  const navigate = useNavigate({ from: '/curriculums' });
+  function selectWeek(weekId: number | null) {
+    void navigate({ search: (prev) => ({ ...prev, weekId: weekId ?? undefined }), resetScroll: false });
+  }
 
   const { data: trackPages } = useQuery(trackQueries.trackPages());
+  const trackPage = trackPages?.find((item) => item.id === search.trackPageId);
+  const trackPageId = trackPage?.id ?? '';
 
   const { data: trackPageDetail } = useQuery({
     ...trackQueries.trackPage(trackPageId === '' ? -1 : trackPageId),
@@ -33,19 +37,12 @@ export default function CurriculumsPage() {
 
   const { data: curriculums } = useQuery({ ...curriculumQueries.list(trackPageId), enabled: trackPageId !== '' });
 
+  const curriculum = curriculums?.find((item) => item.id === search.curriculumId);
+  const curriculumId = curriculum?.id ?? '';
+
   const { data: tree } = useQuery({ ...curriculumQueries.tree(curriculumId), enabled: curriculumId !== '' });
 
-  // 주차를 아직 안 골랐으면 첫 주차를 자동 선택한다(시안도 한 주차가 늘 열려 있다).
-  if (tree && tree.weeks.length > 0 && !tree.weeks.some((week) => week.id === selectedWeekId)) {
-    setSelectedWeekId(tree.weeks[0].id);
-  }
-  if (tree && tree.weeks.length === 0 && selectedWeekId !== null) {
-    setSelectedWeekId(null);
-  }
-
-  const trackPage = (trackPages ?? EMPTY_TRACK_PAGES).find((page) => page.id === trackPageId);
-  const curriculum = (curriculums ?? EMPTY_SETS).find((set) => set.id === curriculumId);
-  const selectedWeek = tree?.weeks.find((week) => week.id === selectedWeekId) ?? null;
+  const selectedWeek = tree?.weeks.find((week) => week.id === search.weekId) ?? tree?.weeks[0] ?? null;
 
   return (
     <>
@@ -56,29 +53,31 @@ export default function CurriculumsPage() {
       />
       <div className="grid min-h-0 min-w-0 flex-1 grid-cols-[280px_minmax(0,1fr)]">
         <CurriculumRail
+          key={`${trackPageId}:${curriculumId}`}
           trackPages={trackPages ?? EMPTY_TRACK_PAGES}
           trackPageId={trackPageId}
           onSelectTrackPage={(id) => {
-            setTrackPageId(id);
-            setCurriculumId('');
-            setSelectedWeekId(null);
+            void navigate({ search: { trackPageId: id || undefined }, resetScroll: false });
           }}
           curriculums={curriculums ?? EMPTY_SETS}
           curriculumId={curriculumId}
           onSelectCurriculum={(id) => {
-            setCurriculumId(id);
-            setSelectedWeekId(null);
+            void navigate({
+              search: (prev) => ({ trackPageId: prev.trackPageId, curriculumId: id || undefined }),
+              resetScroll: false,
+            });
           }}
           tree={tree}
-          selectedWeekId={selectedWeekId}
-          onSelectWeek={setSelectedWeekId}
+          selectedWeekId={selectedWeek?.id ?? null}
+          onSelectWeek={selectWeek}
           canManage={canManage}
         />
         {curriculumId !== '' ? (
           <TopicColumn
+            key={`${curriculumId}:${selectedWeek?.id ?? 'none'}`}
             curriculumId={curriculumId}
             week={selectedWeek}
-            onWeekDeleted={() => setSelectedWeekId(null)}
+            onWeekDeleted={() => selectWeek(null)}
             canManage={canManage}
           />
         ) : (

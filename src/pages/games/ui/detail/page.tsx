@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { Link, useParams } from '@tanstack/react-router';
-import { useState } from 'react';
+import { Link, useParams, useSearch, useNavigate } from '@tanstack/react-router';
 
 import { gameQueries } from '@/entities/game';
 import { canManageGames } from '@/entities/member';
@@ -8,25 +7,28 @@ import { useSession } from '@/entities/session';
 import { PageHeader } from '@/shared/ui/page-header';
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@/shared/ui/tabs';
 
+import { GAME_TABS as TABS } from '../../model/search';
 import { BasicInfoTab } from './components/BasicInfoTab';
 import { BuildsTab } from './components/BuildsTab';
 import { DescriptionTab } from './components/DescriptionTab';
 import { RatingTab } from './components/RatingTab';
 import { ScreenshotsTab } from './components/ScreenshotsTab';
 
-const TABS = ['기본정보', '상세설명', '스크린샷', '등급정보', '빌드'] as const;
-type Tab = (typeof TABS)[number];
-
 /**
  * 와이어프레임 1b: "← 목록" + 제목 아래 탭 5개, 탭마다 저장 방식이 다르다
  * (기본정보·등급정보는 debounce/upsert, 상세설명은 자동저장, 스크린샷·빌드는
- * 즉시 반영). 그래서 탭 전환은 페이지 이동이 아니라 클라이언트 상태로만 하고,
+ * 즉시 반영). 탭 선택은 URL에 남기고,
  * 각 탭이 detail을 그대로 받아 자기 저장 방식을 스스로 정한다.
  */
 export default function GameEditPage() {
   const params = useParams({ from: '/_admin/games/$gameId' });
   const gameId = Number(params.gameId);
-  const [tab, setTab] = useState<Tab>('기본정보');
+  const search = useSearch({ from: '/_admin/games/$gameId' });
+  const navigate = useNavigate({ from: '/games/$gameId' });
+  const tab = search.tab ?? '기본정보';
+  const setTab = (nextTab: (typeof TABS)[number]) => {
+    void navigate({ search: { tab: nextTab }, resetScroll: false });
+  };
   const { session } = useSession();
   const canManage = canManageGames(session?.member);
 

@@ -52,7 +52,6 @@ export function ActivityCategoryEditor({
     heroImageUrl: category.heroImageUrl,
   }));
 
-  const [headerError, setHeaderError] = useState<string | null>(null);
   const headerMutation = useMutation({
     scope: { id: `activity-header-${categoryId}` },
     mutationFn: (values: HeaderFormValues) =>
@@ -62,11 +61,10 @@ export function ActivityCategoryEditor({
         heroImageUrl: values.heroImageUrl,
       }),
     onSuccess: () => {
-      setHeaderError(null);
       return queryClient.invalidateQueries({ queryKey: activityKeys.categories() });
     },
-    onError: (e) => setHeaderError(getApiErrorMessage(e, '저장에 실패했습니다.')),
   });
+  const headerError = headerMutation.isError ? getApiErrorMessage(headerMutation.error, '저장에 실패했습니다.') : null;
   const { save: saveHeader } = useDebouncedSave<HeaderFormValues>((values) => headerMutation.mutate(values));
 
   function updateForm(patch: Partial<HeaderFormValues>) {

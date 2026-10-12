@@ -567,3 +567,104 @@ test.describe('편집 초안과 서버 캐시', () => {
     await expect.poll(() => saves).toEqual(['/v1/admin/activity-categories/2']);
   });
 });
+
+test('예약은 현재 화면의 쿼리만 요청하고 내 예약의 과거 목록은 선택한 뒤 요청한다', async ({ page }) => {
+  await installApiMocks(page);
+  const requests: string[] = [];
+  page.on('request', (request) => {
+    const url = new URL(request.url());
+    if (url.pathname.startsWith('/v1/reservations')) requests.push(url.pathname + url.search);
+  });
+  await page.goto('/reservations?screen=rules');
+  await expect(page.getByRole('tab', { name: '이용 규칙' })).toHaveAttribute('aria-selected', 'true');
+  expect(requests).toEqual([]);
+  await page.getByRole('tab', { name: '예약 현황' }).click();
+  await expect.poll(() => requests.some((url) => url.includes('/daily?'))).toBe(true);
+  await expect.poll(() => requests.some((url) => url.includes('/monthly-occupancy?'))).toBe(true);
+  await expect.poll(() => requests.some((url) => url.includes('status=upcoming'))).toBe(true);
+  expect(requests.some((url) => url.includes('/me/monthly-occupancy'))).toBe(false);
+  expect(requests.some((url) => url.includes('status=past'))).toBe(false);
+  await page.getByRole('tab', { name: /내 예약/ }).click();
+  await expect.poll(() => requests.some((url) => url.includes('/me/monthly-occupancy'))).toBe(true);
+  expect(requests.some((url) => url.includes('status=past'))).toBe(false);
+  await page.getByRole('button', { name: /^지난 예약/ }).click();
+  await expect.poll(() => requests.some((url) => url.includes('status=past'))).toBe(true);
+});
+
+test('모집 링크는 서버 응답 후 편집기를 열고 재조회가 편집 중인 초안을 덮어쓰지 않는다', async ({ page }) => {
+  await installApiMocks(page);
+  let resolveFirst!: () => void;
+  const firstResponse = new Promise<void>((resolve) => {
+    resolveFirst = resolve;
+  });
+  let count = 0;
+  await page.route('**/v1/admin/recruit-link', async (route) => {
+    count++;
+    if (count === 1) await firstResponse;
+    await route.fulfill({
+      json: {
+        googleFormUrl: count === 1 ? 'https://forms.gle/server' : 'https://forms.gle/remote',
+        isOpen: true,
+        closeDate: null,
+        closedMessage: '모집 예정',
+        updatedAt: '2026-10-12T00:00:00Z',
+      },
+    });
+  });
+  await page.goto('/home');
+  const input = page.getByPlaceholder('https://forms.gle/…');
+  await expect(page.getByText('모집 링크', { exact: true })).toBeVisible();
+  await expect(input).toHaveCount(0);
+  resolveFirst();
+  await expect(input).toHaveValue('https://forms.gle/server');
+  await input.fill('https://forms.gle/draft');
+  await page.evaluate(() => {
+    window.dispatchEvent(new Event('offline'));
+    window.dispatchEvent(new Event('online'));
+  });
+  await expect.poll(() => count).toBeGreaterThan(1);
+  await expect(input).toHaveValue('https://forms.gle/draft');
+});
+
+test('활동 저장은 목록 갱신이 끝날 때까지 모달을 유지한다', async ({ page }) => {
+  await installApiMocks(page);
+  let saved = false;
+  let refreshing = false;
+  let releaseRefresh!: () => void;
+  const refresh = new Promise<void>((resolve) => {
+    releaseRefresh = resolve;
+  });
+  const detail = {
+    id: 1,
+    categoryId: 1,
+    year: 2026,
+    month: 1,
+    title: '신년 스터디',
+    summary: '요약',
+    content: '',
+    externalUrl: null,
+    isPublished: true,
+    displayOrder: 0,
+    imageUrls: [],
+  };
+  await page.route('**/v1/admin/activities/1', async (route) => {
+    if (route.request().method() === 'PUT') saved = true;
+    await route.fulfill({ json: detail });
+  });
+  await page.route('**/v1/admin/activities/1/images', (route) => route.fulfill({ json: {} }));
+  await page.route('**/v1/admin/activities?**', async (route) => {
+    if (saved) {
+      refreshing = true;
+      await refresh;
+    }
+    await route.fulfill({ json: { content: [detail], totalElements: 1, totalPages: 1, number: 0, size: 20 } });
+  });
+  await page.goto('/activities?categoryId=1');
+  await page.getByText('신년 스터디', { exact: true }).click();
+  await page.getByRole('button', { name: '저장', exact: true }).click();
+  await expect.poll(() => refreshing).toBe(true);
+  await expect(page.getByRole('dialog')).toBeVisible();
+  await expect(page.getByRole('button', { name: '저장', exact: true })).toBeDisabled();
+  releaseRefresh();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+});

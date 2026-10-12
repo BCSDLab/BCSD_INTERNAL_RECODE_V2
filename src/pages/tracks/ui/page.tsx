@@ -1,38 +1,14 @@
 import { useQuery } from '@tanstack/react-query';
-import { useNavigate } from '@tanstack/react-router';
-import { useEffect } from 'react';
 
 import { trackQueries } from '@/entities/track';
 import { PageHeader } from '@/shared/ui/page-header';
 
 import { TrackChipBar } from './components/TrackChipBar';
 
-/**
- * 시안에는 트랙 "목록" 화면이 따로 없다 — 트랙 하나가 곧 한 화면이고 상단 칩으로
- * 전환한다. 그래서 /tracks는 첫 트랙으로 넘기고, 트랙이 하나도 없을 때만
- * 칩 바 + 빈 상태를 보여준다.
- *
- * 리다이렉트는 반드시 effect에서 한다. 렌더 중에 navigate()를 호출하면
- * "Cannot update a component while rendering a different component" 에러가 난다 —
- * 라우터는 렌더 도중 건드리면 안 되는 외부 상태다.
- */
+// First-track navigation belongs to the index loader; this screen represents the empty list.
 export default function TracksPage() {
-  const navigate = useNavigate();
-
   const { data: trackPages } = useQuery(trackQueries.trackPages());
-
-  const firstTrackPageId = trackPages?.[0]?.id;
-
-  useEffect(() => {
-    if (firstTrackPageId !== undefined) {
-      navigate({ to: '/tracks/$trackPageId', params: { trackPageId: String(firstTrackPageId) }, replace: true });
-    }
-  }, [firstTrackPageId, navigate]);
-
-  // 목록을 아직 못 받았거나, 받았는데 리다이렉트할 트랙이 있으면 빈 화면을 보인다.
-  if (!trackPages || firstTrackPageId !== undefined) {
-    return null;
-  }
+  if (!trackPages || trackPages.length > 0) return null;
 
   return (
     <>

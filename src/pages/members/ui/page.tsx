@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 
 import {
@@ -6,11 +7,9 @@ import {
   memberKeys,
   memberQueries,
   DEFAULT_MEMBER_PAGE_SIZE,
-  EMPTY_MEMBER_FILTERS,
   type MemberDirectoryFilters,
   type MemberDirectoryItem,
   type MemberSortKey,
-  type SortDirection,
 } from '@/entities/member';
 import { useSession } from '@/entities/session';
 import { getApiErrorMessage } from '@/shared/api/error';
@@ -44,26 +43,22 @@ export default function MembersPage() {
   const { session } = useSession();
   const isAdmin = session?.member.role === 'ADMIN';
 
-  const [filters, setFilters] = useState<MemberDirectoryFilters>(EMPTY_MEMBER_FILTERS);
-  const [keywordInput, setKeywordInput] = useState('');
-  const [page, setPage] = useState(0);
-  const [sort, setSort] = useState<MemberSortKey>('generation');
-  const [direction, setDirection] = useState<SortDirection>('asc');
+  const search = useSearch({ from: '/_admin/members' });
+  const navigate = useNavigate({ from: '/members' });
+  const filters: MemberDirectoryFilters = {
+    keyword: search.keyword ?? '',
+    active: search.active ?? null,
+    academicStatus: search.academicStatus ?? [],
+    track: search.track ?? [],
+    memberType: search.memberType ?? [],
+  };
+  const page = search.page ?? 0;
+  const sort = search.sort ?? 'generation';
+  const direction = search.direction ?? 'asc';
+  function setPage(nextPage: number) {
+    void navigate({ search: (prev) => ({ ...prev, page: nextPage || undefined }), resetScroll: false });
+  }
   const [modal, setModal] = useState<ModalState | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  // 검색은 타자마다 요청하지 않고 멈춘 뒤에 한 번만 보낸다. 검색어가 실제로 바뀔 때만
-  // 첫 장으로 되돌린다 — 그냥 되돌리면 입력 없이도 페이지 이동이 취소된다.
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (keywordInput === filters.keyword) {
-        return;
-      }
-      setFilters((prev) => ({ ...prev, keyword: keywordInput }));
-      setPage(0);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [keywordInput, filters.keyword]);
 
   const { data, isLoading, isFetching, isPlaceholderData } = useQuery(
     memberQueries.directory({
@@ -78,38 +73,45 @@ export default function MembersPage() {
 
   // 마지막 줄을 지워 페이지가 범위를 벗어나면 한 장 앞으로 당긴다.
   const totalPages = data?.page.totalPages ?? 0;
-  if (data && !isPlaceholderData && totalPages > 0 && page > totalPages - 1) {
-    setPage(totalPages - 1);
-  }
+  useEffect(() => {
+    if (data && !isPlaceholderData && page > Math.max(totalPages - 1, 0)) {
+      void navigate({
+        search: (prev) => ({ ...prev, page: Math.max(totalPages - 1, 0) || undefined }),
+        replace: true,
+        resetScroll: false,
+      });
+    }
+  }, [data, isPlaceholderData, totalPages, page, navigate]);
 
   const activeMutation = useMutation({
     mutationFn: ({ memberId, active }: { memberId: number; active: boolean }) => updateMemberActive(memberId, active),
-    onSuccess: () => {
-      setError(null);
-      queryClient.invalidateQueries({ queryKey: memberKeys.all() });
-    },
-    onError: (e) => setError(getApiErrorMessage(e, '활동 여부 변경에 실패했습니다.')),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: memberKeys.all() }),
   });
+  const error = activeMutation.isError
+    ? getApiErrorMessage(activeMutation.error, '활동 여부 변경에 실패했습니다.')
+    : null;
 
   function changeFilters(next: MemberDirectoryFilters) {
-    setFilters(next);
-    setPage(0);
+    void navigate({
+      search: (prev) => ({ ...prev, ...next, active: next.active ?? undefined, page: undefined }),
+      resetScroll: false,
+    });
   }
 
   function resetFilters() {
-    setKeywordInput('');
-    setFilters(EMPTY_MEMBER_FILTERS);
-    setPage(0);
+    void navigate({ search: (prev) => ({ sort: prev.sort, direction: prev.direction }), resetScroll: false });
   }
 
   function changeSort(nextSort: MemberSortKey) {
-    if (nextSort === sort) {
-      setDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
-    } else {
-      setSort(nextSort);
-      setDirection('asc');
-    }
-    setPage(0);
+    void navigate({
+      search: (prev) => ({
+        ...prev,
+        sort: nextSort,
+        direction: nextSort === sort && direction === 'asc' ? 'desc' : 'asc',
+        page: undefined,
+      }),
+      resetScroll: false,
+    });
   }
 
   const members = data?.members ?? EMPTY_MEMBERS;
@@ -132,8 +134,14 @@ export default function MembersPage() {
 
         <div className="flex min-w-0 flex-1 flex-col gap-3">
           <MemberToolbar
-            keyword={keywordInput}
-            onKeywordChange={setKeywordInput}
+            keyword={filters.keyword}
+            onKeywordChange={(keyword) => {
+              if (keyword === filters.keyword) return;
+              void navigate({
+                search: (prev) => ({ ...prev, keyword: keyword || undefined, page: undefined }),
+                resetScroll: false,
+              });
+            }}
             activeFilterCount={countActiveFilters(filters)}
             onReset={resetFilters}
             isAdmin={isAdmin}

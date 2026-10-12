@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useNavigate, useSearch } from '@tanstack/react-router';
+import { useEffect, useRef, useState } from 'react';
 
 import {
   cancelReservation,
@@ -9,6 +10,7 @@ import {
   reservationQueries,
 } from '@/entities/reservation';
 import { ApiError } from '@/shared/api/client';
+import { confirmDiscardChanges, useDraftGuard } from '@/shared/lib/router/use-draft-guard';
 import { PageHeader } from '@/shared/ui/page-header';
 import { Tabs, TabsList, TabsPanel, TabsTab } from '@/shared/ui/tabs';
 
@@ -52,11 +54,28 @@ export default function ReservationsPage() {
   const today = atMidnight(now);
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
 
-  const [screen, setScreen] = useState<ReservationScreen>('status');
-  const [viewMonth, setViewMonth] = useState(() => startOfMonth(today));
-  const [selectedDate, setSelectedDate] = useState(today);
-  const [tab, setTab] = useState<'upcoming' | 'past'>('upcoming');
-  const [detailId, setDetailId] = useState<number | null>(null);
+  const search = useSearch({ from: '/_admin/reservations' });
+  const navigate = useNavigate({ from: '/reservations' });
+  const screen = search.screen ?? 'status';
+  const selectedDate = search.date ? parseDateKey(search.date) : today;
+  const viewMonth = search.month ? parseDateKey(`${search.month}-01`) : startOfMonth(selectedDate);
+  const tab = search.tab ?? 'upcoming';
+  const detailId = search.detailId ?? null;
+  function updateSearch(patch: Partial<typeof search>) {
+    return navigate({ search: (prev) => ({ ...prev, ...patch }), resetScroll: false });
+  }
+  const setScreen = (nextScreen: ReservationScreen) => {
+    void updateSearch({ screen: nextScreen });
+  };
+  const setTab = (nextTab: 'upcoming' | 'past') => {
+    void updateSearch({ tab: nextTab });
+  };
+  const setDetailId = (nextId: number | null) => {
+    void updateSearch({ detailId: nextId ?? undefined });
+  };
+  const setViewMonth = (update: (month: Date) => Date) => {
+    void updateSearch({ month: toMonthKey(update(viewMonth)) });
+  };
   const [createResultMessage, setCreateResultMessage] = useState<string | null>(null);
   // "시간 변경" 흐름에서 새 예약이 실제로 만들어질 때까지 기존 예약을 남겨두기 위한 대상 id.
   // 사용자가 도중에 다른 날짜로 이동하면(selectDate) 의도가 취소된 것으로 보고 비운다 — 그 경우 기존 예약은 그대로 유지된다.
@@ -66,11 +85,20 @@ export default function ReservationsPage() {
   const monthKey = toMonthKey(viewMonth);
   const isPastDay = selectedDate < today;
 
-  const statusOccupancyQuery = useQuery(reservationQueries.monthlyOccupancy(monthKey));
-  const mineOccupancyQuery = useQuery(reservationQueries.myMonthlyOccupancy(monthKey));
-  const dailyQuery = useQuery(reservationQueries.daily(selectedKey));
-  const upcomingQuery = useQuery(reservationQueries.myReservations('upcoming'));
-  const pastQuery = useQuery(reservationQueries.myReservations('past'));
+  const statusOccupancyQuery = useQuery({
+    ...reservationQueries.monthlyOccupancy(monthKey),
+    enabled: screen === 'status',
+  });
+  const mineOccupancyQuery = useQuery({
+    ...reservationQueries.myMonthlyOccupancy(monthKey),
+    enabled: screen === 'mine',
+  });
+  const dailyQuery = useQuery({ ...reservationQueries.daily(selectedKey), enabled: screen === 'status' });
+  const upcomingQuery = useQuery({ ...reservationQueries.myReservations('upcoming'), enabled: screen !== 'rules' });
+  const pastQuery = useQuery({
+    ...reservationQueries.myReservations('past'),
+    enabled: screen === 'mine' && tab === 'past',
+  });
   const detailQuery = useQuery({ ...reservationQueries.detail(detailId ?? 0), enabled: detailId != null });
 
   const statusRatio = statusOccupancyQuery.data ? toOccupancyRatioMap(statusOccupancyQuery.data) : new Map();
@@ -83,13 +111,30 @@ export default function ReservationsPage() {
   const detailView = detailQuery.data ? toDetailView(detailQuery.data, new Date()) : null;
 
   const bookingForm = useBookingForm({ selectedDate, today, nowMinutes, dayReservations });
+  const { reset: resetBookingForm, prefill: prefillBookingForm } = bookingForm;
+  const previousDate = useRef(selectedKey);
+  const pendingReplacement = useRef<{ date: string; id: number; purpose: string; headcount: number } | null>(null);
+  useDraftGuard(
+    bookingForm.dirty || replacingId !== null,
+    ({ current, next }) =>
+      current.pathname !== next.pathname || ('date' in next.search ? next.search.date : undefined) !== search.date,
+  );
+  useEffect(() => {
+    if (previousDate.current === selectedKey) return;
+    previousDate.current = selectedKey;
+    resetBookingForm();
+    setCreateResultMessage(null);
+    setReplacingId(null);
+    const pending = pendingReplacement.current;
+    if (pending?.date === selectedKey) {
+      prefillBookingForm(pending.purpose, pending.headcount);
+      setReplacingId(pending.id);
+    }
+    pendingReplacement.current = null;
+  }, [selectedKey, resetBookingForm, prefillBookingForm]);
 
   function invalidateAfterMutation() {
-    queryClient.invalidateQueries({ queryKey: reservationKeys.monthlyOccupancy(monthKey) });
-    queryClient.invalidateQueries({ queryKey: reservationKeys.myMonthlyOccupancy(monthKey) });
-    queryClient.invalidateQueries({ queryKey: reservationKeys.daily(selectedKey) });
-    queryClient.invalidateQueries({ queryKey: reservationKeys.myReservations('upcoming') });
-    queryClient.invalidateQueries({ queryKey: reservationKeys.myReservations('past') });
+    void queryClient.invalidateQueries({ queryKey: reservationKeys.all() });
   }
 
   const createMutation = useMutation({ mutationFn: createReservation });
@@ -97,15 +142,11 @@ export default function ReservationsPage() {
   const cancelGroupMutation = useMutation({ mutationFn: cancelReservationGroup });
 
   function selectDate(date: Date) {
-    setSelectedDate(date);
-    bookingForm.reset();
-    setCreateResultMessage(null);
-    setReplacingId(null);
+    void updateSearch({ date: toDateKey(date) });
   }
 
   function goToday() {
-    setViewMonth(startOfMonth(today));
-    selectDate(today);
+    void updateSearch({ month: toMonthKey(today), date: toDateKey(today) });
   }
 
   async function handleConfirm() {
@@ -220,18 +261,32 @@ export default function ReservationsPage() {
     }
   }
 
-  function handleTimeChange() {
-    if (!detailView) return;
-    // 기존 예약은 여기서 바로 취소하지 않는다 — 새 시간을 실제로 확정할 때(handleConfirm)까지 남겨둬서,
-    // 사용자가 폼을 채우다 그냥 나가도 예약이 사라지지 않게 한다.
-    const date = parseDateKey(detailView.dateKey);
-    setViewMonth(startOfMonth(date));
-    setSelectedDate(date);
-    bookingForm.prefill(detailView.purpose, detailView.headcount);
+  async function handleTimeChange() {
+    if (!detailView || ((bookingForm.dirty || replacingId !== null) && !confirmDiscardChanges())) return;
+    const pending = {
+      date: detailView.dateKey,
+      id: detailView.id,
+      purpose: detailView.purpose,
+      headcount: detailView.headcount,
+    };
+    pendingReplacement.current = pending;
+    await navigate({
+      search: (prev) => ({
+        ...prev,
+        month: pending.date.slice(0, 7),
+        date: pending.date,
+        screen: 'status',
+        detailId: undefined,
+      }),
+      resetScroll: false,
+      ignoreBlocker: true,
+    });
+    if (selectedKey === pending.date) {
+      bookingForm.prefill(pending.purpose, pending.headcount);
+      setReplacingId(pending.id);
+      pendingReplacement.current = null;
+    }
     setCreateResultMessage(null);
-    setReplacingId(detailView.id);
-    setScreen('status');
-    setDetailId(null);
   }
 
   const submitError =
@@ -246,14 +301,13 @@ export default function ReservationsPage() {
       : dailyQuery.error
         ? '예약 현황을 불러오지 못했습니다.'
         : null;
+  const selectedMineError = tab === 'upcoming' ? upcomingQuery.error : pastQuery.error;
   const mineError =
-    upcomingQuery.error instanceof ApiError
-      ? upcomingQuery.error.message
-      : pastQuery.error instanceof ApiError
-        ? pastQuery.error.message
-        : upcomingQuery.error || pastQuery.error
-          ? '내 예약을 불러오지 못했습니다.'
-          : null;
+    selectedMineError instanceof ApiError
+      ? selectedMineError.message
+      : selectedMineError
+        ? '내 예약을 불러오지 못했습니다.'
+        : null;
   const detailError =
     cancelMutation.error instanceof ApiError
       ? cancelMutation.error.message
@@ -321,7 +375,7 @@ export default function ReservationsPage() {
                 onTabChange={setTab}
                 upcomingCards={upcomingCards}
                 pastCards={pastCards}
-                loading={upcomingQuery.isLoading || pastQuery.isLoading}
+                loading={tab === 'upcoming' ? upcomingQuery.isLoading : pastQuery.isLoading}
                 errorMessage={mineError}
               />
             </TabsPanel>

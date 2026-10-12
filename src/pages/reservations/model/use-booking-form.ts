@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 
 import { formatDuration, mondayIndex } from '../lib/time-utils';
 import { generateOccurrences, formatRange, repeatSummaryLabel, validateSlot } from './reservation-logic';
@@ -78,24 +78,38 @@ export function useBookingForm({ selectedDate, today, nowMinutes, dayReservation
     ? `1인 하루 최대 3시간 중 ${formatDuration(effectiveEnd - effectiveStart)}`
     : '1인 하루 최대 3시간';
 
-  function reset() {
+  const reset = useCallback(() => {
     setRange({ start: null, end: null });
     setCustomWeekdays(null);
     setPurpose('');
     setHeadcount('6');
     setRepeatOn(false);
     setAgree(false);
-  }
+    setFreq('매주');
+    setWeeks(4);
+  }, []);
 
   /** "시간 변경" 흐름 전용 — 시간 선택은 비워두고 목적/인원만 옮겨 담는다. */
-  function prefill(nextPurpose: string, nextHeadcount: number) {
-    setRange({ start: null, end: null });
-    setCustomWeekdays(null);
-    setPurpose(nextPurpose);
-    setHeadcount(String(nextHeadcount));
-  }
+  const prefill = useCallback(
+    (nextPurpose: string, nextHeadcount: number) => {
+      reset();
+      setPurpose(nextPurpose);
+      setHeadcount(String(nextHeadcount));
+    },
+    [reset],
+  );
 
   return {
+    dirty:
+      range.start !== null ||
+      range.end !== null ||
+      purpose !== '' ||
+      headcount !== '6' ||
+      repeatOn ||
+      freq !== '매주' ||
+      customWeekdays !== null ||
+      weeks !== 4 ||
+      agree,
     effectiveStart,
     effectiveEnd,
     handleSetStart,

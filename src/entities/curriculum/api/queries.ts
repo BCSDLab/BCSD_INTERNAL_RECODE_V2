@@ -1,4 +1,4 @@
-import { queryOptions } from '@tanstack/react-query';
+import { queryOptions, skipToken } from '@tanstack/react-query';
 
 import { getCurriculumTree, listCurriculums } from './api';
 
@@ -11,11 +11,11 @@ export const curriculumQueries = {
   list: (trackPageId: number | '') =>
     queryOptions({
       queryKey: curriculumKeys.list(trackPageId),
-      queryFn: () => listCurriculums(trackPageId as number),
+      queryFn: trackPageId === '' ? skipToken : () => listCurriculums(trackPageId),
     }),
   tree: (curriculumId: number | '') =>
     queryOptions({
       queryKey: curriculumKeys.tree(curriculumId),
-      queryFn: () => getCurriculumTree(curriculumId as number),
+      queryFn: curriculumId === '' ? skipToken : () => getCurriculumTree(curriculumId),
     }),
 };

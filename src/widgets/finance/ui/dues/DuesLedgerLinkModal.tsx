@@ -12,6 +12,7 @@ import {
   signedAmount,
 } from '@/entities/finance';
 import { getApiErrorMessage } from '@/shared/api/error';
+import { confirmDiscardChanges, useDraftGuard } from '@/shared/lib/router/use-draft-guard';
 import { Button } from '@/shared/ui/button';
 import { Modal } from '@/shared/ui/modal';
 
@@ -34,11 +35,12 @@ export function DuesLedgerLinkModal({
   const { data: ledgerEntries = [] } = useQuery(ledgerQueries.entries());
   const candidates = useMemo(() => ledgerEntries.filter(isUnlinkedDuesEntry), [ledgerEntries]);
   const [error, setError] = useState('');
-  const [selections, setSelections] = useState<Record<string, string>>(() =>
-    Object.fromEntries(
-      candidates.map((entry) => [entry.id, members.find((member) => member.name === entry.counterparty)?.id ?? '']),
-    ),
+  const [selectionOverrides, setSelections] = useState<Record<string, string>>({});
+  const suggestions = Object.fromEntries(
+    candidates.map((entry) => [entry.id, members.find((member) => member.name === entry.counterparty)?.id ?? '']),
   );
+  const selections = { ...suggestions, ...selectionOverrides };
+  const dirty = Object.entries(selectionOverrides).some(([entryId, memberId]) => memberId !== suggestions[entryId]);
   const selectedCount = Object.values(selections).filter(Boolean).length;
 
   const mutation = useMutation({
@@ -55,6 +57,12 @@ export function DuesLedgerLinkModal({
     onError: (e) => setError(getApiErrorMessage(e, '입출금 내역을 연결하지 못했습니다.')),
   });
 
+  useDraftGuard(dirty, undefined, undefined, mutation.isPending);
+  function close() {
+    if (mutation.isPending || (dirty && !confirmDiscardChanges())) return;
+    onClose();
+  }
+
   function save() {
     if (selectedCount === 0 || mutation.isPending) return;
     setError('');
@@ -65,12 +73,12 @@ export function DuesLedgerLinkModal({
     <Modal
       eyebrow={semester.title}
       title="입출금 내역 연결"
-      onClose={onClose}
+      onClose={close}
       width="820px"
       footer={
         <>
           {error && <span className="text-danger text-xs">{error}</span>}
-          <Button className="ml-auto" onClick={onClose}>
+          <Button className="ml-auto" onClick={close}>
             취소
           </Button>
           <Button variant="primary" disabled={selectedCount === 0 || mutation.isPending} onClick={save}>

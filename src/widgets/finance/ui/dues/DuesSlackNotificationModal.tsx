@@ -10,6 +10,7 @@ import {
 } from '@/entities/finance';
 import { useSession } from '@/entities/session';
 import { ApiError } from '@/shared/api/client';
+import { confirmDiscardChanges, useDraftGuard } from '@/shared/lib/router/use-draft-guard';
 import { Button } from '@/shared/ui/button';
 import { INPUT_CLASS_COMPACT } from '@/shared/ui/field';
 import { Modal } from '@/shared/ui/modal';
@@ -115,6 +116,21 @@ export function DuesSlackNotificationModal({
   const [validationVisible, setValidationVisible] = useState<false | 'send' | 'test'>(false);
   const [isSending, setIsSending] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
+  const dirty =
+    draft !== DUES_NOTIFICATION_TEMPLATE ||
+    editingDraft !== null ||
+    rulesUrl !== '' ||
+    exemptionFormUrl !== '' ||
+    duesListUrl !== DEFAULT_DUES_LIST_URL ||
+    deadline !== '' ||
+    selectedUnpaidIds.length !== unpaidTargets.length ||
+    unpaidTargets.some((member) => !selectedUnpaidIds.includes(member.id));
+  useDraftGuard(dirty, undefined, undefined, isSending || isTesting);
+  function close() {
+    if (isSending || isTesting || (dirty && !confirmDiscardChanges())) return;
+    onClose();
+  }
+
   const [notice, setNotice] = useState<{ message: string; tone: 'success' | 'danger' } | null>(null);
   const selectAllRef = useRef<HTMLInputElement>(null);
   const sendingRef = useRef(false);
@@ -348,7 +364,7 @@ export function DuesSlackNotificationModal({
       <Modal
         eyebrow={semester.title}
         title="Slack 알림 작성"
-        onClose={isBusy ? () => undefined : onClose}
+        onClose={close}
         width="900px"
         footer={
           <>
@@ -360,7 +376,7 @@ export function DuesSlackNotificationModal({
                 Slack ID가 없는 회원이 있습니다.
               </span>
             )}
-            <Button className={hasMissingSlack ? '' : 'ml-auto'} disabled={isBusy} onClick={onClose}>
+            <Button className={hasMissingSlack ? '' : 'ml-auto'} disabled={isBusy} onClick={close}>
               취소
             </Button>
             <Button variant="primary" disabled={isBusy || hasMissingSlack} onClick={send}>

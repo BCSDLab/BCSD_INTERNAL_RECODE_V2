@@ -9,6 +9,7 @@ import {
   formatWon,
 } from '@/entities/finance';
 import { getApiErrorMessage } from '@/shared/api/error';
+import { confirmDiscardChanges, useDraftGuard } from '@/shared/lib/router/use-draft-guard';
 import { Button } from '@/shared/ui/legacy-forms';
 
 import { EvidenceLinkChips, EvidenceLinkForm } from '../EvidenceLinks';
@@ -155,6 +156,13 @@ export function TransactionImportFlow({ onCancel, onSave }: TransactionImportFlo
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [evidenceTarget, setEvidenceTarget] = useState<string | null>(null);
+  const dirty = excelFile !== null || transactions.length > 0;
+  useDraftGuard(dirty, undefined, undefined, isSaving || isAnalyzing);
+  function close() {
+    if (isSaving || isAnalyzing || (dirty && !confirmDiscardChanges())) return;
+    onCancel();
+  }
+
   const excelInput = useRef<HTMLInputElement>(null);
 
   // 미리보기의 모든 거래를 반영한다. 거래를 빼면 은행 잔액 흐름에 구멍이 생긴다.
@@ -218,7 +226,7 @@ export function TransactionImportFlow({ onCancel, onSave }: TransactionImportFlo
         aria-label="신한 거래내역 가져오기"
         className="border-line bg-panel text-text max-h-[calc(100vh-48px)] w-[920px] max-w-[calc(100vw-48px)] overflow-auto rounded-[15px] border shadow-xl"
       >
-        <ImportHeader onClose={onCancel} />
+        <ImportHeader onClose={close} />
 
         <StepBar step={step} />
 
@@ -264,7 +272,7 @@ export function TransactionImportFlow({ onCancel, onSave }: TransactionImportFlo
             <ImportFooter
               error={flowError}
               previousLabel="취소"
-              onPrevious={onCancel}
+              onPrevious={close}
               nextLabel="다음"
               onNext={analyzeFile}
               nextDisabled={!fileName}
