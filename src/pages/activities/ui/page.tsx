@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useNavigate, useSearch } from '@tanstack/react-router';
 
 import { activityQueries, type ActivityCategoryResponse } from '@/entities/activity';
 import { PageHeader } from '@/shared/ui/page-header';
@@ -10,7 +10,11 @@ import { CategoryChipBar } from './components/CategoryChipBar';
 const EMPTY_CATEGORIES: ActivityCategoryResponse[] = [];
 
 export default function ActivitiesPage() {
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const { categoryId: selectedId } = useSearch({ from: '/_admin/activities' });
+  const navigate = useNavigate({ from: '/activities' });
+  const setSelectedId = (categoryId: number) => {
+    void navigate({ search: { categoryId }, resetScroll: false });
+  };
   const { data: categories = EMPTY_CATEGORIES, isPending, isError } = useQuery(activityQueries.categories());
   // 첫 선택과 삭제 후 선택은 서버 목록에서 파생한다. 별도 동기화 상태를 두지 않는다.
   const category = categories.find((item) => item.id === selectedId) ?? categories[0];
