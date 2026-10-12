@@ -16,7 +16,7 @@ export default defineConfig({
     trace: 'retain-on-failure',
   },
   webServer: {
-    command: 'pnpm exec next start -p 3100',
+    command: 'pnpm exec vite preview --host 127.0.0.1 --port 3100 --strictPort',
     url: 'http://127.0.0.1:3100',
     reuseExistingServer: !process.env.CI,
     timeout: 180_000,

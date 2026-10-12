@@ -15,6 +15,7 @@
     "test:visual:update": "playwright test --update-snapshots",
     "routes:generate": "tsr generate",
     "check:fsd": "node scripts/check-fsd.mjs",
+    "test": "playwright test tests/behavior.spec.ts tests/routing.spec.ts tests/shared-api.spec.ts",
     "prepare": "husky",
     "test:tooling": "node --test scripts/*.test.mjs"
   },

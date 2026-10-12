@@ -1,4 +1,5 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
+
 import { installApiMocks } from './mocks';
 
 /**
@@ -8,7 +9,7 @@ import { installApiMocks } from './mocks';
  * 핵심 동작 한두 개만 고른다.
  */
 
-async function gotoAsAdmin(page: import('@playwright/test').Page, path: string) {
+async function gotoAsAdmin(page: Page, path: string) {
   await installApiMocks(page);
   await page.clock.install({ time: new Date('2026-01-01T09:00:00+09:00') });
   await page.goto(path);
@@ -115,9 +116,7 @@ test.describe('Modal (Base UI Dialog 전환)', () => {
 });
 
 test.describe('Chip (Base UI Toggle 전환)', () => {
-  test('키보드로 포커스해 Enter로 누를 수 있다 — 이전엔 <span>이라 탭도, 키보드 조작도 안 됐다', async ({
-    page,
-  }) => {
+  test('키보드로 포커스해 Enter로 누를 수 있다 — 이전엔 <span>이라 탭도, 키보드 조작도 안 됐다', async ({ page }) => {
     await gotoAsAdmin(page, '/members');
 
     const filterSidebar = page.locator('aside', { hasText: '활동 여부' });
