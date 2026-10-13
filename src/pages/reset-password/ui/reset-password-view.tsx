@@ -95,7 +95,7 @@ function ResetRequest() {
 type TokenState =
   | { status: 'checking' }
   | { status: 'invalid'; message: string }
-  | { status: 'valid'; studentNumberMasked: string };
+  | { status: 'valid'; studentNumberMasked: string; accountSetup: boolean };
 
 function ResetConfirm({ token }: { token: string }) {
   const [tokenState, setTokenState] = useState<TokenState>({ status: 'checking' });
@@ -107,7 +107,13 @@ function ResetConfirm({ token }: { token: string }) {
 
   useEffect(() => {
     validateResetToken(token)
-      .then((res) => setTokenState({ status: 'valid', studentNumberMasked: res.studentNumberMasked }))
+      .then((res) =>
+        setTokenState({
+          status: 'valid',
+          studentNumberMasked: res.studentNumberMasked,
+          accountSetup: res.accountSetup ?? false,
+        }),
+      )
       .catch((err) =>
         setTokenState({
           status: 'invalid',
@@ -130,12 +136,26 @@ function ResetConfirm({ token }: { token: string }) {
     }
   }
 
+  const accountSetup = tokenState.status === 'valid' && tokenState.accountSetup;
+
   if (done) {
     return (
       <div className="flex flex-col items-center text-center">
         <LogoBadge size={84} />
-        <div className="mb-2.5 text-[19px] font-bold text-white">비밀번호가 변경됐어요</div>
-        <div className="mb-7 text-[13.5px] leading-[1.6] text-white/50">새 비밀번호로 다시 로그인해주세요.</div>
+        <div className="mb-2.5 text-[19px] font-bold text-white">
+          {accountSetup ? '비밀번호를 설정했어요' : '비밀번호가 변경됐어요'}
+        </div>
+        <div className="mb-7 text-[13.5px] leading-[1.6] text-white/50">
+          {accountSetup ? (
+            <>
+              학번과 방금 정한 비밀번호로 로그인하면
+              <br />
+              연락처를 입력하고 시작할 수 있어요.
+            </>
+          ) : (
+            '새 비밀번호로 다시 로그인해주세요.'
+          )}
+        </div>
         <Link to="/login" className="text-[13px] font-semibold text-[var(--accent)] hover:underline">
           로그인으로 돌아가기
         </Link>
@@ -152,7 +172,13 @@ function ResetConfirm({ token }: { token: string }) {
       <div className="flex flex-col items-center text-center">
         <LogoBadge size={84} />
         <div className="mb-2.5 text-[19px] font-bold text-white">링크를 사용할 수 없어요</div>
-        <div className="mb-7 text-[13.5px] leading-[1.6] text-white/50">{tokenState.message}</div>
+        <div className="mb-3 text-[13.5px] leading-[1.6] text-white/50">{tokenState.message}</div>
+        {/* 만료된 링크는 누구 것인지 알 수 없다. Slack으로 받은 계정 설정 링크는 셀프 재설정으로 다시 받을 수 없다. */}
+        <div className="mb-7 text-[12.5px] leading-[1.6] text-white/40">
+          메일로 받은 링크라면 아래에서 다시 받을 수 있어요.
+          <br />
+          Slack으로 받은 링크라면 운영진에게 다시 보내 달라고 요청해주세요.
+        </div>
         <Link to="/reset-password" className="text-[13px] font-semibold text-[var(--accent)] hover:underline">
           재설정 링크 다시 받기
         </Link>
@@ -163,10 +189,13 @@ function ResetConfirm({ token }: { token: string }) {
   return (
     <div className="flex flex-col items-center">
       <LogoBadge size={84} />
-      <div className="mb-2 text-[19px] font-bold text-white">새 비밀번호 설정</div>
+      <div className="mb-2 text-[19px] font-bold text-white">
+        {tokenState.accountSetup ? '계정 비밀번호 설정' : '새 비밀번호 설정'}
+      </div>
       <div className="mb-7 text-center text-[13px] leading-[1.6] text-white/50">
         {tokenState.studentNumberMasked} 계정의
-        <br />새 비밀번호를 입력해주세요
+        <br />
+        {tokenState.accountSetup ? '로그인에 쓸 비밀번호를 정해주세요' : '새 비밀번호를 입력해주세요'}
       </div>
 
       <form onSubmit={handleSubmit} className="flex w-full flex-col gap-[18px]">
@@ -190,7 +219,7 @@ function ResetConfirm({ token }: { token: string }) {
         {error && <p className="text-[13px] text-red-400">{error}</p>}
 
         <PrimaryButton type="submit" disabled={submitting} className="mt-1">
-          {submitting ? '변경 중...' : '비밀번호 변경하기'}
+          {submitting ? '저장 중...' : tokenState.accountSetup ? '비밀번호 설정하기' : '비밀번호 변경하기'}
         </PrimaryButton>
       </form>
     </div>
