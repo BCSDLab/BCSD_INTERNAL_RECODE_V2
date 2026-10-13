@@ -668,3 +668,41 @@ test('활동 저장은 목록 갱신이 끝날 때까지 모달을 유지한다'
   releaseRefresh();
   await expect(page.getByRole('dialog')).toHaveCount(0);
 });
+
+test.describe('비밀번호 설정 링크 Slack DM', () => {
+  test('Slack ID가 없으면 보내기 버튼이 막히고 이유를 보인다', async ({ page }) => {
+    await gotoAsAdmin(page, '/members');
+
+    await page.getByRole('button', { name: '링크' }).first().click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog.getByText('Slack ID가 없어 보낼 수 없습니다.', { exact: false })).toBeVisible();
+    await expect(dialog.getByRole('button', { name: 'Slack DM 보내기' })).toBeDisabled();
+  });
+
+  test('보내기를 누르면 해당 부원의 password-link/slack로 POST하고 완료를 알린다', async ({ page }) => {
+    await installApiMocks(page);
+    await page.route('**/v1/admin/members?**', async (route) => {
+      await route.fulfill({
+        json: {
+          ...memberDirectory,
+          members: memberDirectory.members.map((member) => ({ ...member, slackId: `U0SLACK${member.id}` })),
+        },
+      });
+    });
+    let requestedPath: string | null = null;
+    await page.route('**/v1/admin/members/*/password-link/slack', async (route) => {
+      requestedPath = new URL(route.request().url()).pathname;
+      await route.fulfill({ status: 204 });
+    });
+    await page.clock.install({ time: new Date('2026-01-01T09:00:00+09:00') });
+    await page.goto('/members');
+    await page.locator('aside', { hasText: 'BCSD Internal' }).waitFor();
+
+    await page.getByRole('button', { name: '링크' }).first().click();
+    const dialog = page.getByRole('dialog');
+    await dialog.getByRole('button', { name: 'Slack DM 보내기' }).click();
+
+    await expect(dialog.getByRole('status')).toHaveText('DM을 보냈습니다.');
+    expect(requestedPath).toBe(`/v1/admin/members/${memberDirectory.members[0].id}/password-link/slack`);
+  });
+});
