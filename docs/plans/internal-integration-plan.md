@@ -1,6 +1,6 @@
 # 인터널 통합 + 밥친구 스케줄 상세 계획서
 
-작성일: 2026-10-13 · 갱신: 2026-10-13(1·2단계 진행 반영) · 담당: 1인 · 순서: ① 검증·대조 → ② 인명부 합병·로그인 → ③ 밥친구 스케줄
+작성일: 2026-10-13 · 갱신: 2026-10-13(1·2단계 진행, 인명부 시트 반영, 계정 링크 후속 수정) · 담당: 1인 · 순서: ① 검증·대조 → ② 인명부 합병·로그인 → ③ 밥친구 스케줄
 
 > 이 문서는 저장소(`BCSDLab/B_BOT`, `BCSD_INTERNAL_API_V2`, `BCSD_INTERNAL_RECODE_V2`, `DaleStudy/schedule`)의
 > 코드와 마이그레이션, 문서를 읽고 쓴 계획이다. 1·2단계는 운영 DB·Slack을 직접 확인하며 진행했고, 결과를 각 절에 반영했다.
@@ -14,14 +14,14 @@
 | 1.2 멤버 대조            | **완료**                                                                                                                                         |
 | 1.3 결정 사항            | **완료** (아래 1.3 표)                                                                                                                           |
 | 2.3-1 스키마 변경        | **완료** (API #137, V28: `password` NULL 허용, `company` 추가)                                                                                   |
-| 2.3-2 데이터 이관        | **완료** (99명을 계정 없는 멤버로 추가, 57 → 156명. 실행 전 `member` 백업)                                                                       |
-| 2.3-4 로그인             | **완료** (B안: 관리자 Slack DM 설정 링크, API #136 · 웹 #86 / 계정 없는 멤버 등록·직장 필드 웹 #87)                                              |
+| 2.3-2 데이터 이관        | **완료** (99명을 계정 없는 멤버로 추가, 57 → 156명. 인명부 시트로 보정·정리 후 **153명** — 2.3 진행 기록)                                        |
+| 2.3-4 로그인             | **완료** (B안: 관리자 Slack DM 설정 링크, API #136 · 웹 #86 / 계정 없는 멤버 등록·직장 필드 웹 #87 / 후속 결함 6건 API #140 · 웹 #89)            |
 | 2.3-5 삐봇 전환          | **완료** (서비스 API #138·#139, 삐봇 #33). 봇 DB 멤버 테이블 삭제만 남음                                                                         |
 | 2.3-6 문서 정리          | **완료** (삐봇 계획서 #34, 이 문서)                                                                                                              |
-| 2.6 홈페이지 노출·사진   | 완료. 남은 것: 사진 동기화 첫 실행 확인 (방식이 `users.list` + `slack_id` 매칭으로 바뀜, #138)                                                   |
+| 2.6 홈페이지 노출·사진   | **완료.** 사진 동기화 수동 실행: 156명 중 152명 갱신(사진 보유 29 → 152). 실패 4명 = Slack을 떠난 3명(이후 명단에서 삭제) + Slack ID 없는 1명    |
 | 3단계 밥친구 스케줄      | 미착수                                                                                                                                           |
 | 4.2 홈페이지 정비 PR 5건 | 완료 (#53~#57)                                                                                                                                   |
-| 4.3 `RECRUIT_TERM` API화 | 계획만 있음 (V28은 이미 사용 → V29 이후)                                                                                                         |
+| 4.3 `RECRUIT_TERM` API화 | 계획만 있음 (V28·V29는 이미 사용 → **V30** 이후)                                                                                                 |
 
 ## 남은 작업 (2026-10-13 기준)
 
@@ -31,24 +31,18 @@
 
 - [ ] 삐봇 그룹 멘션 실사용 확인: 테스트 채널에서 트랙장 + FrontEnd → 1명, 활동 + 레귤러 → 인원 확인
 - [ ] PR 머지 알림 첫 동작 확인: 다음 프론트 PR 머지 때 리뷰 스레드에 답글이 달리고 `pr_thread.status`가 `merged`가 되는지
-- [ ] 사진 동기화 첫 실행 확인: 일요일(10/18) 00:05 KST 스케줄러 또는 관리자 수동 호출. 응답 `total/updated/failed`, `SLACK_PROFILE_SYNC_FAILED` 로그, 사진 보유 수(현재 29/156) 비교
 - [ ] (며칠 운영 후) 삐봇 DB 멤버 테이블 삭제: `pg_dump`로 `member`, `track`, `team`, `team_map`, `member_withdraw` 백업 → `006_drop_directory.sql` 추가·실행. `pr_thread`와 RAG 테이블은 유지
+- [x] 사진 동기화 첫 실행 (2026-10-13 수동 실행, 2.6 표 참고). 이후는 매주 일요일 00:05 KST 스케줄러
+- [x] 인터널 작은 결함 6건 수정 (API #140 · 웹 #89, 2.4 B 참고)
 
-**B. 인터널 작은 결함 (발견, 미수정)**
+**C. 데이터 보완 (필요해질 때)**
 
-- [ ] 가입 전 멤버는 링크로 비밀번호를 정한 뒤 초기 설정에서 다시 입력해야 한다
-- [ ] DM 문구 "계정 설정 링크"와 도착 화면 제목 "비밀번호 재설정"이 다르다
-- [ ] Slack 발송 실패(502) 직후 재시도하면 1분 제한(429)에 걸린다
-- [ ] 502 문구에 `-> detail: slackError=` 원문이 노출된다
-- [ ] 계정 없는 멤버를 탈퇴 후 복구하면 `ACTIVE` + 비밀번호 없음 상태가 된다
-- [ ] Slack DM으로 만든 재설정 토큰은 `mail_sent_at`이 비어 있다
-
-**C. 이관 데이터 보완 (필요해질 때)**
-
-- [ ] 이관 99명의 기수가 `미상`이다 (가입일로 계산하면 약 절반만 맞아서 비워 둠)
-- [ ] GitHub ID 8건은 형식 오류라 비웠다
-- [ ] 이관자 1명은 Slack ID 결측 (같은 ID를 동명이인이 쓰고 있어 비움)
-- [ ] 이관자는 모두 비활동으로 들어갔다. 실제 활동 중인 사람이 있으면 인터널에서 활동으로 바꾼다 (삐봇 "활동" 멘션에 바로 반영)
+- [ ] 기수가 시트와 다른 기존 회원 1명: 인터널 `24-상`, 시트 `24-하` — 어느 쪽이 맞는지 확인 필요(기존 값이라 바꾸지 않음)
+- [ ] 이관자 1명 Slack ID 결측 (같은 ID를 동명이인이 쓰고 있어 비움). 사진 동기화도 이 회원만 실패
+- [ ] GitHub ID 형식 오류로 비운 값(밑줄·점·공백 포함 등) — 실제 아이디를 알면 채운다
+- [ ] 활동 여부: 시트에 열이 없어 이관자는 모두 비활동이다. 실제 활동 중인 사람이 있으면 인터널에서 바꾼다(삐봇 "활동" 멘션에 바로 반영)
+- [ ] 생일 128명 비어 있음(시트에도 대부분 없음)
+- [ ] 시트로 새로 추가한 1명의 사진: 동기화 이후 추가돼 다음 일요일 스케줄러에서 반영
 
 **D. 다른 저장소 (선택, 협의 필요)**
 
@@ -58,10 +52,10 @@
 **E. 계획서의 기존 항목**
 
 - [ ] 3단계 밥친구 스케줄 (11월 목표). 첫 작업은 3.5 라이선스 확인
-- [ ] 4.3 `RECRUIT_TERM` API화 (마이그레이션 V29 이후 번호)
-- [ ] 4.4 인터널 API PR용 테스트 CI, `TrackIntegrationTest` 격리, 전체 `./gradlew test` 1회 (이 환경은 Docker로 Testcontainers가 돈다 — 관련 클래스만 돌려 봄)
+- [ ] 4.3 `RECRUIT_TERM` API화 (마이그레이션 V30 이후 번호)
+- [ ] 4.4 인터널 API PR용 테스트 CI, 테스트 격리 보완 — 예약 테스트 7개 클래스를 `IntegrationTestSupport`로 이전(전체 실행 시 29개 실패, 4.4 참고)
 - [ ] 1.1 Slack OIDC — 삐봇 앱 협업자 권한을 받으면 재시도
-- [ ] 머지된 원격 브랜치 정리(삭제는 승인 후): 홈페이지 5개(4.2), API `fix/public-display-not-account-status`, 이번 작업 브랜치(API `feat/slack-dm-password-link`, `feat/member-without-account`, `feat/service-member-read`, `feat/service-member-positions` / 웹 `feat/slack-dm-password-link`, `feat/member-without-account` / 삐봇 `feat/internal-member-source`, `docs/internal-member-source`). 저장소 4곳 모두 머지 후 자동 삭제가 꺼져 있다
+- [ ] 머지된 원격 브랜치 정리(삭제는 승인 후): 홈페이지 5개(4.2), API `fix/public-display-not-account-status`, 이번 작업 브랜치(API `feat/slack-dm-password-link`, `feat/member-without-account`, `feat/service-member-read`, `feat/service-member-positions`, `fix/account-link-followups` / 웹 `feat/slack-dm-password-link`, `feat/member-without-account`, `docs/internal-integration-plan`, `fix/account-link-followups`, `docs/plan-update-sheet-sync` / 삐봇 `feat/internal-member-source`, `docs/internal-member-source`). 저장소 4곳 모두 머지 후 자동 삭제가 꺼져 있다
 - [ ] 4.1 홈페이지 프레임워크 전환 검토 (보류 유지)
 
 **작업 환경 메모**
@@ -244,6 +238,24 @@
   그룹 멘션 "활동" 대상은 42명 → 30명(인터널 활동 여부 기준)이며 그대로 두기로 했다.
 - 토큰은 인터널 API(GitHub Secret `BBOT_SERVICE_TOKEN`)와 삐봇(Secret `INTERNAL_SERVICE_TOKEN`, `INTERNAL_API_BASE_URL`, 배포 `.env` 생성에 포함)에 같은 값으로 등록했다.
 
+**인명부 시트 반영 (2026-10-13)**
+
+운영진 인명부 구글 시트(`동아리 인명부_20260914`, "명단" 탭)를 학번으로 대조해 인터널을 보정했다. 시트는 로컬에서만 읽었고(브라우저에서 필요한 열만), 반영마다 서버에 `member` 백업을 남겼다(`~/backups/member-20261013-pre-sheet.sql`, `-pre-contact.sql`).
+
+| 항목           | 반영                                                                                                                                |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| 기수           | 시트 A열로 `미상` 95명 채움 → 미상 0                                                                                                |
+| 학적 상태      | 계정 없는 멤버 15명은 시트대로. 계정 있는 멤버 4명은 운영진 확인 후 3명만 변경                                                      |
+| 직장·구분      | 직장 5명, 레귤러 → 멘토 3명                                                                                                         |
+| GitHub         | 빈 칸만 12명(형식이 맞는 값만). 기존 값과 다른 경우는 인터널 유지                                                                   |
+| 직책           | 디자인·게임 교육장 2명 추가, 기존 PM 트랙장 유지. 시트의 나머지 직책 차이는 무시                                                    |
+| 연락처         | 빈 칸만: 전화번호 121명, 생일 22명. 기존 값과 다른 경우 0                                                                           |
+| 명단 정리      | 시트에 없고 Slack도 떠난 4명은 관련 기록(예약·회비·직책 등)이 없어 **행 삭제**. 관련 기록이 있는 회원은 앞으로도 탈퇴 상태로 남긴다 |
+| 추가           | 시트에만 있던 레귤러 1명을 계정 없는 멤버로 추가. 비기너는 넣지 않음                                                                |
+| 회비 납부 대상 | 시트와 25명 다르지만 인터널 회비 기능 기준으로 두고 반영하지 않음                                                                   |
+
+결과: 인터널 **153명**, 탈퇴 상태 0.
+
 ### 2.4 로그인 방식
 
 **A. Slack OIDC (1.1 성공 시)**
@@ -260,6 +272,12 @@
 - 메일을 못 받는 사람 문제를 피한다.
 - 링크는 해시 저장, 사용 후 폐기, 짧은 만료.
 - **채택·구현 완료.** 기존 비밀번호 재설정 토큰을 재사용한다(24시간, 1회, 새로 보내면 이전 링크 무효, 같은 멤버 1분에 1회). Slack 발송이 실패하면 토큰을 폐기하고 502.
+- **후속 수정 (API #140 · 웹 #89, 2026-10-13 배포)**
+  - V29 `member.password_temporary`: 관리자가 만든 임시 비밀번호인지. 임시 비밀번호인 회원만 초기 설정에서 새 비밀번호를 받고, 링크로 직접 정한 회원은 연락처만 입력한다. 배포 시 기존 가입 전 + 비밀번호 있는 25명을 `true`로 채웠다.
+  - 링크 화면: 가입 전 회원의 링크면 "계정 비밀번호 설정"으로 보이고, 완료 후 "로그인하면 연락처 입력" 안내. 만료 링크 화면에 "Slack으로 받은 링크는 운영진에게 다시 요청" 안내.
+  - DM 실패 시 1분 제한을 풀어 바로 재시도 가능. 응답에서 Slack 오류 원문을 빼고 안내 문구로(`channel_not_found`, `messages_tab_disabled`, `ratelimited`).
+  - 계정이 없거나 임시 비밀번호인 회원은 탈퇴 후 복구하면 `PENDING_SETUP`으로 돌아간다. 링크로 비밀번호만 정하고 초기 설정 전에 탈퇴한 회원은 `ACTIVE`로 복구된다(탈퇴 전 상태를 저장하지 않음 — 감수).
+  - DM으로 보낸 링크도 `mail_sent_at`(전달 시각)을 남긴다. 롤백 안전을 위해 컬럼 이름은 바꾸지 않았다.
 - 실제 멤버에게 DM은 아직 보내지 않았다 (본인 계정으로만 시험).
 
 ### 2.5 위험과 대응
@@ -289,8 +307,8 @@
 > `members.length expected:<2> but was:<0>`으로 실패함을 확인했다.
 > 배포 후 확인: 홈페이지 `/`, `/track/frontend`, `/game`, `/recruit`, `/activity/event` 모두 200. 트랙별 노출 멤버 수는
 > android 4, backend 3, data-analyst 2, design 5, frontend 3, game 12, ios 1, product-manager 3명이다 (배포 직후 값, 이후 비교용).
-> **남은 확인**: (1) 사진 동기화는 일요일 00:05(KST) 스케줄러 또는 관리자 수동 동기화(`POST /v1/admin/members/photo/slack-sync`)로 반영된다.
-> 첫 실행 뒤 `SLACK_PROFILE_SYNC_FAILED` 로그와 가입 전 멤버의 `profile_image_url`이 채워졌는지 확인한다. (2) 인증·회원 통합 테스트 7개 클래스는 로컬에서 못 돌렸으므로 Docker가 있는 환경에서 `./gradlew test`를 한 번 돌린다.
+> **확인 완료 (2026-10-13)**: (1) 관리자 수동 동기화(`POST /v1/admin/members/photo/slack-sync`)로 156명 중 152명 갱신(사진 보유 29 → 152). 실패 4명은 Slack을 떠난 3명(`users.list`에 없음)과 Slack ID가 없는 1명.
+> 동기화는 #138부터 `users.list`를 한 번 읽어 `slack_id`로 맞춘다. (2) Docker 환경에서 `./gradlew test` 전체 실행: 532개 중 503개 통과, 예약 테스트 29개 실패(4.4 참고 — 이번 변경과 무관).
 
 현재 동작을 확인한 위치:
 
@@ -548,7 +566,7 @@ DaleStudy/schedule은 외부 조직 소유다. 코드를 그대로 가져오지 
 
 작업 내용:
 
-1. **DB**: Flyway `V29__add_recruit_link_term.sql`(V28은 계정 분리에 사용됨, 작성 시점 최신 번호 다시 확인) — `recruit_link.term VARCHAR(50)` 추가.
+1. **DB**: Flyway `V30__add_recruit_link_term.sql`(V28 계정 분리, V29 임시 비밀번호 표시에 사용됨. 작성 시점 최신 번호 다시 확인) — `recruit_link.term VARCHAR(50)` 추가.
    - 기존 행은 `NOT NULL` 기본값이 필요하다 (SQLite가 아니라 Postgres라 `ADD COLUMN ... NOT NULL DEFAULT ''` 가능). 빈 문자열이면 홈페이지가 기존 상수로 폴백한다.
    - 마이그레이션 번호는 작성 시점의 최신(현재 V27) 다음으로 확인한다.
 2. **API**: `RecruitLink` 엔티티·`create/update`에 `term` 추가, `RecruitLinkResponse`(공개)와 `AdminRecruitLinkResponse`에 `term` 추가,
@@ -570,8 +588,12 @@ DaleStudy/schedule은 외부 조직 소유다. 코드를 그대로 가져오지 
   `AdminMentorSlotIntegrationTest`가 남긴 `mentor_slot` 행 때문에 외래키 위반으로 실패한다 (같은 DB에서 멘토 슬롯 테스트가 먼저 돌 때, 트랙 테스트 16개 실패 재현).
   클래스별로 DB를 초기화하면 모두 통과한다.
 - 기존 7개 테스트 클래스(auth 4, member 2, 컨텍스트 1)는 각자 Testcontainers를 띄워서 Docker 없이는 못 돌린다.
+- **예약 테스트 컨텍스트 캐시 문제 (2026-10-13 확인)**: `ReservationIntegrationTestSupport`가 클래스마다 `@Container static` Postgres를 띄우는데,
+  Spring 테스트 컨텍스트는 캐시되어 첫 클래스의 컨테이너 주소를 계속 쓴다. 첫 클래스(`MyReservationIntegrationTest`)가 끝나 컨테이너가 내려가면
+  나머지 6개 클래스 29개가 `HikariPool ... Connection is not available`(30초 타임아웃)로 실패한다. 예약 테스트만 따로 돌려도 재현된다.
+  `IntegrationTestSupport`의 싱글턴 컨테이너로 옮기면 해결된다. 전체 실행 시간도 이 타임아웃 때문에 30분 가까이 걸린다.
 
-제안: (1) PR용 GitHub Actions에서 `./gradlew test` 실행 (Docker가 있는 러너), (2) `TrackIntegrationTest` 등의 `setUp` 정리 순서 보완(`mentor_slot`, `game_member` 먼저 삭제), (3) 남은 클래스를 `IntegrationTestSupport`로 이전.
+제안: (1) PR용 GitHub Actions에서 `./gradlew test` 실행 (Docker가 있는 러너), (2) `TrackIntegrationTest` 등의 `setUp` 정리 순서 보완(`mentor_slot`, `game_member` 먼저 삭제), (3) 예약 테스트 기반 클래스를 포함해 남은 클래스를 `IntegrationTestSupport`로 이전.
 
 이 환경에서 테스트를 돌린 방법(재사용용): JDK 21(`~/tools/jdk21`) + Docker 대신 로컬 Postgres 16(`~/tools/pg16`, 포트 15432)을 쓰고,
 `IntegrationTestSupport`를 **커밋하지 않는** 임시 패치로 로컬 DB에 연결한다. 클래스 묶음마다 DB를 새로 초기화한다.
