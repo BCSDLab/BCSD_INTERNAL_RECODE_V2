@@ -30,7 +30,7 @@ export interface MemberRowActions {
 }
 
 /**
- * 인명부 표. 열이 18개라 항상 가로로 스크롤된다(감싼 div가 overflow-x-auto).
+ * 인명부 표. 열이 17~19개(관리자는 직장·관리 열 추가)라 항상 가로로 스크롤된다(감싼 div가 overflow-x-auto).
  * 관리자가 아니면 편집 수단을 아예 렌더하지 않는다 — 변경 API가 모두 관리자 전용이라
  * 일반 권한에는 보여 줄 의미가 없다.
  */
@@ -57,13 +57,14 @@ export function MemberTable({
   actions: MemberRowActions;
   onResetFilters: () => void;
 }) {
-  const columnCount = isAdmin ? 18 : 17;
+  // 관리자는 직장 열과 관리 열이 더 있다.
+  const columnCount = isAdmin ? 19 : 17;
   const { data: positions = [] } = useQuery(positionQueries.list());
   const positionLabels = new Map(positions.map((position) => [position.code, position.name]));
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[1860px] border-collapse">
+      <table className="w-full min-w-[2020px] border-collapse">
         <thead className="bg-panel2">
           <tr className="border-line border-b">
             <SortableHead label="기수" sortKey="generation" sort={sort} direction={direction} onSort={onSortChange} />
@@ -73,6 +74,7 @@ export function MemberTable({
             <SortableHead label="이름" sortKey="name" sort={sort} direction={direction} onSort={onSortChange} />
             <th className={HEAD_CLASS}>소속</th>
             <th className={HEAD_CLASS}>학부(학과)</th>
+            {isAdmin && <th className={HEAD_CLASS}>직장</th>}
             <SortableHead
               label="학번"
               sortKey="studentNumber"
@@ -202,10 +204,12 @@ function MemberTableRow({
         <span className="flex items-center gap-1.5">
           {member.name}
           {isSelf && <TintedBadge>나</TintedBadge>}
+          {member.hasAccount === false && <Badge>계정 없음</Badge>}
         </span>
       </td>
       <td className={`${CELL_CLASS} text-muted max-w-[180px] truncate`}>{member.university}</td>
       <td className={`${CELL_CLASS} text-muted max-w-[180px] truncate`}>{member.department}</td>
+      {isAdmin && <td className={`${CELL_CLASS} text-muted max-w-[160px] truncate`}>{member.company || <Empty />}</td>}
       <td className={`${CELL_CLASS} tabular-nums`}>{member.studentNumber}</td>
       <td className={`${CELL_CLASS} text-muted tabular-nums`}>
         {member.phoneNumber ? formatPhoneNumber(member.phoneNumber) : <Empty />}
