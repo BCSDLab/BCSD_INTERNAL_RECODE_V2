@@ -1,6 +1,7 @@
 export {
   type SlackIdLookupResult,
   createMember,
+  sendMemberPasswordLinkBySlack,
   updateMemberAcademicStatus,
   updateMemberActive,
   updateMemberProfile,

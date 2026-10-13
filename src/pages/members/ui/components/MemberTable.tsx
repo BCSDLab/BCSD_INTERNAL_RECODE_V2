@@ -26,6 +26,7 @@ export interface MemberRowActions {
   onChangeRole: (member: MemberDirectoryItem) => void;
   onToggleActive: (member: MemberDirectoryItem) => void;
   onWithdraw: (member: MemberDirectoryItem) => void;
+  onSendPasswordLink: (member: MemberDirectoryItem) => void;
 }
 
 /**
@@ -250,6 +251,13 @@ function MemberTableRow({
               className="text-primary-text cursor-pointer text-xs hover:underline"
             >
               수정
+            </button>
+            <button
+              type="button"
+              onClick={() => actions.onSendPasswordLink(member)}
+              className="text-muted hover:text-primary-text cursor-pointer text-xs transition-colors"
+            >
+              링크
             </button>
             <button
               type="button"

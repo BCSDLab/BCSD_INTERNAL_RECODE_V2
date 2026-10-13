@@ -24,13 +24,14 @@ import { MemberStats } from './components/MemberStats';
 import { MemberTable } from './components/MemberTable';
 import { MemberToolbar } from './components/MemberToolbar';
 import { MemberWithdrawalModal } from './components/MemberWithdrawalModal';
+import { PasswordLinkModal } from './components/PasswordLinkModal';
 
 const EMPTY_MEMBERS: MemberDirectoryItem[] = [];
 
 /** 열려 있는 모달. 'create'만 대상 부원이 없다. */
 type ModalState =
   | { kind: 'create' }
-  | { kind: 'edit' | 'role' | 'academic-status' | 'withdrawal'; member: MemberDirectoryItem };
+  | { kind: 'edit' | 'role' | 'academic-status' | 'withdrawal' | 'password-link'; member: MemberDirectoryItem };
 
 function countActiveFilters(filters: MemberDirectoryFilters): number {
   return (
@@ -169,6 +170,7 @@ export default function MembersPage() {
                 onChangeRole: (member) => setModal({ kind: 'role', member }),
                 onToggleActive: (member) => activeMutation.mutate({ memberId: member.id, active: !member.active }),
                 onWithdraw: (member) => setModal({ kind: 'withdrawal', member }),
+                onSendPasswordLink: (member) => setModal({ kind: 'password-link', member }),
               }}
             />
             {data && <MemberPagination page={data.page} disabled={isPlaceholderData} onPageChange={setPage} />}
@@ -185,6 +187,7 @@ export default function MembersPage() {
         <AcademicStatusModal member={modal.member} onClose={() => setModal(null)} />
       )}
       {modal?.kind === 'withdrawal' && <MemberWithdrawalModal member={modal.member} onClose={() => setModal(null)} />}
+      {modal?.kind === 'password-link' && <PasswordLinkModal member={modal.member} onClose={() => setModal(null)} />}
     </>
   );
 }

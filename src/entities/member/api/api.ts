@@ -58,6 +58,11 @@ export function lookupMemberSlackIds(memberIds: number[]) {
   return apiClient.post<{ results: SlackIdLookupResult[] }>(`${ADMIN_BASE}/slack-ids/lookup`, { memberIds });
 }
 
+/** 비밀번호 설정(재설정) 링크를 삐봇 DM으로 보낸다. 링크는 24시간 동안 한 번만 쓸 수 있다. */
+export function sendMemberPasswordLinkBySlack(memberId: number) {
+  return apiClient.post<void>(`${ADMIN_BASE}/${memberId}/password-link/slack`);
+}
+
 export function updateMemberAcademicStatus(memberId: number, academicStatus: AcademicStatus) {
   return apiClient.patch<void>(`${ADMIN_BASE}/${memberId}/academic-status`, { academicStatus });
 }
