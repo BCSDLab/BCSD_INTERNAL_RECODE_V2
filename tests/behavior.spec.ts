@@ -759,3 +759,90 @@ test.describe('계정 없는 부원과 직장', () => {
     await expect(secondRow.getByText('계정 없음')).toHaveCount(0);
   });
 });
+
+test.describe('계정 설정 링크와 초기 설정', () => {
+  const pendingMember = {
+    id: 9,
+    name: '김졸업',
+    studentNumber: '2015000001',
+    track: 'BACKEND',
+    generation: '15-상',
+    memberType: 'MENTOR',
+    university: '한국기술교육대',
+    role: 'MEMBER',
+  };
+
+  test('가입 전 회원의 링크면 계정 비밀번호 설정 문구로 보이고, 완료 후 연락처 입력을 안내한다', async ({ page }) => {
+    await page.route('**/v1/auth/reissue', (route) => route.fulfill({ status: 401, json: { message: '인증 필요' } }));
+    await page.route('**/v1/auth/password/reset-requests/validate', (route) =>
+      route.fulfill({ json: { valid: true, studentNumberMasked: '2015****', accountSetup: true } }),
+    );
+    await page.route('**/v1/auth/password/reset', (route) => route.fulfill({ status: 204 }));
+
+    await page.goto('/reset-password?token=setup-token');
+    await expect(page.getByText('계정 비밀번호 설정')).toBeVisible();
+    await page.getByLabel('새 비밀번호', { exact: true }).fill('NewPass1234');
+    await page.getByLabel('새 비밀번호 확인').fill('NewPass1234');
+    await page.getByRole('button', { name: '비밀번호 설정하기' }).click();
+
+    await expect(page.getByText('비밀번호를 설정했어요')).toBeVisible();
+    await expect(page.getByText('연락처를 입력하고 시작할 수 있어요')).toBeVisible();
+  });
+
+  test('링크로 비밀번호를 이미 정했으면 초기 설정에서 비밀번호를 다시 묻지 않는다', async ({ page }) => {
+    let setupBody: Record<string, unknown> | undefined;
+    await page.route('**/v1/auth/reissue', (route) => route.fulfill({ status: 401, json: { message: '인증 필요' } }));
+    await page.route('**/v1/auth/login', (route) =>
+      route.fulfill({
+        json: {
+          accessToken: 'setup-token',
+          tokenType: 'Bearer',
+          expiresIn: 600,
+          status: 'PENDING_SETUP',
+          member: pendingMember,
+        },
+      }),
+    );
+    await page.route('**/v1/members/me/initial-setup', async (route) => {
+      if (route.request().method() === 'GET') {
+        await route.fulfill({
+          json: {
+            ...pendingMember,
+            email: 'alumni@bcsd.club',
+            phoneNumber: null,
+            githubId: null,
+            status: 'PENDING_SETUP',
+            photoUrl: null,
+            slackId: 'U0ABCDEFGH1',
+            passwordSetupRequired: false,
+          },
+        });
+        return;
+      }
+      setupBody = route.request().postDataJSON();
+      await route.fulfill({
+        json: {
+          accessToken: 'full-token',
+          tokenType: 'Bearer',
+          expiresIn: 3600,
+          status: 'ACTIVE',
+          member: pendingMember,
+        },
+      });
+    });
+
+    await page.goto('/login');
+    await page.getByLabel('학번').fill('2015000001');
+    await page.getByLabel('비밀번호').fill('NewPass1234');
+    await page.getByRole('button', { name: /로그인/ }).click();
+
+    await expect(page.getByText('첫 로그인이시네요')).toBeVisible();
+    await expect(page.getByLabel('새 비밀번호', { exact: true })).toHaveCount(0);
+    await page.getByLabel('전화번호').fill('01012345678');
+    await page.getByRole('button', { name: '저장하고 시작하기' }).click();
+
+    await expect(page.getByText('설정이 완료됐어요')).toBeVisible();
+    expect(setupBody).toMatchObject({ phoneNumber: '010-1234-5678', email: 'alumni@bcsd.club' });
+    expect(setupBody).not.toHaveProperty('newPassword');
+  });
+});

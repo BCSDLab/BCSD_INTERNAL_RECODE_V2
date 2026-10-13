@@ -51,7 +51,10 @@ export default function InitialSetupPage() {
       });
   }, [accessToken, navigate]);
 
-  const requiredFilled = phone.trim() && email.trim() && newPassword.trim() && newPasswordConfirm.trim();
+  // 비밀번호 설정 링크로 이미 직접 정한 회원은 다시 받지 않는다. 응답에 값이 없으면(BE 배포 전) 받는다.
+  const passwordRequired = detail?.passwordSetupRequired ?? true;
+  const requiredFilled =
+    phone.trim() && email.trim() && (!passwordRequired || (newPassword.trim() && newPasswordConfirm.trim()));
 
   function handlePhoneChange(e: ChangeEvent<HTMLInputElement>) {
     const input = e.target;
@@ -78,8 +81,7 @@ export default function InitialSetupPage() {
         phoneNumber: phone,
         email,
         githubId: github,
-        newPassword,
-        newPasswordConfirm,
+        ...(passwordRequired ? { newPassword, newPasswordConfirm } : {}),
       });
       clearPendingSetup();
       setSession({ accessToken: response.accessToken, member: response.member });
@@ -114,7 +116,11 @@ export default function InitialSetupPage() {
         <div className="flex flex-col items-center py-10 text-center">
           <LogoBadge size={84} />
           <div className="mb-2.5 text-[19px] font-bold text-white">설정이 완료됐어요</div>
-          <div className="mb-7 text-[13.5px] text-white/50">이제부터 학번과 새 비밀번호로 로그인할 수 있어요.</div>
+          <div className="mb-7 text-[13.5px] text-white/50">
+            {passwordRequired
+              ? '이제부터 학번과 새 비밀번호로 로그인할 수 있어요.'
+              : '이제부터 학번과 설정한 비밀번호로 로그인할 수 있어요.'}
+          </div>
           <Link to="/" className="text-[13px] font-semibold text-[var(--accent)] hover:underline">
             시작하기
           </Link>
@@ -123,7 +129,9 @@ export default function InitialSetupPage() {
         <div>
           <div className="mb-1 text-[20px] font-bold text-white">첫 로그인이시네요</div>
           <div className="mb-[26px] text-[13px] leading-[1.6] text-white/50">
-            관리자가 등록한 정보를 확인하고, 연락처와 비밀번호를 설정해주세요.
+            {passwordRequired
+              ? '관리자가 등록한 정보를 확인하고, 연락처와 비밀번호를 설정해주세요.'
+              : '관리자가 등록한 정보를 확인하고, 연락처를 입력해주세요.'}
           </div>
 
           <div className="mb-3.5 border-b border-white/10 pb-2 text-[11px] font-semibold tracking-[.04em] text-white/35 uppercase">
@@ -174,24 +182,28 @@ export default function InitialSetupPage() {
               onChange={(e) => setGithub(e.target.value)}
               compact
             />
-            <TextField
-              label="새 비밀번호"
-              type="password"
-              placeholder="8자 이상, 영문+숫자"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              compact
-              required
-            />
-            <TextField
-              label="새 비밀번호 확인"
-              type="password"
-              placeholder="새 비밀번호를 다시 입력해주세요"
-              value={newPasswordConfirm}
-              onChange={(e) => setNewPasswordConfirm(e.target.value)}
-              compact
-              required
-            />
+            {passwordRequired && (
+              <>
+                <TextField
+                  label="새 비밀번호"
+                  type="password"
+                  placeholder="8자 이상, 영문+숫자"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  compact
+                  required
+                />
+                <TextField
+                  label="새 비밀번호 확인"
+                  type="password"
+                  placeholder="새 비밀번호를 다시 입력해주세요"
+                  value={newPasswordConfirm}
+                  onChange={(e) => setNewPasswordConfirm(e.target.value)}
+                  compact
+                  required
+                />
+              </>
+            )}
 
             {error && <p className="text-[13px] text-red-400">{error}</p>}
 

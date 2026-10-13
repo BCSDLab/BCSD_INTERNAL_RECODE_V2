@@ -37,4 +37,9 @@ export interface MemberDetail extends MemberSummary {
   photoUrl: string | null;
   /** 인명부 Slack ID. BE 배포 전에는 응답에 없을 수 있어 선택 필드로 둔다(없으면 빈 값으로 보인다). */
   slackId?: string | null;
+  /**
+   * 초기 설정에서 새 비밀번호를 받아야 하는지(임시 비밀번호). 비밀번호 설정 링크로 이미 정했으면 false.
+   * BE 배포 전 응답에는 없다 — 없으면 true로 보고 비밀번호 칸을 보여 준다.
+   */
+  passwordSetupRequired?: boolean;
 }

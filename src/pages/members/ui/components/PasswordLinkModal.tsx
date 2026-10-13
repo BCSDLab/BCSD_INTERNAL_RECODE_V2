@@ -8,8 +8,9 @@ import { Modal } from '@/shared/ui/modal';
 /**
  * 비밀번호 설정 링크를 Slack DM으로 보낸다 — 가입 메일을 받지 못한 부원이나 비밀번호를 잊은 부원용.
  *
- * 새로 보내면 이전에 보낸 링크(메일로 보낸 재설정 링크 포함)는 무효가 된다. 인명부 응답에 계정 상태가 없어서
- * 가입 전인지는 화면에서 알 수 없다. 가입 전 부원은 링크로 비밀번호를 정한 뒤 로그인해서 초기 설정을 마친다.
+ * 새로 보내면 이전에 보낸 링크(메일로 보낸 재설정 링크 포함)는 무효가 된다. 가입 전 부원은 링크로 비밀번호를 정한 뒤
+ * 로그인해서 초기 설정(연락처 입력)을 마친다. 링크로 정한 비밀번호는 초기 설정에서 다시 묻지 않는다.
+ * 발송에 실패하면 1분 제한 없이 바로 다시 보낼 수 있다.
  */
 export function PasswordLinkModal({ member, onClose }: { member: MemberDirectoryItem; onClose: () => void }) {
   const sendMutation = useMutation({ mutationFn: () => sendMemberPasswordLinkBySlack(member.id) });
