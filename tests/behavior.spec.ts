@@ -706,3 +706,56 @@ test.describe('비밀번호 설정 링크 Slack DM', () => {
     expect(requestedPath).toBe(`/v1/admin/members/${memberDirectory.members[0].id}/password-link/slack`);
   });
 });
+
+test.describe('계정 없는 부원과 직장', () => {
+  test('계정 없이 등록을 고르면 createAccount=false와 직장을 함께 보낸다', async ({ page }) => {
+    await gotoAsAdmin(page, '/members');
+
+    let body: Record<string, unknown> | null = null;
+    await page.route('**/v1/admin/members', async (route) => {
+      if (route.request().method() !== 'POST') {
+        await route.fallback();
+        return;
+      }
+      body = route.request().postDataJSON();
+      await route.fulfill({ json: { id: 99, studentNumber: '2016000000' } });
+    });
+
+    await page.getByRole('button', { name: '+ 부원 추가' }).click();
+    const dialog = page.getByRole('dialog');
+    await dialog.getByPlaceholder('홍길동').fill('졸업생');
+    await dialog.getByPlaceholder('예: 24-상').fill('미상');
+    await dialog.getByPlaceholder('2024136000').fill('2016000000');
+    await dialog.getByPlaceholder('name@gmail.com').fill('alumni@example.com');
+    await dialog.getByPlaceholder('예: 졸업 후 재직 중인 회사').fill('카카오');
+    await dialog.getByRole('combobox').filter({ hasText: '계정 만들기' }).click();
+    await page.getByRole('option', { name: '계정 없이 인명부에만 등록' }).click();
+    await expect(dialog.getByText('계정 없이 인명부에만 등록됩니다')).toBeVisible();
+
+    await dialog.getByRole('button', { name: '저장' }).click();
+    await expect(dialog).toBeHidden();
+    expect(body).toMatchObject({ createAccount: false, company: '카카오' });
+  });
+
+  test('관리자 목록은 직장과 계정 없음 표시를 보여 준다', async ({ page }) => {
+    await installApiMocks(page);
+    await page.route('**/v1/admin/members?**', async (route) => {
+      await route.fulfill({
+        json: {
+          ...memberDirectory,
+          members: memberDirectory.members.map((member, index) =>
+            index === 0 ? { ...member, company: '카카오', hasAccount: false } : { ...member, hasAccount: true },
+          ),
+        },
+      });
+    });
+    await page.goto('/members');
+    await page.locator('aside', { hasText: 'BCSD Internal' }).waitFor();
+
+    const firstRow = page.getByRole('row').filter({ hasText: memberDirectory.members[0].name });
+    await expect(firstRow.getByText('계정 없음')).toBeVisible();
+    await expect(firstRow.getByText('카카오')).toBeVisible();
+    const secondRow = page.getByRole('row').filter({ hasText: memberDirectory.members[1].name });
+    await expect(secondRow.getByText('계정 없음')).toHaveCount(0);
+  });
+});

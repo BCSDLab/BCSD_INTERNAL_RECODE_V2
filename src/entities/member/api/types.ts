@@ -24,6 +24,10 @@ export interface MemberDirectoryItem {
   photoUrl: string | null;
   role: MemberRole;
   active: boolean;
+  /** 직장. 관리자 응답에만 있다. */
+  company?: string | null;
+  /** false면 로그인 계정 없이 인명부에만 있는 부원이다(비밀번호 미설정). 관리자 응답에만 있다. */
+  hasAccount?: boolean;
 }
 
 export interface MemberDirectoryPageInfo {
@@ -99,6 +103,9 @@ export interface MemberCreateRequest {
   email: string;
   phoneNumber?: string;
   githubId?: string;
+  company?: string;
+  /** false면 계정 없이 인명부에만 등록하고 가입 메일을 보내지 않는다. 생략하면 true. */
+  createAccount?: boolean;
 }
 
 export interface MemberCreateResponse {
@@ -119,6 +126,7 @@ export interface MemberProfileUpdateRequest {
   email: string;
   phoneNumber: string | null;
   githubId: string | null;
+  company: string | null;
 }
 
 export interface PhotoPresignedUrlResponse {

@@ -46,6 +46,8 @@ interface FormValues {
   phoneNumber: string;
   githubId: string;
   slackId: string;
+  company: string;
+  createAccount: boolean;
 }
 
 function toForm(member: MemberDirectoryItem | null): FormValues {
@@ -66,6 +68,8 @@ function toForm(member: MemberDirectoryItem | null): FormValues {
     phoneNumber: member?.phoneNumber ?? '',
     githubId: member?.githubId ?? '',
     slackId: member?.slackId ?? '',
+    company: member?.company ?? '',
+    createAccount: true,
   };
 }
 
@@ -154,6 +158,8 @@ export function MemberFormModal({ member, onClose }: { member: MemberDirectoryIt
           email: form.email.trim(),
           phoneNumber: form.phoneNumber.trim() || undefined,
           githubId: form.githubId.trim() || undefined,
+          company: form.company.trim() || undefined,
+          createAccount: form.createAccount,
         }).then(() => undefined);
       }
       await updateMemberProfile(member.id, {
@@ -169,6 +175,7 @@ export function MemberFormModal({ member, onClose }: { member: MemberDirectoryIt
         email: form.email.trim(),
         phoneNumber: optional(form.phoneNumber),
         githubId: optional(form.githubId.replace(/^@/, '')),
+        company: optional(form.company),
       });
       // 프로필이 저장된 뒤 Slack ID만 실패(409 등)해도 onError로 문구가 보이고 모달은 남는다.
       // 전체 저장이 실패한 것처럼 보이지 않게, 프로필은 저장됐다는 걸 문구 앞에 밝힌다.
@@ -216,7 +223,11 @@ export function MemberFormModal({ member, onClose }: { member: MemberDirectoryIt
       footer={
         <>
           <span className="text-faint text-[11px] whitespace-nowrap">
-            {isNew ? '가입 안내 메일이 발송됩니다' : '학번 · 학적 상태 · 활동 여부는 목록에서 바꿉니다'}
+            {isNew
+              ? form.createAccount
+                ? '가입 안내 메일이 발송됩니다'
+                : '계정 없이 인명부에만 등록됩니다'
+              : '학번 · 학적 상태 · 활동 여부는 목록에서 바꿉니다'}
           </span>
           <Button onClick={onClose} className="ml-auto px-4 py-2.5">
             취소
@@ -318,6 +329,16 @@ export function MemberFormModal({ member, onClose }: { member: MemberDirectoryIt
           />
         </FormField>
 
+        <FormField label="직장">
+          <input
+            value={form.company}
+            onChange={(e) => update({ company: e.target.value })}
+            placeholder="예: 졸업 후 재직 중인 회사"
+            maxLength={100}
+            className={INPUT_CLASS_COMPACT}
+          />
+        </FormField>
+
         <FormField label="이메일(Google) *" error={errors.email}>
           <input
             value={form.email}
@@ -388,6 +409,20 @@ export function MemberFormModal({ member, onClose }: { member: MemberDirectoryIt
               />
             </FormField>
           </>
+        )}
+
+        {isNew && (
+          <FormField label="로그인 계정" hint="계정 없이 등록해도 나중에 가입 메일이나 Slack 링크로 초대할 수 있습니다">
+            <Select
+              value={form.createAccount ? 'true' : 'false'}
+              onValueChange={(v) => update({ createAccount: v === 'true' })}
+              options={[
+                { value: 'true', label: '계정 만들기 · 가입 메일 발송' },
+                { value: 'false', label: '계정 없이 인명부에만 등록' },
+              ]}
+              className={INPUT_CLASS_COMPACT}
+            />
+          </FormField>
         )}
 
         {isNew && (
