@@ -6,7 +6,6 @@ import {
   updateMemberActive,
   memberKeys,
   memberQueries,
-  DEFAULT_MEMBER_PAGE_SIZE,
   type MemberDirectoryFilters,
   type MemberDirectoryItem,
   type MemberSortKey,
@@ -15,13 +14,16 @@ import { useSession } from '@/entities/session';
 import { getApiErrorMessage } from '@/shared/api/error';
 import { PageHeader } from '@/shared/ui/page-header';
 
+import { useMemberColumns } from '../model/columns';
+import { DEFAULT_MEMBER_PAGE_SIZE, type MemberPageSize } from '../model/search';
 import { AcademicStatusModal } from './components/AcademicStatusModal';
-import { MemberFilterSidebar } from './components/MemberFilterSidebar';
+import { MemberColumnMenu } from './components/MemberColumnMenu';
+import { MemberDetailDrawer } from './components/MemberDetailDrawer';
+import { MemberActiveFilter, MemberFilterBar } from './components/MemberFilterBar';
 import { MemberFormModal } from './components/MemberFormModal';
 import { MemberPagination } from './components/MemberPagination';
 import { MemberRoleModal } from './components/MemberRoleModal';
-import { MemberStats } from './components/MemberStats';
-import { MemberTable } from './components/MemberTable';
+import { type MemberRowActions, MemberTable } from './components/MemberTable';
 import { MemberToolbar } from './components/MemberToolbar';
 import { MemberWithdrawalModal } from './components/MemberWithdrawalModal';
 import { PasswordLinkModal } from './components/PasswordLinkModal';
@@ -31,13 +33,10 @@ const EMPTY_MEMBERS: MemberDirectoryItem[] = [];
 /** 열려 있는 모달. 'create'만 대상 부원이 없다. */
 type ModalState =
   | { kind: 'create' }
-  | { kind: 'edit' | 'role' | 'academic-status' | 'withdrawal' | 'password-link'; member: MemberDirectoryItem };
-
-function countActiveFilters(filters: MemberDirectoryFilters): number {
-  return (
-    (filters.active === null ? 0 : 1) + filters.academicStatus.length + filters.track.length + filters.memberType.length
-  );
-}
+  | {
+      kind: 'detail' | 'edit' | 'role' | 'academic-status' | 'withdrawal' | 'password-link';
+      member: MemberDirectoryItem;
+    };
 
 export default function MembersPage() {
   const queryClient = useQueryClient();
@@ -54,18 +53,30 @@ export default function MembersPage() {
     memberType: search.memberType ?? [],
   };
   const page = search.page ?? 0;
+  const pageSize = search.size ?? DEFAULT_MEMBER_PAGE_SIZE;
   const sort = search.sort ?? 'generation';
   const direction = search.direction ?? 'asc';
   function setPage(nextPage: number) {
     void navigate({ search: (prev) => ({ ...prev, page: nextPage || undefined }), resetScroll: false });
   }
+  function setPageSize(nextSize: MemberPageSize) {
+    void navigate({
+      search: (prev) => ({
+        ...prev,
+        size: nextSize === DEFAULT_MEMBER_PAGE_SIZE ? undefined : nextSize,
+        page: undefined,
+      }),
+      resetScroll: false,
+    });
+  }
   const [modal, setModal] = useState<ModalState | null>(null);
+  const { columns, toggleColumn } = useMemberColumns();
 
   const { data, isLoading, isFetching, isPlaceholderData } = useQuery(
     memberQueries.directory({
       ...filters,
       page,
-      size: DEFAULT_MEMBER_PAGE_SIZE,
+      size: pageSize,
       sort,
       direction,
       isAdmin,
@@ -100,7 +111,10 @@ export default function MembersPage() {
   }
 
   function resetFilters() {
-    void navigate({ search: (prev) => ({ sort: prev.sort, direction: prev.direction }), resetScroll: false });
+    void navigate({
+      search: (prev) => ({ sort: prev.sort, direction: prev.direction, size: prev.size }),
+      resetScroll: false,
+    });
   }
 
   function changeSort(nextSort: MemberSortKey) {
@@ -117,69 +131,91 @@ export default function MembersPage() {
 
   const members = data?.members ?? EMPTY_MEMBERS;
 
+  const rowActions: MemberRowActions = {
+    onOpenDetail: (member) => setModal({ kind: 'detail', member }),
+    onEditProfile: (member) => setModal({ kind: 'edit', member }),
+    onChangeAcademicStatus: (member) => setModal({ kind: 'academic-status', member }),
+    onChangeRole: (member) => setModal({ kind: 'role', member }),
+    onToggleActive: (member) => activeMutation.mutate({ memberId: member.id, active: !member.active }),
+    onWithdraw: (member) => setModal({ kind: 'withdrawal', member }),
+    onSendPasswordLink: (member) => setModal({ kind: 'password-link', member }),
+  };
+
   return (
     <>
       <PageHeader crumb="인명부" title="부원 명부" saving={activeMutation.isPending} />
 
-      <div className="border-line flex flex-wrap items-center gap-2.5 border-b px-8 pt-5 pb-3">
-        <MemberStats counts={data?.counts} />
-        {isFetching && !isLoading && (
-          <span role="status" className="text-faint ml-auto flex-none text-[11px] whitespace-nowrap">
-            불러오는 중…
-          </span>
-        )}
-      </div>
-
-      <div className="flex w-full items-start gap-[18px] px-8 pt-[22px] pb-10">
-        <MemberFilterSidebar counts={data?.counts} filters={filters} onChange={changeFilters} />
-
-        <div className="flex min-w-0 flex-1 flex-col gap-3">
-          <MemberToolbar
-            keyword={filters.keyword}
-            onKeywordChange={(keyword) => {
-              if (keyword === filters.keyword) return;
-              void navigate({
-                search: (prev) => ({ ...prev, keyword: keyword || undefined, page: undefined }),
-                resetScroll: false,
-              });
-            }}
-            activeFilterCount={countActiveFilters(filters)}
-            onReset={resetFilters}
-            isAdmin={isAdmin}
-            onCreate={() => setModal({ kind: 'create' })}
-          />
-
-          <section
-            aria-label="부원 목록"
-            aria-busy={isFetching}
-            className="border-line bg-panel overflow-hidden rounded-2xl border"
-          >
-            <MemberTable
-              members={members}
-              isLoading={isLoading}
-              isAdmin={isAdmin}
-              currentMemberId={session?.member.id}
-              sort={sort}
-              direction={direction}
-              onSortChange={changeSort}
-              pendingMemberId={activeMutation.isPending ? activeMutation.variables.memberId : null}
-              onResetFilters={resetFilters}
-              actions={{
-                onEditProfile: (member) => setModal({ kind: 'edit', member }),
-                onChangeAcademicStatus: (member) => setModal({ kind: 'academic-status', member }),
-                onChangeRole: (member) => setModal({ kind: 'role', member }),
-                onToggleActive: (member) => activeMutation.mutate({ memberId: member.id, active: !member.active }),
-                onWithdraw: (member) => setModal({ kind: 'withdrawal', member }),
-                onSendPasswordLink: (member) => setModal({ kind: 'password-link', member }),
-              }}
+      <div className="flex w-full flex-col gap-3 px-8 pt-5 pb-10">
+        <MemberToolbar
+          keyword={filters.keyword}
+          onKeywordChange={(keyword) => {
+            if (keyword === filters.keyword) return;
+            void navigate({
+              search: (prev) => ({ ...prev, keyword: keyword || undefined, page: undefined }),
+              resetScroll: false,
+            });
+          }}
+          activeFilter={
+            <MemberActiveFilter
+              counts={data?.counts}
+              active={filters.active}
+              onChange={(active) => changeFilters({ ...filters, active })}
             />
-            {data && <MemberPagination page={data.page} disabled={isPlaceholderData} onPageChange={setPage} />}
-          </section>
+          }
+          columnMenu={<MemberColumnMenu isAdmin={isAdmin} columns={columns} onToggle={toggleColumn} />}
+          isAdmin={isAdmin}
+          onCreate={() => setModal({ kind: 'create' })}
+        />
 
-          {error && <p className="text-danger m-0 pt-0.5 text-[11px]">{error}</p>}
+        <div className="flex flex-wrap items-center gap-2">
+          <MemberFilterBar counts={data?.counts} filters={filters} onChange={changeFilters} />
+          {isFetching && !isLoading && (
+            <span role="status" className="text-faint ml-auto flex-none text-[11px] whitespace-nowrap">
+              불러오는 중…
+            </span>
+          )}
         </div>
+
+        <section
+          aria-label="부원 목록"
+          aria-busy={isFetching}
+          className="border-line bg-panel overflow-hidden rounded-2xl border"
+        >
+          <MemberTable
+            members={members}
+            isLoading={isLoading}
+            isAdmin={isAdmin}
+            columns={columns}
+            currentMemberId={session?.member.id}
+            sort={sort}
+            direction={direction}
+            onSortChange={changeSort}
+            pendingMemberId={activeMutation.isPending ? activeMutation.variables.memberId : null}
+            onResetFilters={resetFilters}
+            actions={rowActions}
+          />
+          {data && (
+            <MemberPagination
+              page={data.page}
+              pageSize={pageSize}
+              disabled={isPlaceholderData}
+              onPageChange={setPage}
+              onPageSizeChange={setPageSize}
+            />
+          )}
+        </section>
+
+        {error && <p className="text-danger m-0 pt-0.5 text-[11px]">{error}</p>}
       </div>
 
+      {modal?.kind === 'detail' && (
+        <MemberDetailDrawer
+          member={modal.member}
+          isAdmin={isAdmin}
+          actions={rowActions}
+          onClose={() => setModal(null)}
+        />
+      )}
       {modal?.kind === 'create' && <MemberFormModal member={null} onClose={() => setModal(null)} />}
       {modal?.kind === 'edit' && <MemberFormModal member={modal.member} onClose={() => setModal(null)} />}
       {modal?.kind === 'role' && <MemberRoleModal member={modal.member} onClose={() => setModal(null)} />}

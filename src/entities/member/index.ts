@@ -13,7 +13,6 @@ export {
 export { memberKeys, memberQueries } from './api/queries';
 export {
   type AcademicStatus,
-  DEFAULT_MEMBER_PAGE_SIZE,
   EMPTY_MEMBER_FILTERS,
   type MemberDirectoryCounts,
   type MemberDirectoryFilters,

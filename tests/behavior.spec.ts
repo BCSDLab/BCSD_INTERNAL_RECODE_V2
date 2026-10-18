@@ -117,10 +117,10 @@ test.describe('Modal (Base UI Dialog 전환)', () => {
 
 test.describe('Chip (Base UI Toggle 전환)', () => {
   test('키보드로 포커스해 Enter로 누를 수 있다 — 이전엔 <span>이라 탭도, 키보드 조작도 안 됐다', async ({ page }) => {
-    await gotoAsAdmin(page, '/members');
+    await gotoAsAdmin(page, '/activities');
 
-    const filterSidebar = page.locator('aside', { hasText: '활동 여부' });
-    const chip = filterSidebar.getByRole('button', { name: /^활동/ });
+    // 활동 타임라인의 연도 필터 칩. '전체'가 기본 선택이라 연도 칩은 눌리지 않은 상태로 시작한다.
+    const chip = page.getByRole('button', { name: /^20\d\d/ }).first();
     await expect(chip).toBeVisible();
     await expect(chip).toHaveAttribute('aria-pressed', 'false');
 
@@ -378,7 +378,7 @@ test.describe('인명부 조회 전환', () => {
       try {
         if (action === '필터') {
           await page
-            .locator('aside', { hasText: '활동 여부' })
+            .getByRole('group', { name: '활동 여부' })
             .getByRole('button', { name: /^활동/ })
             .click();
         } else if (action === '검색') {
@@ -389,7 +389,9 @@ test.describe('인명부 조회 전환', () => {
         await expect(list).toHaveAttribute('aria-busy', 'true');
         await expect(list.getByRole('cell', { name: /^홍길동/ })).toBeVisible();
         await expect(list.getByText('조건에 맞는 부원이 없습니다.')).toHaveCount(0);
-        await expect(page.getByText('총원', { exact: true }).locator('..')).toHaveText('총원3');
+        await expect(page.getByRole('group', { name: '활동 여부' }).getByRole('button', { name: /^전체/ })).toHaveText(
+          '전체3',
+        );
         expect((await list.boundingBox())?.height).toBe(before?.height);
         gate.resolve();
         await expect(list).toHaveAttribute('aria-busy', 'false');
@@ -445,12 +447,76 @@ test.describe('인명부 조회 전환', () => {
       });
     });
     await page
-      .locator('aside', { hasText: '활동 여부' })
+      .getByRole('group', { name: '활동 여부' })
       .getByRole('button', { name: /^비활동/ })
       .click();
     const list = page.getByRole('region', { name: '부원 목록' });
     await expect(list.getByText('조건에 맞는 부원이 없습니다.')).toBeVisible();
     await expect(list.getByRole('cell', { name: /^홍길동/ })).toHaveCount(0);
+  });
+});
+
+test.describe('인명부 표시 방식', () => {
+  test('페이지당 인원을 고르면 size를 요청하고 URL에 남기며 첫 페이지로 돌아간다', async ({ page }) => {
+    await installApiMocks(page);
+    const sizes: string[] = [];
+    page.on('request', (request) => {
+      const url = new URL(request.url());
+      if (url.pathname === '/v1/admin/members' && url.searchParams.get('size') !== '1') {
+        sizes.push(url.searchParams.get('size') ?? '');
+      }
+    });
+    await page.goto('/members?page=1');
+    await expect.poll(() => sizes.at(-1)).toBe('50');
+
+    await page.getByRole('group', { name: '페이지당 인원' }).getByRole('button', { name: '100', exact: true }).click();
+    await expect.poll(() => sizes.at(-1)).toBe('100');
+    const params = new URL(page.url()).searchParams;
+    expect(params.get('size')).toBe('100');
+    expect(params.has('page')).toBe(false);
+
+    await page.goto('/members?size=7');
+    await expect.poll(() => sizes.at(-1)).toBe('50');
+  });
+
+  test('필터 드롭다운에서 고른 값은 칩으로 보이고 칩을 눌러 해제한다', async ({ page }) => {
+    await gotoAsAdmin(page, '/members');
+    await page.getByRole('button', { name: '트랙', exact: true }).click();
+    await page.getByRole('menuitemcheckbox', { name: /^BackEnd/ }).click();
+    await expect.poll(() => new URL(page.url()).searchParams.getAll('track').join()).toContain('BACKEND');
+    await page.keyboard.press('Escape');
+
+    const chip = page.getByRole('button', { name: '트랙 BackEnd 필터 해제' });
+    await expect(chip).toBeVisible();
+    await chip.click();
+    await expect(chip).toHaveCount(0);
+    await expect.poll(() => new URL(page.url()).searchParams.has('track')).toBe(false);
+  });
+
+  test('이름을 누르면 상세 패널이 열리고 관리 동작은 패널을 닫은 뒤 모달을 연다', async ({ page }) => {
+    await gotoAsAdmin(page, '/members');
+    const name = memberDirectory.members[0].name;
+    await page.getByRole('region', { name: '부원 목록' }).getByRole('button', { name, exact: true }).click();
+
+    const drawer = page.getByRole('dialog', { name });
+    await expect(drawer.getByText(memberDirectory.members[0].email)).toBeVisible();
+    await drawer.getByRole('button', { name: '비밀번호 설정 링크' }).click();
+    await expect(drawer).toBeHidden();
+    await expect(page.getByRole('dialog').getByRole('button', { name: 'Slack DM 보내기' })).toBeVisible();
+  });
+
+  test('열 설정으로 켠 열은 표에 나타나고 새로고침 후에도 유지된다', async ({ page }) => {
+    await gotoAsAdmin(page, '/members');
+    const list = page.getByRole('region', { name: '부원 목록' });
+    await expect(list.getByRole('columnheader', { name: '이메일' })).toHaveCount(0);
+
+    await page.getByRole('button', { name: '열 설정' }).click();
+    await page.getByRole('menuitemcheckbox', { name: '이메일' }).click();
+    await page.keyboard.press('Escape');
+    await expect(list.getByRole('columnheader', { name: '이메일' })).toBeVisible();
+
+    await page.reload();
+    await expect(list.getByRole('columnheader', { name: '이메일' })).toBeVisible();
   });
 });
 
@@ -673,7 +739,11 @@ test.describe('비밀번호 설정 링크 Slack DM', () => {
   test('Slack ID가 없으면 보내기 버튼이 막히고 이유를 보인다', async ({ page }) => {
     await gotoAsAdmin(page, '/members');
 
-    await page.getByRole('button', { name: '링크' }).first().click();
+    await page
+      .getByRole('button', { name: /^관리 메뉴/ })
+      .first()
+      .click();
+    await page.getByRole('menuitem', { name: '비밀번호 설정 링크' }).click();
     const dialog = page.getByRole('dialog');
     await expect(dialog.getByText('Slack ID가 없어 보낼 수 없습니다.', { exact: false })).toBeVisible();
     await expect(dialog.getByRole('button', { name: 'Slack DM 보내기' })).toBeDisabled();
@@ -698,7 +768,11 @@ test.describe('비밀번호 설정 링크 Slack DM', () => {
     await page.goto('/members');
     await page.locator('aside', { hasText: 'BCSD Internal' }).waitFor();
 
-    await page.getByRole('button', { name: '링크' }).first().click();
+    await page
+      .getByRole('button', { name: /^관리 메뉴/ })
+      .first()
+      .click();
+    await page.getByRole('menuitem', { name: '비밀번호 설정 링크' }).click();
     const dialog = page.getByRole('dialog');
     await dialog.getByRole('button', { name: 'Slack DM 보내기' }).click();
 
@@ -754,9 +828,14 @@ test.describe('계정 없는 부원과 직장', () => {
 
     const firstRow = page.getByRole('row').filter({ hasText: memberDirectory.members[0].name });
     await expect(firstRow.getByText('계정 없음')).toBeVisible();
-    await expect(firstRow.getByText('카카오')).toBeVisible();
     const secondRow = page.getByRole('row').filter({ hasText: memberDirectory.members[1].name });
     await expect(secondRow.getByText('계정 없음')).toHaveCount(0);
+
+    // 직장은 기본 열이 아니라 상세 패널에서 본다.
+    await firstRow.getByRole('button', { name: memberDirectory.members[0].name, exact: true }).click();
+    const detail = page.getByRole('dialog');
+    await expect(detail.getByText('카카오')).toBeVisible();
+    await expect(detail.getByText('없음 (비밀번호 미설정)')).toBeVisible();
   });
 });
 

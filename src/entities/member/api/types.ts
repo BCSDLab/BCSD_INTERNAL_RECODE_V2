@@ -87,9 +87,6 @@ export const EMPTY_MEMBER_FILTERS: MemberDirectoryFilters = {
   memberType: [],
 };
 
-/** 백엔드 @PageableDefault와 같은 값 — 기수 오름차순 8건. */
-export const DEFAULT_MEMBER_PAGE_SIZE = 8;
-
 export interface MemberCreateRequest {
   name: string;
   studentNumber: string;
