@@ -385,7 +385,7 @@ test('URL의 인명부 페이지를 새로고침해 복원하고 필터를 바�
   await page.clock.runFor(350);
   expect(new URL(page.url()).searchParams.get('page')).toBe('2');
   await page
-    .locator('aside', { hasText: '활동 여부' })
+    .getByRole('group', { name: '활동 여부' })
     .getByRole('button', { name: /^활동/ })
     .click();
   await expect.poll(() => new URL(page.url()).searchParams.get('page')).toBeNull();
